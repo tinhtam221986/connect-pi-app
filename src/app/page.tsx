@@ -1,83 +1,105 @@
-"use client"
+import Image from "next/image";
+import PaymentTester from "@/components/PaymentTester"; // <--- Thêm dòng này
 
-import { Sidebar } from "@/components/layout/sidebar"
-import { VideoPost } from "@/components/feed/video-post"
-import { PiConnect } from "@/components/pi/pi-connect"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-export default function HomePage() {
-  const dummyPosts = [
-    { id: 1, username: "web3_creator", description: "Minting my first NFT on Pi Network! 🚀 #PiNetwork #NFT", likes: 1200, comments: 340, shares: 50, song: "Pi Song - Original Mix" },
-    { id: 2, username: "crypto_jane", description: "Live battle tonight at 8 PM! Don't miss it. 🔥", likes: 8900, comments: 1200, shares: 450, song: "Battle Theme - Epic" },
-    { id: 3, username: "dev_team", description: "Testing the new CONNECT update. Smooth as silk.", likes: 560, comments: 45, shares: 12, song: "Coding Vibes - Lofi" },
-  ]
-
+export default function Home() {
   return (
-    <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
-      {/* Sidebar Navigation */}
-      <Sidebar />
+    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+        <Image
+          className="dark:invert"
+          src="/next.svg"
+          alt="Next.js logo"
+          width={180}
+          height={38}
+          priority
+        />
+        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
+          <li className="mb-2">
+            Get started by editing{" "}
+            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+              src/app/page.tsx
+            </code>
+            .
+          </li>
+          <li>Save and see your changes instantly.</li>
+        </ol>
 
-      {/* Main Content Area */}
-      <main className="flex-1 md:pl-64 flex flex-col md:flex-row h-screen">
-        
-        {/* Feed Section (Center) */}
-        <div className="flex-1 h-full relative flex justify-center">
-            <div className="absolute top-4 z-50">
-                <Tabs defaultValue="for_you" className="w-[400px] flex justify-center">
-                    <TabsList className="bg-black/20 backdrop-blur-md border border-white/10">
-                        <TabsTrigger value="following" className="data-[state=active]:bg-white/10">Following</TabsTrigger>
-                        <TabsTrigger value="for_you" className="data-[state=active]:bg-white/10">For You</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
+        {/* Thêm Component Test Thanh Toán vào đây */}
+        <PaymentTester /> 
 
-            <ScrollArea className="h-full w-full max-w-md snap-y snap-mandatory scroll-smooth pb-20">
-                <div className="pt-16 pb-20">
-                    {dummyPosts.map((post) => (
-                        <VideoPost key={post.id} {...post} />
-                    ))}
-                </div>
-            </ScrollArea>
-        </div>
-
-        {/* Right Sidebar (Widgets) - Hidden on mobile */}
-        <div className="hidden lg:flex w-80 flex-col gap-6 p-6 border-l bg-card/30 backdrop-blur-sm h-full">
-            <PiConnect />
-            
-            <div className="rounded-lg border bg-card p-4">
-                <h3 className="font-semibold mb-3">Trending on CONNECT</h3>
-                <div className="space-y-3">
-                    {["#PiNetworkMainnet", "#Web3Social", "#ConnectApp", "#BitcoinHalving"].map((tag) => (
-                        <div key={tag} className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-muted-foreground hover:text-primary cursor-pointer transition-colors">{tag}</span>
-                            <span className="text-xs text-muted-foreground/50">12.5k posts</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="rounded-lg border bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-4">
-                <h3 className="font-semibold mb-2 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">AI Assistant</h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                    Need help with a caption? Ask Connect AI.
-                </p>
-                <div className="h-24 rounded bg-black/20 border border-white/5 flex items-center justify-center text-xs text-muted-foreground italic">
-                    [AI Chat Widget Placeholder]
-                </div>
-            </div>
+        <div className="flex gap-4 items-center flex-col sm:flex-row">
+          <a
+            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              className="dark:invert"
+              src="/vercel.svg"
+              alt="Vercel logomark"
+              width={20}
+              height={20}
+            />
+            Deploy now
+          </a>
+          <a
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read our docs
+          </a>
         </div>
       </main>
-
-      {/* Mobile Bottom Nav (Visible only on mobile) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-black border-t flex items-center justify-around z-50">
-        {/* Simplified mobile nav icons would go here */}
-        <span className="text-xs">Home</span>
-        <span className="text-xs">Discover</span>
-        <div className="h-10 w-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center -mt-4 border-4 border-black font-bold text-xl">+</div>
-        <span className="text-xs">Inbox</span>
-        <span className="text-xs">Me</span>
-      </div>
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/file.svg"
+            alt="File icon"
+            width={16}
+            height={16}
+          />
+          Learn
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/window.svg"
+            alt="Window icon"
+            width={16}
+            height={16}
+          />
+          Examples
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/globe.svg"
+            alt="Globe icon"
+            width={16}
+            height={16}
+          />
+          Go to nextjs.org →
+        </a>
+      </footer>
     </div>
-  )
+  );
 }
