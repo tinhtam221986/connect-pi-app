@@ -1,1 +1,0 @@
-<contents_of_src/public/validation-key.txt>
