@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 
 // Define types for Pi SDK
 interface PiUser {
@@ -33,6 +33,7 @@ interface PiContextType {
   accessToken: string | null
   authenticate: () => Promise<void>
   error: string | null
+  incompletePayment: any | null 
 }
 
 const PiContext = createContext<PiContextType>({
@@ -42,6 +43,7 @@ const PiContext = createContext<PiContextType>({
   accessToken: null,
   authenticate: async () => {},
   error: null,
+  incompletePayment: null,
 })
 
 export function usePi() {
@@ -54,15 +56,16 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<PiUser | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [incompletePayment, setIncompletePayment] = useState<any | null>(null)
 
   useEffect(() => {
     let retryCount = 0;
-    const maxRetries = 20; // 10 seconds
+    const maxRetries = 20;
 
     const initPi = () => {
       if (window.Pi) {
         try {
-          window.Pi.init({ version: "2.0", sandbox: true }) // Default to sandbox for dev
+          window.Pi.init({ version: "2.0", sandbox: true })
           setIsInitialized(true)
           console.log("Pi SDK Initialized")
         } catch (err: any) {
@@ -82,17 +85,21 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     initPi()
   }, [])
 
-  const authenticate = async () => {
+  const authenticate = useCallback(async () => {
     if (!isInitialized || !window.Pi) {
-        setError("Pi SDK not ready")
-        return
+        if (!window.Pi) {
+            setError("Pi SDK not ready (window.Pi missing)")
+            return
+        }
     }
 
     try {
       const scopes = ["username", "payments"]
+      
       const onIncompletePaymentFound = (payment: any) => {
-        console.log("Incomplete payment found", payment)
-      }
+        console.log("Incomplete payment found inside Provider:", payment)
+        setIncompletePayment(payment)
+      };
 
       const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound)
       
@@ -104,7 +111,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       console.error("Pi Authentication Failed:", err)
       setError(err.message || "Authentication failed")
     }
-  }
+  }, [isInitialized])
 
   return (
     <PiContext.Provider
@@ -115,6 +122,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
         accessToken,
         authenticate,
         error,
+        incompletePayment,
       }}
     >
       {children}
