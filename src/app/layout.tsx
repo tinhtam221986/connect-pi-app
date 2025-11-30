@@ -20,11 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-background text-foreground`}>
+        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="beforeInteractive" />
         <PiSDKProvider>
           {children}
           <Toaster />
         </PiSDKProvider>
-        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
       </body>
     </html>
   )
