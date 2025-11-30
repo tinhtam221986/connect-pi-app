@@ -16,6 +16,8 @@ interface PiAuthResult {
 interface PiSDK {
   init: (options: { version: string; sandbox: boolean }) => void
   authenticate: (scopes: string[], onIncompletePaymentFound: (payment: any) => void) => Promise<PiAuthResult>
+  createPayment: (paymentData: any, callbacks: any) => any
+  openShareDialog: (title: string, message: string) => any
 }
 
 declare global {
@@ -54,18 +56,25 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 20; // 10 seconds
+
     const initPi = () => {
       if (window.Pi) {
         try {
           window.Pi.init({ version: "2.0", sandbox: true }) // Default to sandbox for dev
           setIsInitialized(true)
           console.log("Pi SDK Initialized")
-        } catch (err) {
+        } catch (err: any) {
           console.error("Pi SDK Init Error:", err)
-          setError("Failed to initialize Pi SDK")
+          setError(`Failed to initialize Pi SDK: ${err.message || err}`)
         }
       } else {
-        // Retry if script hasn't loaded yet
+        retryCount++;
+        if (retryCount > maxRetries) {
+            setError("Pi SDK script failed to load. Please check your internet connection or use the Pi Browser.")
+            return;
+        }
         setTimeout(initPi, 500)
       }
     }
@@ -83,7 +92,6 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       const scopes = ["username", "payments"]
       const onIncompletePaymentFound = (payment: any) => {
         console.log("Incomplete payment found", payment)
-        // Handle incomplete payments here
       }
 
       const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound)
