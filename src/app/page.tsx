@@ -1,19 +1,23 @@
-import Image from "next/image";
-import PaymentTester from "@/components/PaymentTester"; // <--- Dòng này để lấy "Cỗ máy" từ kho ra
+"use client";
+
+import { usePi } from "@/components/pi/pi-provider";
+import LoginView from "@/components/LoginView";
+import MainAppView from "@/components/MainAppView";
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-8 font-[family-name:var(--font-geist-sans)]">
-      
-      <h1 className="text-2xl font-bold">Pi Network Payment Test</h1>
-      
-      {/* Dòng dưới đây chính là đặt "Cỗ máy" vào vị trí hiển thị */}
-      <PaymentTester /> 
+  const { isAuthenticated, isInitialized } = usePi();
+  const [mounted, setMounted] = useState(false);
 
-      <p className="text-sm text-gray-500">
-        Hãy mở ứng dụng này bằng Pi Browser để test thanh toán.
-      </p>
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-    </div>
-  );
+  if (!mounted) return null;
+
+  if (!isAuthenticated) {
+    return <LoginView />;
+  }
+
+  return <MainAppView />;
 }
