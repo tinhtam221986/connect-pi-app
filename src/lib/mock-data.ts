@@ -6,7 +6,7 @@ export const MOCK_USERS = [
         level: 42,
         reputation: "Diamond",
         followers: "12.5k",
-        bio: "Web3 content creator. Love Pi Network!"
+        bio: "Web3 content creator. Love Pi Network! 🚀"
     },
     {
         id: "user_2",
@@ -29,10 +29,12 @@ export const MOCK_USERS = [
 ];
 
 export const MOCK_VIDEOS = [
+    // VI
     {
-        id: "vid_1",
+        id: "vid_1_vi",
+        language: "vi",
         user: MOCK_USERS[0],
-        description: "Checking out the new Pi CONNECT app! 🚀 #PiNetwork #Web3",
+        description: "Trải nghiệm ứng dụng CONNECT mới trên Pi Network! Tuyệt vời quá! 🚀 #PiNetwork #Web3",
         likes: 1205,
         comments: 45,
         shares: 12,
@@ -40,9 +42,10 @@ export const MOCK_VIDEOS = [
         thumbnail: "bg-purple-900" 
     },
     {
-        id: "vid_2",
+        id: "vid_2_vi",
+        language: "vi",
         user: MOCK_USERS[2],
-        description: "Amazing sunset in Bali. Paid for this trip with Pi! 🌅",
+        description: "Hoàng hôn tuyệt đẹp tại Bali. Chuyến đi này được tài trợ bởi Pi! 🌅",
         likes: 8500,
         comments: 342,
         shares: 150,
@@ -50,9 +53,44 @@ export const MOCK_VIDEOS = [
         thumbnail: "bg-blue-900"
     },
     {
-        id: "vid_3",
+        id: "vid_3_vi",
+        language: "vi",
         user: MOCK_USERS[1],
-        description: "Coding session. Building the next big thing. 💻",
+        description: "Đang code tính năng mới cho CONNECT. Mọi người chờ nhé! 💻",
+        likes: 560,
+        comments: 23,
+        shares: 5,
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-1173-large.mp4",
+        thumbnail: "bg-gray-900"
+    },
+    // EN
+    {
+        id: "vid_1_en",
+        language: "en",
+        user: MOCK_USERS[0],
+        description: "Checking out the new CONNECT app on Pi Network! Amazing! 🚀 #PiNetwork #Web3",
+        likes: 1205,
+        comments: 45,
+        shares: 12,
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-1232-large.mp4",
+        thumbnail: "bg-purple-900" 
+    },
+    {
+        id: "vid_2_en",
+        language: "en",
+        user: MOCK_USERS[2],
+        description: "Beautiful sunset in Bali. Funded by Pi! 🌅",
+        likes: 8500,
+        comments: 342,
+        shares: 150,
+        videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4",
+        thumbnail: "bg-blue-900"
+    },
+    {
+        id: "vid_3_en",
+        language: "en",
+        user: MOCK_USERS[1],
+        description: "Coding new features for CONNECT. Stay tuned! 💻",
         likes: 560,
         comments: 23,
         shares: 5,
@@ -62,35 +100,23 @@ export const MOCK_VIDEOS = [
 ];
 
 export const MOCK_PRODUCTS = [
-    {
-        id: "prod_1",
-        name: "Connect Premium Theme",
-        price: 50,
-        currency: "Pi",
-        image: "🎨",
-        seller: "ThemeMaster"
-    },
-    {
-        id: "prod_2",
-        name: "Exclusive 3D Avatar",
-        price: 100,
-        currency: "Pi",
-        image: "👾",
-        seller: "CryptoQueen"
-    },
-    {
-        id: "prod_3",
-        name: "Verified Badge Service",
-        price: 500,
-        currency: "Pi",
-        image: "✅",
-        seller: "ConnectOfficial"
-    }
+    { id: "p1_vi", name: "Giao diện Premium", price: 50, currency: "Pi", image: "🎨", seller: "ThemeMaster", language: "vi" },
+    { id: "p2_vi", name: "Avatar 3D Độc quyền", price: 100, currency: "Pi", image: "👾", seller: "CryptoQueen", language: "vi" },
+    { id: "p1_en", name: "Premium Theme", price: 50, currency: "Pi", image: "🎨", seller: "ThemeMaster", language: "en" },
+    { id: "p2_en", name: "Exclusive 3D Avatar", price: 100, currency: "Pi", image: "👾", seller: "CryptoQueen", language: "en" }
 ];
 
-export const AI_RESPONSES = [
-    "I can help you edit this video! Would you like to add some filters?",
-    "That's a great idea for a post. Trending hashtags today are #PiNetwork and #Web3.",
-    "Your engagement is up 20% this week! Keep it up!",
-    "I found a violation in this comment. It has been flagged for review."
-];
+export const AI_RESPONSES = {
+    vi: [
+        "Tôi có thể giúp bạn chỉnh sửa video này! Bạn có muốn thêm bộ lọc không?",
+        "Ý tưởng tuyệt vời! Các thẻ hashtag xu hướng hôm nay là #PiNetwork và #Web3.",
+        "Tương tác của bạn đã tăng 20% trong tuần này! Hãy tiếp tục phát huy!",
+        "Tôi phát hiện nội dung này có thể vi phạm chính sách cộng đồng. Đang xem xét."
+    ],
+    en: [
+        "I can help you edit this video! Would you like to add filters?",
+        "Great idea! Trending hashtags today are #PiNetwork and #Web3.",
+        "Your engagement is up 20% this week! Keep it up!",
+        "I detected a potential policy violation in this content. Reviewing now."
+    ]
+};
