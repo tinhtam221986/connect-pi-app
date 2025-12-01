@@ -1,17 +1,32 @@
 import { usePi } from "@/components/pi/pi-provider";
 import { MOCK_USERS } from "@/lib/mock-data";
-import { BadgeCheck, Settings, GripVertical, Award, Globe } from "lucide-react";
+import { BadgeCheck, Settings, GripVertical, Award, Globe, Gamepad2 } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { useGameStore } from "@/components/game/store";
 
 export function UserProfile() {
     const { user } = usePi();
     const { t, language, setLanguage } = useLanguage();
+    const pets = useGameStore(state => state.pets);
+
     // Default to mock user if Pi user data is sparse
     const mockUser = MOCK_USERS[0];
     const username = user?.username || mockUser.username;
     
     const toggleLanguage = () => {
         setLanguage(language === 'vi' ? 'en' : 'vi');
+    }
+
+    // Helper for pet icon
+    const getPetIcon = (element: string) => {
+        switch(element) {
+            case 'fire': return '🐲';
+            case 'water': return '🦈';
+            case 'wood': return '🐺';
+            case 'metal': return '🦅';
+            case 'earth': return '🐢';
+            default: return '❓';
+        }
     }
 
     return (
@@ -70,6 +85,33 @@ export function UserProfile() {
                     {mockUser.bio}
                 </p>
              </div>
+
+             {/* Pets Widget */}
+             {pets.length > 0 && (
+                <div className="w-full px-4 mt-6">
+                    <h3 className="font-bold text-white mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <Gamepad2 size={16} className="text-purple-500" /> Thú Cưng ({pets.length})
+                    </h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                        {pets.map(pet => (
+                            <div key={pet.id} className="min-w-[90px] bg-slate-900 rounded-xl p-3 border border-slate-800 flex flex-col items-center shadow-lg relative overflow-hidden group">
+                                <div className={`absolute inset-0 bg-gradient-to-b opacity-10 from-white to-transparent`} />
+                                <div className="text-3xl mb-2 filter drop-shadow-md group-hover:scale-110 transition-transform">{getPetIcon(pet.element)}</div>
+                                <span className="text-[10px] font-bold truncate w-full text-center text-white">{pet.name}</span>
+                                <div className="flex items-center gap-1 mt-1">
+                                    <span className={`w-2 h-2 rounded-full ${
+                                        pet.element==='fire'?'bg-red-500':
+                                        pet.element==='water'?'bg-blue-500':
+                                        pet.element==='wood'?'bg-green-500':
+                                        pet.element==='metal'?'bg-gray-400':'bg-amber-600'
+                                    }`} />
+                                    <span className="text-[9px] text-gray-400 uppercase">{pet.element}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             )}
 
              {/* Tabs */}
              <div className="flex justify-around border-t border-gray-800 mt-8 sticky top-14 bg-black z-10">
