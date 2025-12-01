@@ -5,6 +5,7 @@ export const translations = {
     nav: {
       home: "Trang chủ",
       shop: "Cửa hàng",
+      game: "GameFi",
       wallet: "Ví",
       profile: "Hồ sơ"
     },
@@ -65,6 +66,27 @@ export const translations = {
         mock: "Chế độ Giả lập (Mock)",
         error: "Lỗi Kết Nối",
         searching: "Đang tìm Pi Network..."
+    },
+    studio: {
+        title: "AI Studio",
+        magic_script: "Kịch bản AI",
+        magic_edit: "Biên tập AI",
+        start_live: "Phát trực tiếp",
+        topic_placeholder: "Nhập chủ đề video của bạn...",
+        generating: "AI đang viết...",
+        script_result: "Kịch bản gợi ý:",
+        record: "Ghi hình",
+        upload: "Tải lên",
+        tips: "Gợi ý AI"
+    },
+    game: {
+        title: "GameFi Center",
+        play_earn: "Chơi & Kiếm Pi",
+        clicker_title: "Pi Mining Clicker",
+        clicker_desc: "Chạm liên tục để đào Pi!",
+        balance: "Pi Kiếm được",
+        start: "Chơi ngay",
+        leaderboard: "Bảng xếp hạng"
     }
   },
   en: {
@@ -72,7 +94,8 @@ export const translations = {
       home: "Home",
       shop: "Shop",
       wallet: "Wallet",
-      profile: "Profile"
+      profile: "Profile",
+      game: "GameFi"
     },
     feed: {
       original_sound: "Original Sound"
@@ -131,6 +154,27 @@ export const translations = {
         mock: "Dev Mode (Mock)",
         error: "Connection Failed",
         searching: "Searching Pi Network..."
+    },
+    studio: {
+        title: "AI Studio",
+        magic_script: "Magic Script",
+        magic_edit: "Magic Edit",
+        start_live: "Go Live",
+        topic_placeholder: "Enter video topic...",
+        generating: "AI is writing...",
+        script_result: "Suggested Script:",
+        record: "Record",
+        upload: "Upload",
+        tips: "AI Tips"
+    },
+    game: {
+        title: "GameFi Center",
+        play_earn: "Play & Earn",
+        clicker_title: "Pi Mining Clicker",
+        clicker_desc: "Tap fast to mine Pi!",
+        balance: "Pi Earned",
+        start: "Play Now",
+        leaderboard: "Leaderboard"
     }
   }
 };
