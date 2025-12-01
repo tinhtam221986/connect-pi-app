@@ -12,7 +12,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // QUAN TRỌNG: Bạn cần lấy API Key từ Pi Developer Portal
+    // LẤY API KEY TỪ BIẾN MÔI TRƯỜNG HOẶC ĐIỀN TRỰC TIẾP VÀO ĐÂY (KHÔNG KHUYẾN KHÍCH)
+    // Get API Key from environment variable or paste here (not recommended for production)
     const PI_API_KEY = process.env.PI_API_KEY || ""; 
 
     if (!PI_API_KEY) {

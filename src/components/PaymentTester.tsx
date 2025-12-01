@@ -140,7 +140,7 @@ export default function PaymentTester() {
            <p><strong>Error:</strong> {localError}</p>
            {localError.includes("Server Error") && (
                <p className="mt-2 text-xs text-black">
-                   Mẹo: Bạn đã cài đặt <code>PI_API_KEY</code> chưa?
+                   Hint: Did you set <code>PI_API_KEY</code> in your environment variables?
                </p>
            )}
         </div>
@@ -164,7 +164,7 @@ export default function PaymentTester() {
                     onClick={handleManualAuth}
                     className="ml-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 py-1 px-2 rounded"
                 >
-                    Đăng nhập lại
+                    Retry Login
                 </button>
             )}
         </div>
@@ -195,7 +195,7 @@ export default function PaymentTester() {
       </button>
       
       <div className="mt-4 text-xs text-gray-500 text-center">
-          Đảm bảo bạn đang ở môi trường Pi Browser Sandbox.
+          Ensure you are in the Pi Browser Sandbox environment.
       </div>
     </div>
   );
