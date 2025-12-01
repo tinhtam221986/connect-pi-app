@@ -5,7 +5,8 @@ import { PiNetworkStatus } from "@/components/pi/PiNetworkStatus";
 import { VideoFeed } from "@/components/feed/VideoFeed";
 import { UserProfile } from "@/components/profile/UserProfile";
 import { AIAssistant } from "@/components/ai/AIAssistant";
-import { Heart, Home, MessageCircle, PlusSquare, ShoppingBag, User, Wallet, CalendarCheck, Upload, Loader2, CheckCircle2 } from "lucide-react";
+import { Heart, Home, MessageCircle, PlusSquare, ShoppingBag, User, Wallet, CalendarCheck, Upload, Loader2, CheckCircle2, Gamepad2 } from "lucide-react";
+import { GameLayout } from "@/components/game/GameLayout";
 import PaymentTester from "@/components/PaymentTester";
 import { useState, useRef } from "react";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
@@ -23,6 +24,8 @@ export default function MainAppView() {
       
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative">
+        {activeTab === "game" && <div className="absolute inset-0 z-50 bg-black"><GameLayout onBack={() => setActiveTab("home")} /></div>}
+
         {activeTab === "home" && <VideoFeed />}
         
         {activeTab === "market" && <MarketplaceView />}
@@ -37,9 +40,10 @@ export default function MainAppView() {
       <AIAssistant />
 
       {/* Bottom Navigation */}
+      {activeTab !== "game" && (
       <nav className="absolute bottom-0 w-full bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-around py-2 z-30 pb-safe safe-area-bottom">
         <NavButton icon={<Home size={24} />} label={t('nav.home')} active={activeTab === "home"} onClick={() => setActiveTab("home")} />
-        <NavButton icon={<ShoppingBag size={24} />} label={t('nav.shop')} active={activeTab === "market"} onClick={() => setActiveTab("market")} />
+        <NavButton icon={<Gamepad2 size={24} />} label="Gene Lab" active={activeTab === "game"} onClick={() => setActiveTab("game")} />
         
         {/* Center Create Button */}
         <div className="relative -top-6">
@@ -54,6 +58,7 @@ export default function MainAppView() {
         <NavButton icon={<Wallet size={24} />} label={t('nav.wallet')} active={activeTab === "wallet"} onClick={() => setActiveTab("wallet")} />
         <NavButton icon={<User size={24} />} label={t('nav.profile')} active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
       </nav>
+      )}
     </div>
   );
 }

@@ -1,0 +1,213 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+
+// --- Types ---
+
+export type ElementType = 'metal' | 'wood' | 'water' | 'fire' | 'earth' | 'void';
+
+export type BodyPart = 'eyes' | 'ears' | 'horn' | 'mouth' | 'back' | 'tail';
+
+export interface Gene {
+  part: BodyPart;
+  name: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  element: ElementType;
+  statsBonus: {
+    str: number;
+    int: number;
+    spd: number;
+    vit: number;
+  };
+}
+
+export interface Pet {
+  id: string;
+  name: string;
+  element: ElementType;
+  genes: Record<BodyPart, Gene>;
+  stats: {
+    str: number;
+    int: number;
+    spd: number;
+    vit: number;
+  };
+  rarity: number; // calculated score
+  createdAt: number;
+  parents?: [string, string]; // IDs of parents if bred
+}
+
+export type ItemType = 'embryo' | 'crystal' | 'morph' | 'mutagen';
+
+export interface Item {
+  id: string;
+  name: string;
+  type: ItemType;
+  description: string;
+  price: number;
+  effect: any;
+  element?: ElementType;
+  image?: string;
+}
+
+export interface GameState {
+  piBalance: number;
+  inventory: Record<string, number>; // ItemID -> Quantity
+  pets: Pet[];
+
+  // Actions
+  addPi: (amount: number) => void;
+  buyItem: (itemId: string, cost: number) => boolean;
+  createPet: (inputs: { embryoId: string; crystalId?: string; mutagenId?: string }) => Pet;
+}
+
+// --- Mock Data ---
+
+export const SHOP_ITEMS: Item[] = [
+  { id: 'embryo_basic', name: 'Phôi Gốc', type: 'embryo', description: 'Nguyên liệu bắt buộc (Base Embryo)', price: 100, effect: {}, image: '🥚' },
+  { id: 'crystal_fire', name: 'Tinh thể Lửa', type: 'crystal', description: '80% ra hệ Hỏa (Fire Crystal)', price: 50, element: 'fire', effect: { chance: 0.8, element: 'fire' }, image: '🔥' },
+  { id: 'crystal_water', name: 'Tinh thể Thủy', type: 'crystal', description: '80% ra hệ Thủy (Water Crystal)', price: 50, element: 'water', effect: { chance: 0.8, element: 'water' }, image: '💧' },
+  { id: 'crystal_wood', name: 'Tinh thể Mộc', type: 'crystal', description: '80% ra hệ Mộc (Wood Crystal)', price: 50, element: 'wood', effect: { chance: 0.8, element: 'wood' }, image: '🌿' },
+  { id: 'crystal_metal', name: 'Tinh thể Kim', type: 'crystal', description: '80% ra hệ Kim (Metal Crystal)', price: 50, element: 'metal', effect: { chance: 0.8, element: 'metal' }, image: '⚔️' },
+  { id: 'crystal_earth', name: 'Tinh thể Thổ', type: 'crystal', description: '80% ra hệ Thổ (Earth Crystal)', price: 50, element: 'earth', effect: { chance: 0.8, element: 'earth' }, image: '⛰️' },
+  { id: 'mutagen_x', name: 'Thuốc Đột Biến X', type: 'mutagen', description: 'Tạo đột biến hiếm (Mutagen)', price: 200, effect: { mutationChance: 0.5 }, image: '🧪' },
+];
+
+// --- Helper Logic ---
+
+const BASE_STATS = { str: 10, int: 10, spd: 10, vit: 10 };
+
+const ELEMENTS: ElementType[] = ['metal', 'wood', 'water', 'fire', 'earth'];
+
+const generateRandomGene = (part: BodyPart, elementBias?: ElementType, mutationFactor: number = 0): Gene => {
+    // Determine element for this part
+    // If bias exists, high chance to match bias.
+    const roll = Math.random();
+    let element: ElementType;
+
+    if (elementBias && roll < 0.8) {
+        element = elementBias;
+    } else {
+        element = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+    }
+
+    // Rarity
+    const rarityRoll = Math.random();
+    let rarity: 'common' | 'rare' | 'epic' | 'legendary' = 'common';
+    if (rarityRoll < 0.05 + (mutationFactor * 0.2)) rarity = 'legendary';
+    else if (rarityRoll < 0.15 + (mutationFactor * 0.3)) rarity = 'epic';
+    else if (rarityRoll < 0.3 + (mutationFactor * 0.4)) rarity = 'rare';
+
+    // Stats based on Element and Rarity
+    const multiplier = rarity === 'legendary' ? 5 : rarity === 'epic' ? 3 : rarity === 'rare' ? 2 : 1;
+
+    const stats = { str: 0, int: 0, spd: 0, vit: 0 };
+    // Elemental affinities
+    if (element === 'fire') stats.str += 5 * multiplier;
+    if (element === 'water') stats.int += 5 * multiplier;
+    if (element === 'wood') stats.vit += 5 * multiplier;
+    if (element === 'metal') stats.str += 3 * multiplier; // Metal is offensive too
+    if (element === 'earth') stats.vit += 3 * multiplier;
+
+    // Random variations
+    stats.str += Math.floor(Math.random() * 3 * multiplier);
+    stats.int += Math.floor(Math.random() * 3 * multiplier);
+    stats.spd += Math.floor(Math.random() * 3 * multiplier);
+    stats.vit += Math.floor(Math.random() * 3 * multiplier);
+
+    return {
+        part,
+        name: `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} ${element} ${part}`,
+        rarity,
+        element,
+        statsBonus: stats
+    };
+};
+
+export const useGameStore = create<GameState>()(
+  persist(
+    (set, get) => ({
+      piBalance: 2000, // Giving enough to play
+      inventory: {},
+      pets: [],
+
+      addPi: (amount) => set((state) => ({ piBalance: state.piBalance + amount })),
+
+      buyItem: (itemId, cost) => {
+        const { piBalance, inventory } = get();
+        if (piBalance >= cost) {
+          set({
+            piBalance: piBalance - cost,
+            inventory: {
+              ...inventory,
+              [itemId]: (inventory[itemId] || 0) + 1
+            }
+          });
+          return true;
+        }
+        return false;
+      },
+
+      createPet: ({ embryoId, crystalId, mutagenId }) => {
+        const state = get();
+        // Consume items
+        const newInventory = { ...state.inventory };
+        if (newInventory[embryoId] > 0) newInventory[embryoId]--;
+        else throw new Error("Missing Embryo"); // Should be checked by UI
+
+        if (crystalId) {
+             if (newInventory[crystalId] > 0) newInventory[crystalId]--;
+        }
+        if (mutagenId) {
+             if (newInventory[mutagenId] > 0) newInventory[mutagenId]--;
+        }
+
+        // Logic
+        let elementBias: ElementType | undefined;
+        if (crystalId) {
+             const crystal = SHOP_ITEMS.find(i => i.id === crystalId);
+             if (crystal?.element) elementBias = crystal.element;
+        }
+
+        const mutationFactor = mutagenId ? 0.5 : 0;
+
+        const parts: BodyPart[] = ['eyes', 'ears', 'horn', 'mouth', 'back', 'tail'];
+        const genes: any = {};
+        const totalStats = { ...BASE_STATS };
+
+        // Determine Main Element of the Pet (Dominant gene or crystal)
+        const mainElement = elementBias || ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+
+        parts.forEach(part => {
+            const gene = generateRandomGene(part, elementBias, mutationFactor);
+            genes[part] = gene;
+            totalStats.str += gene.statsBonus.str;
+            totalStats.int += gene.statsBonus.int;
+            totalStats.spd += gene.statsBonus.spd;
+            totalStats.vit += gene.statsBonus.vit;
+        });
+
+        const newPet: Pet = {
+            id: `pet_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            name: `Beast #${state.pets.length + 1}`,
+            element: mainElement,
+            genes: genes,
+            stats: totalStats,
+            rarity: Object.values(genes).filter((g: any) => ['rare', 'epic', 'legendary'].includes(g.rarity)).length,
+            createdAt: Date.now()
+        };
+
+        set({
+            inventory: newInventory,
+            pets: [newPet, ...state.pets]
+        });
+
+        return newPet;
+      }
+    }),
+    {
+      name: 'pi-gene-lab-storage',
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true // We will handle hydration manually if needed, or rely on client-side rendering only for game
+    }
+  )
+);
