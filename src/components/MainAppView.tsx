@@ -11,6 +11,7 @@ import { useState, useRef } from "react";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/i18n/language-provider";
+import CreateView from "@/components/create/CreateView";
 
 export default function MainAppView() {
   const { user } = usePi();
@@ -37,23 +38,25 @@ export default function MainAppView() {
       <AIAssistant />
 
       {/* Bottom Navigation */}
-      <nav className="absolute bottom-0 w-full bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-around py-2 z-30 pb-safe safe-area-bottom">
-        <NavButton icon={<Home size={24} />} label={t('nav.home')} active={activeTab === "home"} onClick={() => setActiveTab("home")} />
-        <NavButton icon={<ShoppingBag size={24} />} label={t('nav.shop')} active={activeTab === "market"} onClick={() => setActiveTab("market")} />
-        
-        {/* Center Create Button */}
-        <div className="relative -top-6">
-             <button 
-                onClick={() => setActiveTab("create")}
-                className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 border-4 border-black transition-transform active:scale-95"
-             >
-                <PlusSquare size={28} className="text-white" />
-             </button>
-        </div>
+      {activeTab !== "create" && (
+        <nav className="absolute bottom-0 w-full bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-around py-2 z-30 pb-safe safe-area-bottom">
+            <NavButton icon={<Home size={24} />} label={t('nav.home')} active={activeTab === "home"} onClick={() => setActiveTab("home")} />
+            <NavButton icon={<ShoppingBag size={24} />} label={t('nav.shop')} active={activeTab === "market"} onClick={() => setActiveTab("market")} />
 
-        <NavButton icon={<Wallet size={24} />} label={t('nav.wallet')} active={activeTab === "wallet"} onClick={() => setActiveTab("wallet")} />
-        <NavButton icon={<User size={24} />} label={t('nav.profile')} active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
-      </nav>
+            {/* Center Create Button */}
+            <div className="relative -top-6">
+                <button
+                    onClick={() => setActiveTab("create")}
+                    className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 border-4 border-black transition-transform active:scale-95"
+                >
+                    <PlusSquare size={28} className="text-white" />
+                </button>
+            </div>
+
+            <NavButton icon={<Wallet size={24} />} label={t('nav.wallet')} active={activeTab === "wallet"} onClick={() => setActiveTab("wallet")} />
+            <NavButton icon={<User size={24} />} label={t('nav.profile')} active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
+        </nav>
+      )}
     </div>
   );
 }
@@ -166,63 +169,3 @@ function WalletView() {
     )
 }
 
-function CreateView() {
-    const { t } = useLanguage();
-    const [uploading, setUploading] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleStart = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setUploading(true);
-            toast.info(t('create.uploading'));
-            
-            // Simulate upload
-            let p = 0;
-            const interval = setInterval(() => {
-                p += 10;
-                setProgress(p);
-                if (p >= 100) {
-                    clearInterval(interval);
-                    setUploading(false);
-                    toast.success(t('create.success'));
-                }
-            }, 300);
-        }
-    };
-
-    return (
-        <div className="h-full flex flex-col items-center justify-center bg-gray-900 p-8 text-center pb-20">
-            <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={handleFileChange} />
-            
-            {uploading ? (
-                <div className="flex flex-col items-center gap-4">
-                     <Loader2 size={48} className="text-purple-500 animate-spin" />
-                     <h3 className="text-xl font-bold">{t('create.uploading')} {progress}%</h3>
-                     <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
-                         <div className="h-full bg-purple-500 transition-all" style={{width: `${progress}%`}} />
-                     </div>
-                </div>
-            ) : (
-                <>
-                    <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center mb-6 animate-pulse">
-                        <PlusSquare size={48} className="text-gray-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold mb-2 text-white">{t('create.title')}</h2>
-                    <p className="text-gray-400 mb-8 max-w-xs">{t('create.desc')}</p>
-                    <button 
-                        onClick={handleStart}
-                        className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full font-bold shadow-lg shadow-purple-500/20 hover:scale-105 transition-transform text-lg flex items-center gap-2"
-                    >
-                        <Upload size={20} /> {t('create.btn')}
-                    </button>
-                    <p className="mt-6 text-xs text-gray-600 uppercase tracking-widest">{t('create.permission')}</p>
-                </>
-            )}
-        </div>
-    )
-}
