@@ -1,21 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, X, Send } from "lucide-react";
-import { AI_RESPONSES } from "@/lib/mock-data";
+import { Bot, X, Send, Mic, Sparkles, Volume2, TrendingUp, Users, Globe, ExternalLink, ArrowUpRight, Search } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { motion, AnimatePresence } from "framer-motion";
+import { parseCommand } from "./AICommandSystem";
+import { toast } from "sonner";
 
-export function AIAssistant() {
+export function AIAssistant({ onNavigate }: { onNavigate?: (tab: string) => void }) {
     const { t, language } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<{role: 'user'|'ai', text: string}[]>([]);
+    const [messages, setMessages] = useState<{role: 'user'|'ai', text: string, type?: string, payload?: any}[]>([]);
     const [input, setInput] = useState("");
+    const [isVoice, setIsVoice] = useState(false);
+    const [isThinking, setIsThinking] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Reset/Init chat when language changes
     useEffect(() => {
         setMessages([{role: 'ai', text: t('ai.intro')}]);
-    }, [language, t]); // Add t to dependency
+    }, [language, t]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -23,74 +27,284 @@ export function AIAssistant() {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [messages, isThinking]);
 
     const handleSend = () => {
         if (!input.trim()) return;
         setMessages(prev => [...prev, {role: 'user', text: input}]);
+        const userInput = input;
         setInput("");
+        setIsThinking(true);
+
+        // Process Intent
+        const { response, action } = parseCommand(userInput);
         
-        // Mock Response
         setTimeout(() => {
-            // @ts-ignore
-            const responses = AI_RESPONSES[language] || AI_RESPONSES['vi'];
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-            setMessages(prev => [...prev, {role: 'ai', text: randomResponse}]);
-        }, 1000);
+            setIsThinking(false);
+
+            // Text to Speech
+            if (isVoice && typeof window !== 'undefined' && window.speechSynthesis) {
+                const utterance = new SpeechSynthesisUtterance(response);
+                utterance.rate = 1.1;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+
+            if (action.type === 'SHOW_USERS') {
+                setMessages(prev => [...prev, {role: 'ai', text: response, type: 'users', payload: action.payload}]);
+            } else if (action.type === 'SHOW_TRENDS') {
+                setMessages(prev => [...prev, {role: 'ai', text: response, type: 'trends', payload: action.payload}]);
+            } else if (action.type === 'SHOW_WEB_RESULTS') {
+                setMessages(prev => [...prev, {role: 'ai', text: response, type: 'web', payload: action.payload}]);
+            } else if (action.type === 'SHOW_CRYPTO_DATA') {
+                setMessages(prev => [...prev, {role: 'ai', text: response, type: 'crypto', payload: action.payload}]);
+            } else {
+                setMessages(prev => [...prev, {role: 'ai', text: response}]);
+            }
+
+            if (action.type === 'NAVIGATE' && onNavigate) {
+                toast.info(`AI: Navigating to ${action.payload}...`);
+                setTimeout(() => {
+                    onNavigate(action.payload);
+                }, 1000);
+            } else if (action.type === 'TOAST') {
+                toast.success(action.payload);
+            }
+        }, 1500);
+    }
+
+    const toggleVoice = () => {
+        setIsVoice(!isVoice);
+        if (!isVoice) {
+            toast.info("Voice Mode Activated (TTS Enabled)");
+        } else {
+            if (typeof window !== 'undefined' && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        }
+    }
+
+    const renderMessageContent = (m: any) => {
+        if (m.type === 'users') {
+            return (
+                <div className="flex flex-col gap-2 w-full">
+                    <p>{m.text}</p>
+                    <div className="flex gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none w-full">
+                        {m.payload.map((u: any) => (
+                            <div key={u.id} className="bg-gray-800/80 p-3 rounded-xl min-w-[120px] flex flex-col items-center border border-cyan-500/30 backdrop-blur-md hover:bg-gray-700 transition-colors cursor-pointer">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 mb-2 shadow-lg" />
+                                <span className="font-bold text-xs text-white truncate w-full text-center">@{u.username}</span>
+                                <span className="text-[10px] text-cyan-400 mb-2">{u.role}</span>
+                                <button className="bg-cyan-600 hover:bg-cyan-500 text-[10px] px-3 py-1 rounded-full text-white w-full transition-colors font-bold flex items-center justify-center gap-1">
+                                    <Users size={10} /> Connect
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )
+        }
+        if (m.type === 'trends') {
+            return (
+                <div className="flex flex-col gap-2 w-full">
+                    <p>{m.text}</p>
+                    <div className="grid grid-cols-1 gap-2 mt-1">
+                        {m.payload.map((t: any) => (
+                            <div key={t.id} className="bg-gray-800/50 p-2 rounded-lg border border-pink-500/20 flex justify-between items-center hover:bg-gray-800 cursor-pointer transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp size={14} className="text-pink-500" />
+                                    <span className="font-bold text-xs text-white">{t.title}</span>
+                                </div>
+                                <span className="text-[10px] text-gray-400 bg-black/30 px-2 py-0.5 rounded-full">{t.views}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )
+        }
+        if (m.type === 'web') {
+            return (
+                <div className="flex flex-col gap-2 w-full">
+                    <p>{m.text}</p>
+                    <div className="flex flex-col gap-2 mt-1">
+                        {m.payload.map((res: any, idx: number) => (
+                            <div key={idx} className="bg-gray-800/60 p-3 rounded-xl border border-blue-500/20 hover:bg-gray-800 transition-colors cursor-pointer group">
+                                <h4 className="text-blue-400 font-bold text-xs flex items-center gap-1 group-hover:underline">
+                                    <Globe size={12} /> {res.title} <ExternalLink size={10} className="opacity-50" />
+                                </h4>
+                                <p className="text-[10px] text-gray-300 mt-1 line-clamp-2">{res.snippet}</p>
+                                <span className="text-[9px] text-gray-500 mt-1 block font-mono">{res.url}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )
+        }
+        if (m.type === 'crypto') {
+            const data = m.payload;
+            return (
+                <div className="flex flex-col gap-2 w-full">
+                    <p>{m.text}</p>
+                    <div className="bg-gradient-to-br from-gray-900 to-black p-4 rounded-xl border border-green-500/30 shadow-lg relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-20">
+                            <TrendingUp size={48} className="text-green-500" />
+                        </div>
+                        <h3 className="text-gray-400 text-xs uppercase font-bold tracking-wider">{data.symbol} / USD</h3>
+                        <div className="flex items-end gap-2 mt-1">
+                            <span className="text-3xl font-bold text-white">${data.price}</span>
+                            <span className="text-green-400 text-xs font-bold mb-1 flex items-center">
+                                <ArrowUpRight size={12} /> {data.change}
+                            </span>
+                        </div>
+                        <div className="mt-3 h-1 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 w-2/3 animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+        return m.text;
     }
 
     return (
         <>
-            {/* Floating Trigger */}
-            {!isOpen && (
-                <button 
-                    onClick={() => setIsOpen(true)}
-                    className="fixed bottom-24 right-4 w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/30 z-40 hover:scale-110 transition-transform"
-                >
-                    <Bot size={24} className="text-white" />
-                </button>
-            )}
+            {/* Holographic Trigger (Draggable) */}
+            <AnimatePresence>
+                {!isOpen && (
+                    <motion.button
+                        drag
+                        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                        dragMomentum={false}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setIsOpen(true)}
+                        className="fixed bottom-24 right-4 w-16 h-16 rounded-full flex items-center justify-center z-40 cursor-grab active:cursor-grabbing group"
+                    >
+                         {/* Holographic Orb Effect */}
+                         <div className="absolute inset-0 rounded-full bg-cyan-500/30 blur-md animate-pulse"></div>
+                         <div className="absolute inset-1 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 opacity-80 border border-white/30 backdrop-blur-sm"></div>
+
+                         <Bot size={32} className="text-white relative z-10 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]" />
+
+                         {/* Orbiting particles */}
+                         <div className="absolute inset-0 rounded-full border border-cyan-400/30 w-full h-full animate-[spin_4s_linear_infinite]"></div>
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
             {/* Chat Window */}
-            {isOpen && (
-                <div className="fixed bottom-24 right-4 w-80 h-96 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden animate-in slide-in-from-bottom-10 fade-in">
-                    {/* Header */}
-                    <div className="p-3 bg-gray-800 flex justify-between items-center border-b border-gray-700">
-                        <div className="flex items-center gap-2">
-                            <Bot size={20} className="text-cyan-400" />
-                            <span className="font-bold text-sm">{t('ai.title')}</span>
-                        </div>
-                        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white">
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-gray-600">
-                        {messages.map((m, i) => (
-                            <div key={i} className={`max-w-[85%] p-2 rounded-lg text-sm ${m.role === 'user' ? 'bg-blue-600 self-end text-white rounded-tr-none' : 'bg-gray-700 self-start text-gray-200 rounded-tl-none'}`}>
-                                {m.text}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 50, scale: 0.9 }}
+                        drag
+                        dragMomentum={false}
+                        className="fixed bottom-24 right-4 w-80 sm:w-96 h-[32rem] bg-gray-900/95 backdrop-blur-2xl border border-cyan-500/30 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-50 overflow-hidden"
+                    >
+                        {/* Header */}
+                        <div className="p-4 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 flex justify-between items-center border-b border-gray-700 cursor-grab active:cursor-grabbing">
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                     <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-400/50 shadow-[0_0_15px_rgba(0,255,255,0.3)]">
+                                         <Bot size={20} className="text-cyan-300" />
+                                     </div>
+                                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-black rounded-full animate-pulse"></div>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-sm text-white tracking-wide">CONNECT AI</h4>
+                                    <p className="text-[10px] text-cyan-400 font-mono">SYSTEM ONLINE</p>
+                                </div>
                             </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setMessages([])} className="p-1.5 hover:bg-gray-700 rounded-full transition-colors text-gray-400" title="Clear Chat">
+                                    <Sparkles size={16} />
+                                </button>
+                                <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-red-900/30 hover:text-red-400 rounded-full transition-colors text-gray-400">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
 
-                    {/* Input */}
-                    <div className="p-3 bg-gray-800 border-t border-gray-700 flex gap-2">
-                        <input 
-                            type="text" 
-                            className="flex-1 bg-gray-900 border border-gray-600 rounded-full px-3 text-sm focus:outline-none focus:border-cyan-500 text-white"
-                            placeholder={t('ai.placeholder')}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                        />
-                        <button onClick={handleSend} className="p-2 bg-cyan-600 rounded-full hover:bg-cyan-500 text-white">
-                            <Send size={16} />
-                        </button>
-                    </div>
-                </div>
-            )}
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-cyan-900/50">
+                            {messages.map((m, i) => (
+                                <motion.div
+                                    initial={{ opacity: 0, x: m.role === 'user' ? 20 : -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    key={i}
+                                    className={`max-w-[90%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm backdrop-blur-sm ${
+                                        m.role === 'user'
+                                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 self-end text-white rounded-tr-none border border-white/10'
+                                        : 'bg-gray-800/80 border border-cyan-500/20 self-start text-cyan-100 rounded-tl-none shadow-[0_0_10px_rgba(0,255,255,0.05)] w-full'
+                                    }`}
+                                >
+                                    {renderMessageContent(m)}
+                                </motion.div>
+                            ))}
+                            {isThinking && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="bg-gray-800/80 border border-cyan-500/20 self-start text-cyan-400 rounded-2xl rounded-tl-none p-3 max-w-[85%]"
+                                >
+                                    <div className="flex gap-1">
+                                        <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce"></span>
+                                        <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce delay-100"></span>
+                                        <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce delay-200"></span>
+                                    </div>
+                                    <p className="text-[10px] mt-1 opacity-70">Accessing Web3 Neural Net...</p>
+                                </motion.div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Voice Viz (Mock) */}
+                        {isVoice && (
+                            <div className="h-12 flex items-center justify-center gap-1 bg-black/50 border-t border-cyan-500/20">
+                                {[1,2,3,4,5,4,3,2,1,2,3,4].map((h, i) => (
+                                    <motion.div
+                                        key={i}
+                                        animate={{ height: [5, h*6, 5] }}
+                                        transition={{ repeat: Infinity, duration: 0.5, delay: i * 0.05 }}
+                                        className="w-1 bg-cyan-400 rounded-full opacity-80"
+                                    />
+                                ))}
+                                <span className="text-[10px] text-cyan-500 ml-4 font-mono animate-pulse">LISTENING MODE</span>
+                            </div>
+                        )}
+
+                        {/* Input */}
+                        <div className="p-4 bg-gray-900 border-t border-gray-800 flex gap-2 items-center relative z-20">
+                            <button
+                                onClick={toggleVoice}
+                                className={`p-3 rounded-full transition-all border ${isVoice ? 'bg-red-500/20 border-red-500 text-red-500' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-cyan-400'}`}
+                            >
+                                {isVoice ? <Volume2 size={18} className="animate-pulse" /> : <Mic size={18} />}
+                            </button>
+
+                            <div className="flex-1 relative">
+                                <input
+                                    type="text"
+                                    className="w-full bg-gray-800/50 border border-gray-700 rounded-full pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 text-white transition-all placeholder:text-gray-600"
+                                    placeholder={isVoice ? "Say 'Price of Pi'..." : t('ai.placeholder')}
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                />
+                            </div>
+                            <button
+                                onClick={handleSend}
+                                disabled={!input.trim()}
+                                className="p-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full hover:scale-105 active:scale-95 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(0,255,255,0.3)]"
+                            >
+                                <Send size={18} />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     )
 }
