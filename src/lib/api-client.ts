@@ -1,0 +1,47 @@
+export const apiClient = {
+  auth: {
+    verify: async (accessToken: string) => {
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+      });
+      return res.json();
+    },
+  },
+  user: {
+    getProfile: async () => {
+      const res = await fetch('/api/user/profile');
+      return res.json();
+    },
+    updateProfile: async (data: any) => {
+      const res = await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+  },
+  video: {
+    upload: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/video/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      return res.json();
+    },
+  },
+  ai: {
+    generate: async (prompt: string, type: 'script' | 'image') => {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, type }),
+      });
+      return res.json();
+    },
+  },
+};

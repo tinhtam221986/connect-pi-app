@@ -5,6 +5,7 @@ import { Sparkles, Video, Mic, Wand2, Play, StopCircle, Upload, Film, Radio, Cam
 import { useLanguage } from "@/components/i18n/language-provider";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiClient } from "@/lib/api-client";
 
 export function AIContentStudio() {
     const { t } = useLanguage();
@@ -14,16 +15,25 @@ export function AIContentStudio() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
 
-    const generateScript = () => {
+    const generateScript = async () => {
         if (!topic) {
             toast.error("Please enter a topic");
             return;
         }
         setIsGenerating(true);
-        setTimeout(() => {
-            setScript("Title: " + topic + "\n\n[Intro]: Hello everyone! Welcome back to my channel.\n[Scene 1]: Today we are talking about " + topic + " on Pi Network.\n[Outro]: Don't forget to like and subscribe!");
+        try {
+            const response = await apiClient.ai.generate(topic, 'script');
+            if (response.success) {
+                setScript(response.result);
+                toast.success("Script generated successfully!");
+            } else {
+                toast.error(response.error || "Failed to generate script");
+            }
+        } catch (error) {
+            toast.error("An error occurred");
+        } finally {
             setIsGenerating(false);
-        }, 1500);
+        }
     };
 
     return (
