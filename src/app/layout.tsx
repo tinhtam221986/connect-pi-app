@@ -5,6 +5,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { PiSDKProvider } from "@/components/pi/pi-provider"
+import { EconomyProvider } from "@/components/economy/economy-provider"
 import { LanguageProvider } from "@/components/i18n/language-provider"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -23,10 +24,12 @@ export default function RootLayout({
       <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-background text-foreground`}>
         <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="beforeInteractive" />
         <PiSDKProvider>
-          <LanguageProvider>
-            {children}
-            <Toaster />
-          </LanguageProvider>
+          <EconomyProvider>
+            <LanguageProvider>
+              {children}
+              <Toaster />
+            </LanguageProvider>
+          </EconomyProvider>
         </PiSDKProvider>
       </body>
     </html>
