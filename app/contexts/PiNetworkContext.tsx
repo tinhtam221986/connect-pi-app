@@ -14,7 +14,7 @@ interface PiNetwork {
 
 declare global {
   interface Window {
-    Pi: PiNetwork;
+    Pi?: PiNetwork;
   }
 }
 
@@ -50,7 +50,7 @@ export const PiNetworkProvider: React.FC<{ children: React.ReactNode }> = ({
         script.onload = () => {
              // Initialize Pi SDK
              try {
-                window.Pi.init({ version: "2.0", sandbox: true });
+                window.Pi?.init({ version: "2.0", sandbox: true });
                 // Attempt silent authentication or check session if possible
                 // For now, we wait for user action or auto-authenticate if needed
              } catch (e) {
@@ -59,7 +59,7 @@ export const PiNetworkProvider: React.FC<{ children: React.ReactNode }> = ({
         }
     } else {
         try {
-            window.Pi.init({ version: "2.0", sandbox: true });
+            window.Pi?.init({ version: "2.0", sandbox: true });
         } catch (e) {
              console.error("Pi SDK Init Error", e);
         }
