@@ -1,19 +1,27 @@
 "use client";
 
 import { MOCK_VIDEOS } from "@/lib/mock-data";
-import { Heart, MessageCircle, Share2, Music2, Disc } from "lucide-react";
+import { Heart, MessageCircle, Share2, Music2, Disc, Gamepad2 } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { useXpStore } from "@/components/gamification/xp-store";
+import { toast } from "sonner";
 
 export function VideoFeed() {
   const { language } = useLanguage();
   // Filter content based on user's language preference
   const filteredVideos = MOCK_VIDEOS.filter(v => v.language === language);
 
+  // Inject Promo
+  const feedItems: any[] = [...filteredVideos];
+  if (feedItems.length > 2) {
+      feedItems.splice(2, 0, { type: 'promo', id: 'promo_1' });
+  }
+
   return (
     <div className="h-full w-full overflow-y-scroll snap-y snap-mandatory bg-black">
-      {filteredVideos.length > 0 ? (
-          filteredVideos.map((video) => (
-            <VideoPost key={video.id} video={video} />
+      {feedItems.length > 0 ? (
+          feedItems.map((item: any) => (
+            item.type === 'promo' ? <GamePromo key={item.id} /> : <VideoPost key={item.id} video={item} />
           ))
       ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
@@ -24,8 +32,35 @@ export function VideoFeed() {
   );
 }
 
+function GamePromo() {
+    return (
+        <div className="h-full w-full snap-start relative flex items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-black p-6">
+            <div className="text-center p-8 bg-black/30 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl max-w-sm">
+                <div className="w-32 h-32 mx-auto mb-6 bg-yellow-400/20 rounded-full flex items-center justify-center animate-pulse">
+                    <Gamepad2 size={64} className="text-yellow-400 animate-bounce" />
+                </div>
+                <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">Pi Gene Lab</h2>
+                <div className="h-1 w-20 bg-pink-500 mx-auto mb-4 rounded-full" />
+                <p className="text-purple-200 mb-8 text-lg font-medium leading-relaxed">
+                    Lai tạo thú cưng độc bản, chiến đấu PvP và kiếm Pi mỗi ngày!
+                </p>
+                <div className="flex flex-col gap-3">
+                    <div className="text-xs text-gray-400 uppercase tracking-widest mb-1">Chơi ngay tại tab Game 👇</div>
+                    <div className="animate-bounce mt-2 text-white">⬇️</div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 function VideoPost({ video }: any) {
   const { t } = useLanguage();
+  const addXp = useXpStore(state => state.addXp);
+
+  const handleLike = () => {
+      addXp(10);
+      toast.success("Liked! +10 XP");
+  };
   
   return (
     <div className="h-full w-full snap-start relative flex items-center justify-center bg-gray-900">
@@ -50,7 +85,9 @@ function VideoPost({ video }: any) {
         </div>
 
         <div className="flex flex-col items-center gap-1">
-            <Heart size={32} className="text-white drop-shadow-lg cursor-pointer hover:text-pink-500 transition-colors" />
+            <button onClick={handleLike} className="active:scale-90 transition-transform">
+                <Heart size={32} className="text-white drop-shadow-lg hover:text-pink-500 transition-colors" />
+            </button>
             <span className="text-xs font-bold drop-shadow-lg">{video.likes}</span>
         </div>
 
