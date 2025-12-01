@@ -15,6 +15,7 @@ interface PiNetwork {
 declare global {
   interface Window {
     Pi?: PiNetwork;
+    _piInitialized?: boolean;
   }
 }
 
@@ -36,33 +37,31 @@ export const PiNetworkProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "connected" | "error">(
-    "idle"
-  );
+  const [status, setStatus] = useState<"idle" | "loading" | "connected" | "error">("idle");
 
   useEffect(() => {
-    // Load Pi SDK script dynamically if not present
+    const initPi = () => {
+        try {
+            if (window.Pi && !window._piInitialized) {
+                // Ensure we only initialize once globally
+                window.Pi.init({ version: "2.0", sandbox: true });
+                window._piInitialized = true;
+            }
+        } catch (e) {
+            console.error("Pi SDK Init Error", e);
+        }
+    };
+
     if (!window.Pi) {
         const script = document.createElement('script');
         script.src = 'https://sdk.minepi.com/pi-sdk.js';
         script.async = true;
         document.body.appendChild(script);
         script.onload = () => {
-             // Initialize Pi SDK
-             try {
-                window.Pi?.init({ version: "2.0", sandbox: true });
-                // Attempt silent authentication or check session if possible
-                // For now, we wait for user action or auto-authenticate if needed
-             } catch (e) {
-                 console.error("Pi SDK Init Error", e);
-             }
+             initPi();
         }
     } else {
-        try {
-            window.Pi?.init({ version: "2.0", sandbox: true });
-        } catch (e) {
-             console.error("Pi SDK Init Error", e);
-        }
+        initPi();
     }
   }, []);
 
@@ -72,14 +71,14 @@ export const PiNetworkProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!window.Pi) {
         throw new Error("Pi SDK not loaded");
       }
-      
+
       const authResult = await window.Pi.authenticate(
         ["username", "payments"],
         (payment) => {
           console.log("Incomplete payment found", payment);
         }
       );
-      
+
       setUser(authResult.user);
       setStatus("connected");
     } catch (error) {
