@@ -12,6 +12,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Mock Mode support for Development
+    if (paymentId.toString().startsWith("mock_")) {
+        console.log("Mock Payment Approval for:", paymentId);
+        return NextResponse.json({
+            identifier: paymentId,
+            status: "APPROVED",
+            amount: 1, // Mock
+            memo: "Mock Payment",
+            to_address: "mock_address"
+        });
+    }
+
     // LẤY API KEY TỪ BIẾN MÔI TRƯỜNG HOẶC ĐIỀN TRỰC TIẾP VÀO ĐÂY (KHÔNG KHUYẾN KHÍCH)
     // Get API Key from environment variable or paste here (not recommended for production)
     const PI_API_KEY = process.env.PI_API_KEY || ""; 

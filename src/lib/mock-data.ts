@@ -100,10 +100,15 @@ export const MOCK_VIDEOS = [
 ];
 
 export const MOCK_PRODUCTS = [
-    { id: "p1_vi", name: "Giao diện Premium", price: 50, currency: "Pi", image: "🎨", seller: "ThemeMaster", language: "vi" },
-    { id: "p2_vi", name: "Avatar 3D Độc quyền", price: 100, currency: "Pi", image: "👾", seller: "CryptoQueen", language: "vi" },
-    { id: "p1_en", name: "Premium Theme", price: 50, currency: "Pi", image: "🎨", seller: "ThemeMaster", language: "en" },
-    { id: "p2_en", name: "Exclusive 3D Avatar", price: 100, currency: "Pi", image: "👾", seller: "CryptoQueen", language: "en" }
+    { id: "p1_vi", name: "Giao diện Premium", price: 50, currency: "Pi", image: "🎨", seller: "ThemeMaster", language: "vi", category: "digital" },
+    { id: "p2_vi", name: "Avatar 3D Độc quyền", price: 100, currency: "Pi", image: "👾", seller: "CryptoQueen", language: "vi", category: "digital" },
+    { id: "p3_vi", name: "Áo Thun CONNECT", price: 15, currency: "Pi", image: "👕", seller: "MerchShop", language: "vi", category: "physical" },
+    { id: "p4_vi", name: "Tăng Tương Tác (x2)", price: 10, currency: "Pi", image: "🚀", seller: "BoostService", language: "vi", category: "boost" },
+
+    { id: "p1_en", name: "Premium Theme", price: 50, currency: "Pi", image: "🎨", seller: "ThemeMaster", language: "en", category: "digital" },
+    { id: "p2_en", name: "Exclusive 3D Avatar", price: 100, currency: "Pi", image: "👾", seller: "CryptoQueen", language: "en", category: "digital" },
+    { id: "p3_en", name: "CONNECT T-Shirt", price: 15, currency: "Pi", image: "👕", seller: "MerchShop", language: "en", category: "physical" },
+    { id: "p4_en", name: "Engagement Boost (x2)", price: 10, currency: "Pi", image: "🚀", seller: "BoostService", language: "en", category: "boost" }
 ];
 
 export const AI_RESPONSES = {
