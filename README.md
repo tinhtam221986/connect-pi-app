@@ -1,73 +1,39 @@
-# CONNECT - Web3 Social for Pi Network
+# CONNECT - Pi Network Web3 Social Super App
 
-![Connect App Banner](https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop)
+**CONNECT** là một siêu ứng dụng mạng xã hội video ngắn Web3 thế hệ mới, được xây dựng trên hệ sinh thái Pi Network.
 
-**CONNECT** is a decentralized social media platform built specifically for the Pi Network ecosystem. It features a TikTok-style video feed, a robust sidebar navigation, and integrated Pi Wallet authentication.
+## Tài liệu
 
-## 🚀 Features
+*   [Whitepaper (Sách Trắng)](WHITEPAPER.md) - Chi tiết về tầm nhìn, kiến trúc và tính năng của dự án.
 
-*   **📱 Modern UI/UX:** Built with Next.js 14, Tailwind CSS, and Shadcn UI (Dark Mode enabled).
-*   **🎥 Video Feed:** Infinite scroll-style vertical video feed component.
-*   **🔐 Pi Network Auth:** Integrated Pi SDK for user authentication and wallet connection.
-*   **💎 Web3 Ready:** Designed for future NFT and Token tipping features.
-*   **⚡ High Performance:** Optimized for mobile browsers (especially Pi Browser).
+## Repository
 
-## 🛠 Tech Stack
+[GitHub Link](https://github.com/tinhtam221986/connect-pi-app)
 
-*   **Framework:** [Next.js 14](https://nextjs.org/) (App Router)
-*   **Language:** TypeScript
-*   **Styling:** Tailwind CSS
-*   **Components:** [Shadcn UI](https://ui.shadcn.com/) (Radix Primitives)
-*   **Icons:** Lucide React
+## Bắt đầu
 
----
+Dự án sử dụng Next.js 14+ với App Router.
 
-## 📦 Deployment Guide (For Pi Network)
-
-Follow these steps to launch your app on the Pi Browser.
-
-### Step 1: Deploy to Vercel (Free)
-
-1.  Push this code to your **GitHub** repository.
-2.  Go to [Vercel.com](https://vercel.com) and sign up/login.
-3.  Click **"Add New Project"** and select this repository.
-4.  Click **"Deploy"**.
-5.  Once finished, copy the **Domain** (e.g., `https://connect-app-xyz.vercel.app`).
-
-### Step 2: Register on Pi Developer Portal
-
-1.  Open the **Pi Browser** app on your phone.
-2.  Navigate to the URL: `develop.pi`.
-3.  Tap **"New App"**.
-4.  Fill in the details:
-    *   **App Name:** Connect Social (or your choice).
-    *   **App URL:** Paste the Vercel link from Step 1.
-5.  Submit!
-
-### Step 3: Verify
-
-1.  Open your app via the Pi Browser (using the direct link or through the Developer Portal "Open" button).
-2.  Click the **"Authenticate with Pi Browser"** button in the app.
-3.  You should see a success message showing your Pi username.
-
----
-
-## 💻 Local Development
-
-To run the app on your computer for testing:
+### Cài đặt
 
 ```bash
-# 1. Install dependencies
 npm install
+```
 
-# 2. Run the development server
+### Chạy server phát triển
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser.
+Mở [http://localhost:3000](http://localhost:3000) để xem kết quả.
 
-> **Note:** The Pi SDK features will essentially run in "Mock/Sandbox" mode when not inside the Pi Browser.
+## Các bước tiếp theo (Next Steps)
 
-## 📄 License
+Để hoàn thiện ứng dụng CONNECT theo đúng tầm nhìn, chúng ta cần thực hiện các bước sau:
 
-This project is open source. Feel free to modify and distribute.
+1.  **Backend Integration:** Xây dựng API Server để xử lý xác thực Pi Network và lưu trữ dữ liệu người dùng.
+2.  **Smart Contracts:** Phát triển và audit các hợp đồng thông minh cho Marketplace và GameFi.
+3.  **AI Integration:** Tích hợp API (như OpenAI, Stable Diffusion) cho tính năng "AI-Powered Creation Studio".
+4.  **Video Infrastructure:** Triển khai giải pháp lưu trữ và streaming video (như AWS S3, Cloudflare Stream).
+5.  **Pi Payments:** Hoàn thiện quy trình thanh toán Pi Mainnet/Testnet.
