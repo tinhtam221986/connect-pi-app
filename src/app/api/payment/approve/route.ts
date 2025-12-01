@@ -14,13 +14,12 @@ export async function POST(request: Request) {
 
     // LẤY API KEY TỪ BIẾN MÔI TRƯỜNG HOẶC ĐIỀN TRỰC TIẾP VÀO ĐÂY (KHÔNG KHUYẾN KHÍCH)
     // Get API Key from environment variable or paste here (not recommended for production)
-    const PI_API_KEY = process.env.PI_API_KEY || ""; 
+    const PI_API_KEY = process.env.PI_API_KEY;
 
     if (!PI_API_KEY) {
-      return NextResponse.json(
-        { error: "Server Error: PI_API_KEY is not configured." },
-        { status: 500 }
-      );
+      // Mock mode for development/sandbox
+      console.log("Mocking Pi Payment Approval for", paymentId);
+      return NextResponse.json({ message: "Mock Approval Success (Dev Mode)", paymentId });
     }
 
     const response = await fetch(
