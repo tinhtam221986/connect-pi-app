@@ -8,10 +8,14 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import { ThemeCustomizer } from "@/components/ui/theme-customizer";
 import { ProfileFrame } from "./ProfileFrame";
 
+import { useEconomy } from "@/components/economy/EconomyContext";
+
 export function UserProfile() {
     const { user } = usePi();
     const { t, language, setLanguage } = useLanguage();
+    const { inventory } = useEconomy();
     const [showSettings, setShowSettings] = useState(false);
+    const [activeTab, setActiveTab] = useState<'video'|'liked'|'inventory'>('video');
 
     const mockUser = MOCK_USERS[0];
     const username = user?.username || mockUser.username;
@@ -89,20 +93,35 @@ export function UserProfile() {
 
              {/* Tabs */}
              <div className="flex justify-around border-t border-gray-800 mt-8 sticky top-14 bg-black z-10">
-                 <button className="flex-1 py-3 text-center border-b-2 border-white font-bold text-sm">{t('profile.tab_video')}</button>
-                 <button className="flex-1 py-3 text-center text-gray-500 hover:text-gray-300 text-sm">{t('profile.tab_liked')}</button>
-                 <button className="flex-1 py-3 text-center text-gray-500 hover:text-gray-300 text-sm">{t('profile.tab_private')}</button>
+                 <button onClick={() => setActiveTab('video')} className={`flex-1 py-3 text-center font-bold text-sm ${activeTab === 'video' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>{t('profile.tab_video')}</button>
+                 <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-3 text-center font-bold text-sm ${activeTab === 'inventory' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>Inventory</button>
+                 <button onClick={() => setActiveTab('liked')} className={`flex-1 py-3 text-center font-bold text-sm ${activeTab === 'liked' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>{t('profile.tab_liked')}</button>
              </div>
 
              {/* Grid */}
-             <div className="grid grid-cols-3 gap-0.5 mt-0.5">
-                 {[1,2,3,4,5,6,7,8,9,10,11,12].map((i) => (
-                     <div key={i} className="aspect-[3/4] bg-gray-900 relative group cursor-pointer hover:opacity-90">
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-700 font-bold group-hover:text-gray-500 transition-colors">
-                            VIDEO
-                        </div>
+             <div className="min-h-[300px] bg-black">
+                 {activeTab === 'inventory' ? (
+                     <div className="grid grid-cols-4 gap-2 p-2">
+                         {inventory.map((item, idx) => (
+                             <div key={idx} className="aspect-square bg-gray-900 rounded-lg flex flex-col items-center justify-center border border-gray-800 relative">
+                                 <span className="text-2xl">{item.image}</span>
+                                 <span className="text-[10px] text-gray-400 mt-1 text-center line-clamp-1 px-1">{item.name}</span>
+                                 <span className="absolute top-1 right-1 bg-blue-600 text-xs rounded-full px-1.5 min-w-[20px] text-center">{item.quantity}</span>
+                             </div>
+                         ))}
+                         {inventory.length === 0 && <div className="col-span-4 text-center text-gray-500 py-8">Empty Inventory</div>}
                      </div>
-                 ))}
+                 ) : (
+                     <div className="grid grid-cols-3 gap-0.5 mt-0.5">
+                         {[1,2,3,4,5,6,7,8,9].map((i) => (
+                             <div key={i} className="aspect-[3/4] bg-gray-900 relative group cursor-pointer hover:opacity-90">
+                                <div className="absolute inset-0 flex items-center justify-center text-gray-700 font-bold group-hover:text-gray-500 transition-colors">
+                                    VIDEO
+                                </div>
+                             </div>
+                         ))}
+                     </div>
+                 )}
              </div>
         </div>
     )

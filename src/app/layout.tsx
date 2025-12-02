@@ -6,6 +6,7 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { PiSDKProvider } from "@/components/pi/pi-provider"
 import { LanguageProvider } from "@/components/i18n/language-provider"
+import { EconomyProvider } from "@/components/economy/EconomyContext"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
@@ -24,8 +25,10 @@ export default function RootLayout({
         <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="beforeInteractive" />
         <PiSDKProvider>
           <LanguageProvider>
-            {children}
-            <Toaster />
+            <EconomyProvider>
+                {children}
+                <Toaster />
+            </EconomyProvider>
           </LanguageProvider>
         </PiSDKProvider>
       </body>
