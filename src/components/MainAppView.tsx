@@ -7,6 +7,7 @@ import { UserProfile } from "@/components/profile/UserProfile";
 import { AIAssistant } from "@/components/ai/AIAssistant";
 import { AIContentStudio } from "@/components/create/AIContentStudio";
 import { GameCenter } from "@/components/game/GameCenter";
+import { MarketplaceView } from "@/components/market/MarketplaceView";
 import { Home, PlusSquare, User, Wallet, CalendarCheck, Gamepad2, ShoppingBag } from "lucide-react";
 import PaymentTester from "@/components/PaymentTester";
 import { useState } from "react";
@@ -28,6 +29,8 @@ export default function MainAppView() {
         
         {activeTab === "game" && <GameCenter />}
         
+        {activeTab === "market" && <MarketplaceView />}
+
         {activeTab === "create" && <AIContentStudio />}
         
         {activeTab === "wallet" && <WalletView />}
@@ -40,12 +43,14 @@ export default function MainAppView() {
       {/* Bottom Navigation */}
       <nav className="absolute bottom-0 w-full bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-around py-2 z-30 pb-safe safe-area-bottom">
         <NavButton icon={<Home size={24} />} label={t('nav.home')} active={activeTab === "home"} onClick={() => setActiveTab("home")} />
-        <NavButton icon={<Gamepad2 size={24} />} label={t('nav.game')} active={activeTab === "game"} onClick={() => setActiveTab("game")} />
+        {/* Replaced Game with Market for now, or fit 5 icons? Let's fit 5. */}
+        <NavButton icon={<ShoppingBag size={24} />} label={t('nav.market')} active={activeTab === "market"} onClick={() => setActiveTab("market")} />
         
         {/* Center Create Button */}
         <div className="relative -top-6">
              <button 
                 onClick={() => setActiveTab("create")}
+                aria-label="Create"
                 className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 border-4 border-black transition-transform active:scale-95"
              >
                 <PlusSquare size={28} className="text-white" />
