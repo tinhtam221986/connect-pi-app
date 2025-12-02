@@ -1,21 +1,33 @@
+"use client";
+
+import { useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
 import { MOCK_USERS } from "@/lib/mock-data";
-import { BadgeCheck, Settings, GripVertical, Award, Globe } from "lucide-react";
+import { BadgeCheck, Settings, GripVertical, Award, Globe, Package } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
+import { ThemeCustomizer } from "@/components/ui/theme-customizer";
+import { ProfileFrame } from "./ProfileFrame";
+import { useEconomy } from "@/components/economy/economy-provider";
 
 export function UserProfile() {
+    const { inventory } = useEconomy();
     const { user } = usePi();
     const { t, language, setLanguage } = useLanguage();
-    // Default to mock user if Pi user data is sparse
+    const [showSettings, setShowSettings] = useState(false);
+
     const mockUser = MOCK_USERS[0];
     const username = user?.username || mockUser.username;
+    const userLevel = 42; // Mock level
     
     const toggleLanguage = () => {
         setLanguage(language === 'vi' ? 'en' : 'vi');
     }
 
     return (
-        <div className="h-full overflow-y-auto bg-black pb-20">
+        <div className="h-full overflow-y-auto bg-black pb-20 relative">
+             {/* Theme Customizer Modal */}
+             {showSettings && <ThemeCustomizer onClose={() => setShowSettings(false)} />}
+
              {/* Header */}
              <div className="flex justify-between items-center p-4 sticky top-0 bg-black/80 backdrop-blur-md z-10">
                 <span className="font-bold text-lg">{username}</span>
@@ -25,27 +37,33 @@ export function UserProfile() {
                         className="flex items-center gap-1 text-xs font-bold bg-gray-800 px-3 py-1.5 rounded-full hover:bg-gray-700 transition-colors border border-gray-700"
                     >
                         <Globe size={14} className="text-blue-400" />
-                        {language === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH'}
+                        {language === 'vi' ? 'VN' : 'EN'}
                     </button>
-                    <Settings size={20} className="cursor-pointer hover:text-gray-300" />
+                    <button onClick={() => setShowSettings(true)}>
+                        <Settings size={20} className="cursor-pointer hover:text-gray-300" />
+                    </button>
                 </div>
              </div>
 
              {/* Profile Info */}
              <div className="flex flex-col items-center gap-4 mt-4 px-4">
                 <div className="relative">
-                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`} className="w-24 h-24 rounded-full border-4 border-gray-900 bg-gray-800" alt="Profile" />
-                     <div className="absolute bottom-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border-2 border-black shadow-lg">
+                     <ProfileFrame
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
+                        level={userLevel}
+                        size={120}
+                     />
+                     <div className="absolute bottom-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border-2 border-black shadow-lg translate-y-1">
                         <Award size={10} />
-                        LVL 42
+                        LVL {userLevel}
                      </div>
                 </div>
                 
-                <h2 className="text-xl font-bold flex items-center gap-1">
+                <h2 className="text-xl font-bold flex items-center gap-1 mt-2">
                     @{username} <BadgeCheck size={16} className="text-blue-500" />
                 </h2>
                 
+                {/* Stats */}
                 <div className="flex items-center gap-8 text-center w-full justify-center">
                     <div className="flex flex-col items-center">
                         <span className="block font-bold text-lg">142</span>
@@ -69,6 +87,18 @@ export function UserProfile() {
                 <p className="text-sm text-center text-gray-300 max-w-sm">
                     {mockUser.bio}
                 </p>
+             </div>
+
+             {/* Inventory */}
+             <div className="mt-6 w-full max-w-sm px-4 mx-auto">
+                 <h3 className="font-bold text-sm text-gray-400 mb-2 flex items-center gap-2"><Package size={16}/> My Inventory</h3>
+                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                     {inventory.length > 0 ? inventory.map((item, i) => (
+                         <div key={i} className="w-16 h-16 bg-gray-900 rounded-xl border border-gray-800 flex items-center justify-center shrink-0 shadow-sm">
+                             <span className="text-[10px] text-gray-500 font-mono capitalize">{item.split('_')[1] || item}</span>
+                         </div>
+                     )) : <p className="text-xs text-gray-600 italic">No items yet. Visit the Game Center or Wallet to shop!</p>}
+                 </div>
              </div>
 
              {/* Tabs */}
