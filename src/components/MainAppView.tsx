@@ -5,9 +5,11 @@ import { PiNetworkStatus } from "@/components/pi/PiNetworkStatus";
 import { VideoFeed } from "@/components/feed/VideoFeed";
 import { UserProfile } from "@/components/profile/UserProfile";
 import { AIAssistant } from "@/components/ai/AIAssistant";
-import { Heart, Home, MessageCircle, PlusSquare, ShoppingBag, User, Wallet, CalendarCheck, Upload, Loader2, CheckCircle2 } from "lucide-react";
+import { Heart, Home, MessageCircle, PlusSquare, ShoppingBag, User, Wallet, CalendarCheck, Upload, Loader2, CheckCircle2, Gamepad2, Sparkles, Wand2 } from "lucide-react";
+import { GameCenterView } from "@/components/game/GameCenterView";
+import { useXpStore } from "@/components/gamification/xp-store";
 import PaymentTester from "@/components/PaymentTester";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { useLanguage } from "@/components/i18n/language-provider";
@@ -17,12 +19,18 @@ export default function MainAppView() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("home");
 
+  useEffect(() => {
+      useXpStore.persist.rehydrate();
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-black text-white relative">
       <PiNetworkStatus />
       
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative">
+        {activeTab === "game" && <div className="absolute inset-0 z-50 bg-black"><GameCenterView onBackToMain={() => setActiveTab("home")} /></div>}
+
         {activeTab === "home" && <VideoFeed />}
         
         {activeTab === "market" && <MarketplaceView />}
@@ -37,9 +45,10 @@ export default function MainAppView() {
       <AIAssistant />
 
       {/* Bottom Navigation */}
+      {activeTab !== "game" && (
       <nav className="absolute bottom-0 w-full bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-around py-2 z-30 pb-safe safe-area-bottom">
         <NavButton icon={<Home size={24} />} label={t('nav.home')} active={activeTab === "home"} onClick={() => setActiveTab("home")} />
-        <NavButton icon={<ShoppingBag size={24} />} label={t('nav.shop')} active={activeTab === "market"} onClick={() => setActiveTab("market")} />
+        <NavButton icon={<Gamepad2 size={24} />} label="Game Center" active={activeTab === "game"} onClick={() => setActiveTab("game")} />
         
         {/* Center Create Button */}
         <div className="relative -top-6">
@@ -54,6 +63,7 @@ export default function MainAppView() {
         <NavButton icon={<Wallet size={24} />} label={t('nav.wallet')} active={activeTab === "wallet"} onClick={() => setActiveTab("wallet")} />
         <NavButton icon={<User size={24} />} label={t('nav.profile')} active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
       </nav>
+      )}
     </div>
   );
 }
@@ -170,6 +180,9 @@ function CreateView() {
     const { t } = useLanguage();
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [prompt, setPrompt] = useState("");
+    const [mode, setMode] = useState<'upload' | 'ai'>('upload');
+    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleStart = () => {
@@ -195,34 +208,130 @@ function CreateView() {
         }
     };
 
-    return (
-        <div className="h-full flex flex-col items-center justify-center bg-gray-900 p-8 text-center pb-20">
-            <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={handleFileChange} />
+    const handleAIGenerate = async () => {
+        if (!prompt) {
+            toast.error("Please enter a prompt");
+            return;
+        }
+
+        setUploading(true);
+        toast.info("AI is dreaming...");
+
+        try {
+            // Call Backend API
+            const response = await fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, type: 'image' })
+            });
+
+            if (!response.ok) throw new Error('Generation failed');
+
+            const data = await response.json();
             
-            {uploading ? (
-                <div className="flex flex-col items-center gap-4">
-                     <Loader2 size={48} className="text-purple-500 animate-spin" />
-                     <h3 className="text-xl font-bold">{t('create.uploading')} {progress}%</h3>
-                     <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
-                         <div className="h-full bg-purple-500 transition-all" style={{width: `${progress}%`}} />
-                     </div>
-                </div>
-            ) : (
-                <>
-                    <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center mb-6 animate-pulse">
-                        <PlusSquare size={48} className="text-gray-400" />
+            setGeneratedImage(data.data.url);
+            toast.success("Masterpiece created!");
+        } catch (e) {
+            toast.error("AI Generation failed. Try again.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <div className="h-full flex flex-col bg-gray-900 pb-20">
+            {/* Header / Tabs */}
+            <div className="p-4 flex gap-4 justify-center border-b border-gray-800 bg-gray-950/50 backdrop-blur-sm sticky top-0 z-10">
+                <button
+                    onClick={() => setMode('upload')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${mode === 'upload' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                    <Upload size={16} /> Upload
+                </button>
+                <button
+                    onClick={() => setMode('ai')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${mode === 'ai' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30' : 'text-gray-400 hover:text-white'}`}
+                >
+                    <Sparkles size={16} /> AI Studio
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center text-center">
+                <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={handleFileChange} />
+
+                {uploading ? (
+                    <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in">
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full" />
+                            <Loader2 size={48} className="text-purple-500 animate-spin relative z-10" />
+                        </div>
+                        <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+                            {mode === 'ai' ? 'AI Generating...' : t('create.uploading')} {progress}%
+                        </h3>
+                        <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300" style={{width: `${progress}%`}} />
+                        </div>
+                        <p className="text-xs text-gray-500 animate-pulse">
+                            {mode === 'ai' ? 'Thinking about pixels...' : 'Compressing video...'}
+                        </p>
                     </div>
-                    <h2 className="text-3xl font-bold mb-2 text-white">{t('create.title')}</h2>
-                    <p className="text-gray-400 mb-8 max-w-xs">{t('create.desc')}</p>
-                    <button 
-                        onClick={handleStart}
-                        className="px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full font-bold shadow-lg shadow-purple-500/20 hover:scale-105 transition-transform text-lg flex items-center gap-2"
-                    >
-                        <Upload size={20} /> {t('create.btn')}
-                    </button>
-                    <p className="mt-6 text-xs text-gray-600 uppercase tracking-widest">{t('create.permission')}</p>
-                </>
-            )}
+                ) : mode === 'upload' ? (
+                    <div className="animate-in slide-in-from-bottom-4 duration-500 flex flex-col items-center">
+                        <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center mb-6 animate-pulse ring-4 ring-gray-800/50">
+                            <PlusSquare size={48} className="text-gray-400" />
+                        </div>
+                        <h2 className="text-3xl font-bold mb-2 text-white">{t('create.title')}</h2>
+                        <p className="text-gray-400 mb-8 max-w-xs">{t('create.desc')}</p>
+                        <button
+                            onClick={handleStart}
+                            className="px-8 py-4 bg-white text-black rounded-full font-bold shadow-lg hover:scale-105 transition-transform text-lg flex items-center gap-2"
+                        >
+                            <Upload size={20} /> {t('create.btn')}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="w-full max-w-md animate-in slide-in-from-bottom-4 duration-500 flex flex-col gap-6">
+                        {generatedImage ? (
+                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-700 group">
+                                <img src={generatedImage} alt="Generated" className="w-full h-auto aspect-[3/4] object-cover" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 backdrop-blur-sm">
+                                    <button className="p-3 bg-white text-black rounded-full hover:scale-110 transition-transform"><Upload size={20} /></button>
+                                    <button onClick={() => setGeneratedImage(null)} className="p-3 bg-red-500 text-white rounded-full hover:scale-110 transition-transform"><Wand2 size={20} /></button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="text-left">
+                                    <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
+                                        <Wand2 className="text-purple-400" /> AI Creation Studio
+                                    </h2>
+                                    <p className="text-sm text-gray-400">Describe your imagination, let AI build it.</p>
+                                </div>
+
+                                <textarea
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                    placeholder="A futuristic city on Pi Network with neon lights..."
+                                    className="w-full h-32 bg-gray-800 rounded-xl p-4 text-white placeholder-gray-500 border border-gray-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all resize-none"
+                                />
+
+                                <button
+                                    onClick={handleAIGenerate}
+                                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-white shadow-lg shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Sparkles size={20} /> Generate Magic
+                                </button>
+
+                                <div className="grid grid-cols-3 gap-2 mt-4 opacity-50">
+                                    <div className="h-20 bg-gray-800 rounded-lg"></div>
+                                    <div className="h-20 bg-gray-800 rounded-lg"></div>
+                                    <div className="h-20 bg-gray-800 rounded-lg"></div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

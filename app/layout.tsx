@@ -1,34 +1,34 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { PiNetworkProvider } from "@/app/contexts/PiNetworkContext";
-import { ThemeProvider } from "@/app/contexts/ThemeContext";
-import { PiConnectionStatus } from "@/app/components/PiConnectionStatus";
-
-const inter = Inter({ subsets: ["latin"] });
+import type React from "react"
+import type { Metadata } from "next"
+import Script from "next/script"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+import "./globals.css"
+import { PiSDKProvider } from "@/components/pi/pi-provider"
+import { LanguageProvider } from "@/components/i18n/language-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
-  title: "CONNECT - Web3 Social on Pi Network",
-  description: "A decentralized social video platform on Pi Network.",
-};
+  title: "CONNECT - Web3 Social",
+  description: "A Decentralized Social Platform on Pi Network",
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
-      <body className={inter.className}>
-        <PiNetworkProvider>
-          <ThemeProvider>
-            <PiConnectionStatus />
-            <main className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-              {children}
-            </main>
-          </ThemeProvider>
-        </PiNetworkProvider>
+    <html lang="en" className="dark">
+      <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-background text-foreground`}>
+        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="beforeInteractive" />
+        <PiSDKProvider>
+          <LanguageProvider>
+            {children}
+            <Toaster />
+          </LanguageProvider>
+        </PiSDKProvider>
       </body>
     </html>
-  );
+  )
 }
