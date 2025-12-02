@@ -5,6 +5,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import { Hammer, Trophy, Zap, Coins, Gamepad2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api-client";
 
 export function GameCenter() {
     const { t } = useLanguage();
@@ -12,11 +13,30 @@ export function GameCenter() {
     const [energy, setEnergy] = useState(100);
     const [clicks, setClicks] = useState<{id: number, x: number, y: number}[]>([]);
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Load initial state from backend
+    useEffect(() => {
+        const loadState = async () => {
+            try {
+                const res = await apiClient.game.getState();
+                if (res.success && res.state) {
+                    setScore(res.state.score);
+                    // Use backend energy if provided, or default
+                    if (res.state.energy !== undefined) setEnergy(res.state.energy);
+                }
+            } catch (error) {
+                console.error("Failed to load game state", error);
+            }
+        };
+        loadState();
+    }, []);
+
+    const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
         if (energy <= 0) {
             toast.error("Out of energy! Wait a moment.");
             return;
         }
+
+        // Optimistic UI Update
         setScore(prev => prev + 1);
         setEnergy(prev => Math.max(0, prev - 1));
 
@@ -30,9 +50,16 @@ export function GameCenter() {
 
         // Vibration
         if (navigator.vibrate) navigator.vibrate(50);
+
+        // Sync with Backend
+        try {
+            await apiClient.game.action('click');
+        } catch (error) {
+            console.error("Sync failed", error);
+        }
     };
 
-    // Recover energy
+    // Recover energy locally
     useEffect(() => {
         const timer = setInterval(() => {
             setEnergy(prev => Math.min(100, prev + 2));

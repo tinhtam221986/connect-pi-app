@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
+import { apiClient } from "@/lib/api-client"
 
 // Define types for Pi SDK
 interface PiUser {
@@ -98,6 +99,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     const initPi = () => {
       // Robustness check: If not in Pi Browser (and not Android/iOS wrapper), use Mock.
       // Pi Browser UA usually contains "PiBrowser"
+      // Verified for Connect App
       const ua = navigator.userAgent;
       const isPiBrowser = ua.includes("PiBrowser");
       
@@ -157,11 +159,30 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       // Add a race condition to prevent hanging forever
       const authPromise = window.Pi.authenticate(scopes, onIncompletePaymentFound);
       const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Authentication timed out")), 30000)
+          setTimeout(() => reject(new Error("Authentication timed out. Please try again or check your connection.")), 60000)
       );
 
       const auth: any = await Promise.race([authPromise, timeoutPromise]);
       
+      // Verify with backend
+      try {
+        const verifyRes = await apiClient.auth.verify(auth.accessToken);
+        if (verifyRes.success) {
+           console.log("Backend verification success:", verifyRes);
+           if (verifyRes.user) {
+               // Merge or override user data from backend if needed
+               // auth.user = { ...auth.user, ...verifyRes.user };
+           }
+        } else {
+            console.warn("Backend verification failed:", verifyRes.error);
+            // Non-blocking warning for now to allow UI testing even if backend is flaky
+            toast.warning("Backend verification failed, running in offline/limited mode");
+        }
+      } catch (backendErr) {
+          console.error("Backend connection error:", backendErr);
+          toast.warning("Could not connect to backend server");
+      }
+
       setUser(auth.user)
       setAccessToken(auth.accessToken)
       setIsAuthenticated(true)

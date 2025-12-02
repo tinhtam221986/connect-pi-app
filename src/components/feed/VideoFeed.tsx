@@ -1,19 +1,46 @@
 "use client";
 
-import { MOCK_VIDEOS } from "@/lib/mock-data";
 import { Heart, MessageCircle, Share2, Music2, Disc, Gift } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CommentsDrawer } from "./CommentsDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api-client";
+import { MOCK_VIDEOS } from "@/lib/mock-data";
 
 export function VideoFeed() {
   const { language } = useLanguage();
   const [tab, setTab] = useState<'foryou'|'following'>('foryou');
+  const [videos, setVideos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+        try {
+            const res = await apiClient.video.getFeed();
+            if (res.success && Array.isArray(res.videos)) {
+                setVideos(res.videos);
+            } else {
+                // Fallback to local mock if API fails
+                setVideos(MOCK_VIDEOS);
+            }
+        } catch (e) {
+            console.error("Failed to fetch feed", e);
+            setVideos(MOCK_VIDEOS);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchVideos();
+  }, []);
 
   // Filter content based on user's language preference
-  const filteredVideos = MOCK_VIDEOS.filter(v => v.language === language);
+  const filteredVideos = videos.filter(v => v.language === language || v.language === 'en'); // Allow 'en' as default
+
+  if (loading) {
+      return <div className="h-full w-full bg-black flex items-center justify-center text-gray-500">Loading Feed...</div>;
+  }
 
   return (
     <div className="h-full w-full relative bg-black">
@@ -79,7 +106,7 @@ function VideoPost({ video }: any) {
       <div className="absolute right-2 bottom-24 flex flex-col gap-6 items-center z-20">
         <div className="relative">
              {/* eslint-disable-next-line @next/next/no-img-element */}
-             <img src={video.user.avatar} className="w-12 h-12 rounded-full border-2 border-white" alt="Avatar" />
+             <img src={video.user.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + video.user.username} className="w-12 h-12 rounded-full border-2 border-white" alt="Avatar" />
              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-pink-500 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-md cursor-pointer hover:scale-110 transition-transform">+</div>
         </div>
 

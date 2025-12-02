@@ -1,29 +1,80 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Video, Mic, Wand2, Play, StopCircle, Upload, Film, Radio, Camera } from "lucide-react";
+import { useState, useRef } from "react";
+import { Sparkles, Video, Mic, Wand2, Play, StopCircle, Upload, Film, Radio, Camera, Image as ImageIcon } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiClient } from "@/lib/api-client";
 
 export function AIContentStudio() {
     const { t } = useLanguage();
     const [mode, setMode] = useState<'script' | 'record' | 'live'>('script');
     const [topic, setTopic] = useState("");
     const [script, setScript] = useState("");
+    const [generatedImage, setGeneratedImage] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const generateScript = () => {
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        toast.info("Uploading video...");
+        try {
+            // Upload to backend API
+            const res = await apiClient.video.upload(file);
+            if (res.success) {
+                toast.success("Video uploaded successfully!");
+            } else {
+                toast.error("Upload failed");
+            }
+        } catch (error) {
+            toast.error("Error uploading");
+        }
+    };
+
+    const generateScript = async () => {
         if (!topic) {
             toast.error("Please enter a topic");
             return;
         }
         setIsGenerating(true);
-        setTimeout(() => {
-            setScript("Title: " + topic + "\n\n[Intro]: Hello everyone! Welcome back to my channel.\n[Scene 1]: Today we are talking about " + topic + " on Pi Network.\n[Outro]: Don't forget to like and subscribe!");
+        try {
+            const response = await apiClient.ai.generate(topic, 'script');
+            if (response.success) {
+                setScript(response.result);
+                toast.success("Script generated successfully!");
+            } else {
+                toast.error(response.error || "Failed to generate script");
+            }
+        } catch (error) {
+            toast.error("An error occurred");
+        } finally {
             setIsGenerating(false);
-        }, 1500);
+        }
+    };
+
+    const generateThumbnail = async () => {
+        if (!topic) {
+            toast.error("Please enter a topic");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const response = await apiClient.ai.generate(topic, 'image');
+            if (response.success) {
+                setGeneratedImage(response.result);
+                toast.success("Thumbnail generated successfully!");
+            } else {
+                toast.error(response.error || "Failed to generate thumbnail");
+            }
+        } catch (error) {
+            toast.error("An error occurred");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
@@ -71,8 +122,20 @@ export function AIContentStudio() {
                                      <button onClick={generateScript} disabled={isGenerating} className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white">
                                          <Wand2 size={24} className={isGenerating ? "animate-spin" : ""} />
                                      </button>
+                                     <button onClick={generateThumbnail} disabled={isGenerating} className="p-2 bg-gray-700 rounded-lg text-white hover:bg-gray-600 transition-colors">
+                                         <ImageIcon size={24} className={isGenerating ? "animate-pulse" : ""} />
+                                     </button>
                                  </div>
                              </div>
+
+                             {generatedImage && (
+                                 <div className="bg-gray-800 rounded-xl p-2 border border-gray-700 relative group">
+                                     <img src={generatedImage} alt="AI Thumbnail" className="w-full h-48 object-cover rounded-lg" />
+                                     <div className="absolute bottom-3 right-3 bg-black/70 px-2 py-1 rounded text-xs text-white backdrop-blur-sm flex items-center gap-1">
+                                         <Sparkles size={10} className="text-purple-400" /> AI Generated
+                                     </div>
+                                 </div>
+                             )}
 
                              {script && (
                                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 animate-in fade-in zoom-in">
@@ -113,7 +176,8 @@ export function AIContentStudio() {
 
                                  {/* Overlay Controls */}
                                  <div className="absolute bottom-4 w-full flex justify-center items-center gap-8 z-20">
-                                     <button className="p-3 bg-gray-900/50 rounded-full text-white backdrop-blur-md hover:bg-gray-800 transition-colors"><Upload size={24} /></button>
+                                     <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept="video/*" />
+                                     <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-gray-900/50 rounded-full text-white backdrop-blur-md hover:bg-gray-800 transition-colors"><Upload size={24} /></button>
                                      <button
                                         onClick={() => setIsRecording(!isRecording)}
                                         className={`w-16 h-16 rounded-full border-4 border-white flex items-center justify-center transition-all shadow-lg ${isRecording ? 'bg-red-600 scale-110' : 'bg-red-500'}`}

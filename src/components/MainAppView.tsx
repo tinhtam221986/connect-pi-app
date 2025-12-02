@@ -7,6 +7,7 @@ import { UserProfile } from "@/components/profile/UserProfile";
 import { AIAssistant } from "@/components/ai/AIAssistant";
 import { AIContentStudio } from "@/components/create/AIContentStudio";
 import { GameCenter } from "@/components/game/GameCenter";
+import { MarketplaceView } from "@/components/market/MarketplaceView";
 import { Home, PlusSquare, User, Wallet, CalendarCheck, Gamepad2, ShoppingBag } from "lucide-react";
 import PaymentTester from "@/components/PaymentTester";
 import { useState } from "react";
@@ -25,6 +26,8 @@ export default function MainAppView() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative">
         {activeTab === "home" && <VideoFeed />}
+
+        {activeTab === "market" && <MarketplaceView />}
         
         {activeTab === "game" && <GameCenter />}
         
@@ -40,7 +43,7 @@ export default function MainAppView() {
       {/* Bottom Navigation */}
       <nav className="absolute bottom-0 w-full bg-black/90 backdrop-blur-md border-t border-gray-800 flex justify-around py-2 z-30 pb-safe safe-area-bottom">
         <NavButton icon={<Home size={24} />} label={t('nav.home')} active={activeTab === "home"} onClick={() => setActiveTab("home")} />
-        <NavButton icon={<Gamepad2 size={24} />} label={t('nav.game')} active={activeTab === "game"} onClick={() => setActiveTab("game")} />
+        <NavButton icon={<ShoppingBag size={24} />} label={t('nav.shop')} active={activeTab === "market"} onClick={() => setActiveTab("market")} />
         
         {/* Center Create Button */}
         <div className="relative -top-6">
@@ -52,7 +55,7 @@ export default function MainAppView() {
              </button>
         </div>
 
-        <NavButton icon={<Wallet size={24} />} label={t('nav.wallet')} active={activeTab === "wallet"} onClick={() => setActiveTab("wallet")} />
+        <NavButton icon={<Gamepad2 size={24} />} label={t('nav.game')} active={activeTab === "game"} onClick={() => setActiveTab("game")} />
         <NavButton icon={<User size={24} />} label={t('nav.profile')} active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
       </nav>
     </div>
