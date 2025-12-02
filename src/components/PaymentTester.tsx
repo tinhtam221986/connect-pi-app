@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePi } from "@/components/pi/pi-provider";
+import { apiClient } from "@/lib/api-client";
 
 export default function PaymentTester() {
   const { 
@@ -63,14 +64,8 @@ export default function PaymentTester() {
           setStatus("Waiting for Server Approval...");
           
           try {
-            const res = await fetch("/api/payment/approve", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId })
-            });
-            
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Approval failed");
+            const data = await apiClient.payment.approve(paymentId);
+            if (data.error) throw new Error(data.error || "Approval failed");
             
             console.log("Approved:", data);
             setStatus("Server Approved. Please complete in Pi Wallet.");
@@ -84,14 +79,8 @@ export default function PaymentTester() {
           setStatus("Waiting for Server Completion...");
 
           try {
-             const res = await fetch("/api/payment/complete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId, txid })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Completion failed");
+            const data = await apiClient.payment.complete(paymentId, txid);
+            if (data.error) throw new Error(data.error || "Completion failed");
 
             console.log("Completed:", data);
             setStatus("Transaction Completed Successfully! (Task 10 Done)");

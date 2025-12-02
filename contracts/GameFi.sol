@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+interface IERC20 {
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
 /**
  * @title GameFi
  * @dev Manages player stats, levels, and rewards.
@@ -15,7 +21,7 @@ contract GameFi {
 
     mapping(address => Player) public players;
     address public owner;
-    address public rewardToken; // Address of the ConnectToken
+    IERC20 public rewardToken; // Address of the ConnectToken
 
     event LevelUp(address indexed player, uint256 newLevel);
     event BattleWon(address indexed player, uint256 expGained);
@@ -23,7 +29,7 @@ contract GameFi {
 
     constructor(address _rewardToken) {
         owner = msg.sender;
-        rewardToken = _rewardToken;
+        rewardToken = IERC20(_rewardToken);
     }
 
     modifier onlyOwner() {
@@ -52,8 +58,16 @@ contract GameFi {
             p.exp = 0;
             emit LevelUp(_player, p.level);
 
-            // Give reward on level up? (Requires this contract to hold tokens)
-            // Implementation skipped to avoid complexity, but logic would be here.
+            // Give reward on level up (10 tokens * new level)
+            uint256 rewardAmount = p.level * 10 * 10**18; // Assuming 18 decimals
+
+            // Check if contract has enough balance
+            if (rewardToken.balanceOf(address(this)) >= rewardAmount) {
+                bool success = rewardToken.transfer(_player, rewardAmount);
+                if (success) {
+                    emit RewardClaimed(_player, rewardAmount);
+                }
+            }
         }
     }
 
