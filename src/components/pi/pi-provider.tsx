@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
+import { apiClient } from "@/lib/api-client"
 
 // Define types for Pi SDK
 interface PiUser {
@@ -162,6 +163,23 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
 
       const auth: any = await Promise.race([authPromise, timeoutPromise]);
       
+      // Verify with backend
+      try {
+        const verifyRes = await apiClient.auth.verify(auth.accessToken);
+        if (verifyRes.success) {
+           console.log("Backend verification success:", verifyRes);
+           if (verifyRes.user) {
+               // Merge or override user data from backend if needed
+               // auth.user = { ...auth.user, ...verifyRes.user };
+           }
+        } else {
+            console.warn("Backend verification failed:", verifyRes.error);
+            // In strict mode, we might want to throw error here
+        }
+      } catch (backendErr) {
+          console.error("Backend connection error:", backendErr);
+      }
+
       setUser(auth.user)
       setAccessToken(auth.accessToken)
       setIsAuthenticated(true)
