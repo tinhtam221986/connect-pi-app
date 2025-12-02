@@ -58,4 +58,42 @@ export const apiClient = {
       return res.json();
     }
   },
+  feed: {
+    get: async () => {
+      const res = await fetch('/api/feed');
+      return res.json();
+    }
+  },
+  market: {
+    getListings: async () => {
+      const res = await fetch('/api/marketplace/listings');
+      return res.json();
+    },
+    buy: async (itemId: string) => {
+        const res = await fetch('/api/marketplace/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId })
+        });
+        return res.json();
+    }
+  },
+  payment: {
+    approve: async (paymentId: string) => {
+      const res = await fetch("/api/payment/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId })
+      });
+      return res.json();
+    },
+    complete: async (paymentId: string, txid: string) => {
+      const res = await fetch("/api/payment/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId, txid })
+      });
+      return res.json();
+    }
+  }
 };
