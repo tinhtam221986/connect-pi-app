@@ -58,4 +58,22 @@ export const apiClient = {
       return res.json();
     }
   },
+  payment: {
+    approve: async (paymentId: string) => {
+      const res = await fetch("/api/payment/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId })
+      });
+      return res.json();
+    },
+    complete: async (paymentId: string, txid: string) => {
+      const res = await fetch("/api/payment/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId, txid })
+      });
+      return res.json();
+    }
+  }
 };

@@ -46,6 +46,7 @@ export default function MainAppView() {
         <div className="relative -top-6">
              <button 
                 onClick={() => setActiveTab("create")}
+                aria-label="Create"
                 className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 border-4 border-black transition-transform active:scale-95"
              >
                 <PlusSquare size={28} className="text-white" />
