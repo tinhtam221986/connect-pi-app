@@ -6,6 +6,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
+import { CameraRecorder } from "./CameraRecorder";
 
 export function AIContentStudio() {
     const { t } = useLanguage();
@@ -14,7 +15,6 @@ export function AIContentStudio() {
     const [script, setScript] = useState("");
     const [generatedImage, setGeneratedImage] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
 
     const generateScript = async () => {
         if (!topic) {
@@ -55,6 +55,26 @@ export function AIContentStudio() {
             toast.error("An error occurred");
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleVideoRecorded = async (blob: Blob) => {
+        // Upload video to backend
+        const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'video/webm' });
+        try {
+            toast.loading("Uploading video...");
+            const res = await apiClient.video.upload(file);
+            if (res.success) {
+                toast.success("Video uploaded successfully!");
+                // Optionally navigate to feed or show result
+            } else {
+                toast.error("Upload failed: " + res.error);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Upload error");
+        } finally {
+            toast.dismiss();
         }
     };
 
@@ -149,37 +169,7 @@ export function AIContentStudio() {
                              className="flex flex-col items-center justify-center h-full pb-20"
                          >
                              <div className="w-full max-w-sm aspect-[9/16] bg-gray-800 rounded-2xl relative overflow-hidden flex items-center justify-center border-2 border-gray-700 shadow-2xl">
-                                 {/* Camera Preview Mock */}
-                                 <div className="text-gray-500 flex flex-col items-center">
-                                     <Camera size={48} />
-                                     <p className="mt-2 text-sm text-center px-4">{t('create.permission')}</p>
-                                 </div>
-
-                                 {/* Overlay Controls */}
-                                 <div className="absolute bottom-4 w-full flex justify-center items-center gap-8 z-20">
-                                     <button className="p-3 bg-gray-900/50 rounded-full text-white backdrop-blur-md hover:bg-gray-800 transition-colors"><Upload size={24} /></button>
-                                     <button
-                                        onClick={() => setIsRecording(!isRecording)}
-                                        className={`w-16 h-16 rounded-full border-4 border-white flex items-center justify-center transition-all shadow-lg ${isRecording ? 'bg-red-600 scale-110' : 'bg-red-500'}`}
-                                     >
-                                         {isRecording ? <div className="w-6 h-6 bg-white rounded-sm" /> : <div className="w-14 h-14 bg-red-500 rounded-full" />}
-                                     </button>
-                                     <button className="p-3 bg-gray-900/50 rounded-full text-white backdrop-blur-md hover:bg-gray-800 transition-colors"><Film size={24} /></button>
-                                 </div>
-
-                                 {/* Script Overlay */}
-                                 {script && (
-                                     <div className="absolute top-4 left-4 right-4 bg-black/60 p-3 rounded-lg text-xs text-white max-h-32 overflow-y-auto backdrop-blur-sm border border-white/10 z-10">
-                                         {script}
-                                     </div>
-                                 )}
-
-                                 {/* Recording Indicator */}
-                                 {isRecording && (
-                                     <div className="absolute top-4 right-4 flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold animate-pulse z-20">
-                                         <div className="w-2 h-2 bg-white rounded-full"></div> REC
-                                     </div>
-                                 )}
+                                <CameraRecorder script={script} onVideoRecorded={handleVideoRecorded} />
                              </div>
                          </motion.div>
                      )}
