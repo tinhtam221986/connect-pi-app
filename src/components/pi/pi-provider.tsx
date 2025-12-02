@@ -69,10 +69,23 @@ const MockPi: PiSDK = {
   },
   createPayment: (paymentData: any, callbacks: any) => {
       console.log("Mock Payment Created", paymentData);
-      setTimeout(() => {
-          if(callbacks.onReadyForServerApproval) callbacks.onReadyForServerApproval("mock_payment_id_" + Date.now());
-          if(callbacks.onCreated) callbacks.onCreated("mock_payment_id_" + Date.now());
-          toast.success("Mock Payment Simulated!");
+      const paymentId = "mock_payment_id_" + Date.now();
+
+      // Simulate flow
+      setTimeout(async () => {
+          if(callbacks.onCreated) callbacks.onCreated(paymentId);
+
+          if(callbacks.onReadyForServerApproval) {
+              await callbacks.onReadyForServerApproval(paymentId);
+          }
+
+          // Simulate waiting for user confirmation and server processing
+          setTimeout(async () => {
+              if (callbacks.onReadyForServerCompletion) {
+                  await callbacks.onReadyForServerCompletion(paymentId, "mock_txid_" + Date.now());
+              }
+              toast.success("Mock Payment Simulated!");
+          }, 1000);
       }, 500);
       return {};
   },

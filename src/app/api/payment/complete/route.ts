@@ -12,6 +12,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Mock Mode
+    if (paymentId.toString().startsWith("mock_")) {
+        console.log("Mock Payment Complete for:", paymentId);
+        return NextResponse.json({
+            identifier: paymentId,
+            status: "COMPLETED_AND_CLOSED",
+            amount: 1,
+            memo: "Mock Payment",
+            to_address: "mock_address",
+            transaction: { txid }
+        });
+    }
+
     const PI_API_KEY = process.env.PI_API_KEY || "";
 
     if (!PI_API_KEY) {
