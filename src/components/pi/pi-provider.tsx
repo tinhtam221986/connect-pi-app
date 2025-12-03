@@ -156,9 +156,10 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       };
 
       // Add a race condition to prevent hanging forever
+      // Increased to 60s to handle slower networks or manual approval delays
       const authPromise = window.Pi.authenticate(scopes, onIncompletePaymentFound);
       const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Authentication timed out")), 30000)
+          setTimeout(() => reject(new Error("Authentication timed out. Please check your internet connection.")), 60000)
       );
 
       const auth: any = await Promise.race([authPromise, timeoutPromise]);
@@ -168,16 +169,17 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
         const verifyRes = await apiClient.auth.verify(auth.accessToken);
         if (verifyRes.success) {
            console.log("Backend verification success:", verifyRes);
+           // Update user with backend data (e.g. roles, level)
            if (verifyRes.user) {
-               // Merge or override user data from backend if needed
-               // auth.user = { ...auth.user, ...verifyRes.user };
+               auth.user = { ...auth.user, ...verifyRes.user };
            }
         } else {
-            console.warn("Backend verification failed:", verifyRes.error);
-            // In strict mode, we might want to throw error here
+            console.warn("Backend verification warning:", verifyRes.error);
+            toast.warning("Backend sync failed, continuing in offline mode.");
         }
       } catch (backendErr) {
           console.error("Backend connection error:", backendErr);
+          toast.warning("Backend connection failed. Some features may be limited.");
       }
 
       setUser(auth.user)
