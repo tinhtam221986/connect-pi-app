@@ -114,6 +114,8 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     (window as any).Pi = MockPi;
     setIsInitialized(true);
     setIsMock(true);
+    setError(null);
+    setIsAuthenticated(false);
     toast.info("Dev Mode: Mock SDK Activated");
   }, []);
 
