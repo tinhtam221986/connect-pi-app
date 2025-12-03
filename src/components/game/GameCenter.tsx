@@ -19,11 +19,15 @@ export function GameCenter() {
     useEffect(() => {
         const loadState = async () => {
             try {
-                const res = await apiClient.game.getState();
-                if (res.success && res.state) {
-                    setScore(res.state.score);
-                    // Use backend energy if provided, or default
-                    if (res.state.energy !== undefined) setEnergy(res.state.energy);
+                // Pass user id explicitly for now since auth might be mocked
+                const res = await apiClient.game.getState('user_current');
+                // Response format from SmartContractService: { score: number, lastActive: string, pets: [], ... }
+                // or the API wrapper: { ... }
+                
+                // Check if res itself is the state object
+                if (res && typeof res.score === 'number') {
+                    setScore(res.score);
+                    // SmartContractService doesn't track energy yet, keep local state for now
                 }
             } catch (error) {
                 console.error("Failed to load game state", error);
@@ -56,8 +60,8 @@ export function GameCenter() {
 
         // Sync with Backend
         try {
-            await apiClient.game.action('click');
-            // refresh(); // Optional: ensure exact sync occasionally
+            // Action 'click' maps to logic in route.ts -> SmartContractService.updateGameState
+            await apiClient.game.action('click', { points: 1 });
         } catch (error) {
             console.error("Sync failed", error);
         }

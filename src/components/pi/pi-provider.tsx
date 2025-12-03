@@ -34,6 +34,7 @@ interface PiContextType {
   user: PiUser | null
   accessToken: string | null
   authenticate: () => Promise<void>
+  forceMock: () => void
   error: string | null
   incompletePayment: any | null
   isMock: boolean
@@ -45,6 +46,7 @@ const PiContext = createContext<PiContextType>({
   user: null,
   accessToken: null,
   authenticate: async () => {},
+  forceMock: () => {},
   error: null,
   incompletePayment: null,
   isMock: false,
@@ -59,7 +61,7 @@ const MockPi: PiSDK = {
   init: (opts: any) => console.log("Mock Pi Init", opts),
   authenticate: async (scopes: string[], onIncomplete: any) => {
     console.log("Mock Authenticating...");
-    await new Promise(resolve => setTimeout(resolve, 500)); // Faster mock delay
+    await new Promise(resolve => setTimeout(resolve, 800)); 
     return {
       accessToken: "mock_token_" + Math.random().toString(36).substring(7),
       user: {
@@ -70,10 +72,25 @@ const MockPi: PiSDK = {
   },
   createPayment: (paymentData: any, callbacks: any) => {
       console.log("Mock Payment Created", paymentData);
-      setTimeout(() => {
-          if(callbacks.onReadyForServerApproval) callbacks.onReadyForServerApproval("mock_payment_id_" + Date.now());
-          if(callbacks.onCreated) callbacks.onCreated("mock_payment_id_" + Date.now());
-          toast.success("Mock Payment Simulated!");
+      const paymentId = "mock_payment_id_" + Date.now();
+      const txid = "mock_txid_" + Date.now();
+
+      // Simulate full flow
+      setTimeout(async () => {
+          if(callbacks.onCreated) callbacks.onCreated(paymentId);
+          
+          if(callbacks.onReadyForServerApproval) {
+              await callbacks.onReadyForServerApproval(paymentId);
+          }
+
+          // Simulate user signing time
+          setTimeout(async () => {
+              if (callbacks.onReadyForServerCompletion) {
+                  await callbacks.onReadyForServerCompletion(paymentId, txid);
+              }
+              toast.success("Mock Payment Simulated!");
+          }, 500);
+
       }, 500);
       return {};
   },
@@ -92,46 +109,42 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [incompletePayment, setIncompletePayment] = useState<any | null>(null)
   const [isMock, setIsMock] = useState(false)
 
+  const forceMock = useCallback(() => {
+    console.warn("Forcing Mock Mode by user request");
+    (window as any).Pi = MockPi;
+    setIsInitialized(true);
+    setIsMock(true);
+    toast.info("Dev Mode: Mock SDK Activated");
+  }, []);
+
   useEffect(() => {
     let retryCount = 0;
     const maxRetries = 20; // 10 seconds
 
     const initPi = () => {
-      // Robustness check: If not in Pi Browser (and not Android/iOS wrapper), use Mock.
-      // Pi Browser UA usually contains "PiBrowser"
       const ua = navigator.userAgent;
       const isPiBrowser = ua.includes("PiBrowser");
       
       // If we are definitely not in Pi Browser (e.g. Chrome Desktop), force Mock immediately
-      // This prevents "hanging" on real SDK scripts that might load but not work.
       if (!isPiBrowser && !ua.includes("Android") && !ua.includes("iPhone")) {
-           console.warn("Not Pi Browser, using Mock SDK");
-           (window as any).Pi = MockPi;
-           setIsInitialized(true);
-           setIsMock(true);
-           toast.info("Dev Mode: Mock SDK Active");
+           forceMock();
            return;
       }
 
       if (window.Pi) {
         try {
+          // Use sandbox: true for development
           window.Pi.init({ version: "2.0", sandbox: true })
           setIsInitialized(true)
         } catch (err: any) {
           console.error("Pi SDK Init Error:", err)
-          // If real init fails, maybe fallback? 
-          // For now, show error so user knows something is wrong with Real SDK
-          setError(`Pi SDK Init Failed: ${err.message || err}`)
+          setError(`Pi SDK Init Failed: ${err.message || err}. Tap error to switch to Mock.`)
         }
       } else {
         retryCount++;
         if (retryCount > maxRetries) {
-            // Fallback to Mock if timed out (even on mobile)
             console.warn("Pi SDK not found after timeout, using Mock");
-            (window as any).Pi = MockPi; 
-            setIsInitialized(true);
-            setIsMock(true);
-            toast.info("Dev Mode: Using Mock SDK (Timeout)");
+            forceMock();
             return;
         }
         setTimeout(initPi, 500)
@@ -139,11 +152,11 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     }
 
     initPi()
-  }, [])
+  }, [forceMock])
 
   const authenticate = useCallback(async () => {
     if (!isInitialized || !window.Pi) {
-        setError("SDK not ready. Please refresh.")
+        setError("SDK not ready. Please refresh or use Mock.")
         return
     }
 
@@ -155,11 +168,9 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
         setIncompletePayment(payment)
       };
 
-      // Add a race condition to prevent hanging forever
-      // Increased to 60s to handle slower networks or manual approval delays
       const authPromise = window.Pi.authenticate(scopes, onIncompletePaymentFound);
       const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Authentication timed out. Please check your internet connection.")), 60000)
+          setTimeout(() => reject(new Error("Authentication timed out (60s).")), 60000)
       );
 
       const auth: any = await Promise.race([authPromise, timeoutPromise]);
@@ -169,17 +180,16 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
         const verifyRes = await apiClient.auth.verify(auth.accessToken);
         if (verifyRes.success) {
            console.log("Backend verification success:", verifyRes);
-           // Update user with backend data (e.g. roles, level)
            if (verifyRes.user) {
                auth.user = { ...auth.user, ...verifyRes.user };
            }
         } else {
             console.warn("Backend verification warning:", verifyRes.error);
-            toast.warning("Backend sync failed, continuing in offline mode.");
+            toast.warning("Backend sync failed. Running in offline mode.");
         }
       } catch (backendErr) {
           console.error("Backend connection error:", backendErr);
-          toast.warning("Backend connection failed. Some features may be limited.");
+          toast.warning("Backend unreachable. Features limited.");
       }
 
       setUser(auth.user)
@@ -191,7 +201,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error("Pi Authentication Failed:", err)
       setError(err.message || "Authentication failed")
-      toast.error("Login Failed: " + (err.message || "Unknown error"))
+      toast.error("Login Failed. " + (err.message || "Unknown error"))
     }
   }, [isInitialized])
 
@@ -203,6 +213,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
         user,
         accessToken,
         authenticate,
+        forceMock,
         error,
         incompletePayment,
         isMock

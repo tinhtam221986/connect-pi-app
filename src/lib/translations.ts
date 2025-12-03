@@ -5,6 +5,7 @@ export const translations = {
     nav: {
       home: "Trang chủ",
       shop: "Cửa hàng",
+      market: "Cửa hàng",
       game: "GameFi",
       wallet: "Ví",
       profile: "Hồ sơ"
@@ -93,6 +94,7 @@ export const translations = {
     nav: {
       home: "Home",
       shop: "Shop",
+      market: "Shop",
       wallet: "Wallet",
       profile: "Profile",
       game: "GameFi"

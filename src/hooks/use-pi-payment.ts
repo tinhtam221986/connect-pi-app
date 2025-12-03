@@ -48,7 +48,7 @@ export function usePiPayment() {
         onReadyForServerCompletion: async (paymentId: string, txid: string) => {
             console.log("Completing payment...", paymentId, txid);
             try {
-                const data = await apiClient.payment.complete(paymentId, txid);
+                const data = await apiClient.payment.complete(paymentId, txid, paymentData);
                 if (data.error) throw new Error(data.error);
                 console.log("Payment completed by server", data);
                 if (callbacks?.onSuccess) callbacks.onSuccess(data);

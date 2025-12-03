@@ -34,7 +34,12 @@ export function MarketplaceView() {
         // We rely on the Pi Wallet for the actual funds check during the payment flow.
         // The internal 'balance' might be cached or represent in-app rewards.
         
-        createPayment(item.price, `Buy ${item.name}`, { itemId: item.id, type: 'marketplace_buy' }, {
+        // Ensure userId is passed. In a real app, this comes from the Auth Context.
+        // For this demo/mock, we assume 'current_user' if not explicitly available,
+        // but the backend uses the userId passed in metadata to assign ownership.
+        const userId = 'user_current'; 
+
+        createPayment(item.price, `Buy ${item.name}`, { itemId: item.id, type: 'marketplace_buy', userId }, {
             onSuccess: (data) => {
                 toast.success("Purchase successful! Item added to inventory.");
                 refresh(); // Update balance and inventory
