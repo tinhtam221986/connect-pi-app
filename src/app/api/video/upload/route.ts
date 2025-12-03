@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-
-// Configuration: Switch this to 's3' or 'cloudflare' when keys are available
-// In a real Web3 app, you might also use IPFS (e.g., Pinata).
-const STORAGE_PROVIDER = process.env.VIDEO_STORAGE_PROVIDER || 'local'; 
+import { uploadToCloudinary, isCloudinaryConfigured } from '@/lib/cloudinary';
 
 export async function POST(request: Request) {
     try {
@@ -16,41 +13,48 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
 
-        console.log(`Processing upload via provider: ${STORAGE_PROVIDER}`);
+        console.log(`Processing upload...`);
 
-        let result;
-        if (STORAGE_PROVIDER === 's3') {
-             // Placeholder for AWS S3 integration
-             // const buffer = Buffer.from(await file.arrayBuffer());
-             // result = await s3Client.send(new PutObjectCommand({ ... }));
-             return NextResponse.json({ error: "S3 Provider not configured (Missing Credentials)" }, { status: 501 });
-        } else if (STORAGE_PROVIDER === 'cloudflare') {
-             // Placeholder for Cloudflare Stream
-             return NextResponse.json({ error: "Cloudflare Provider not configured (Missing Credentials)" }, { status: 501 });
-        } else if (STORAGE_PROVIDER === 'ipfs') {
-             // Placeholder for IPFS
-             return NextResponse.json({ error: "IPFS Provider not configured" }, { status: 501 });
-        } else {
-             // Default: Local Storage (Works in Dev, Ephemeral in Vercel)
-             result = await uploadToLocal(file);
+        if (isCloudinaryConfigured()) {
+            console.log("Cloudinary detected. Uploading...");
+            try {
+                const url = await uploadToCloudinary(file);
+                return NextResponse.json({
+                    success: true,
+                    url: url,
+                    thumbnail: url.replace(/\.[^/.]+$/, ".jpg"), // Cloudinary auto-thumbnail
+                    fileId: "vid_" + Math.random().toString(36).substring(7),
+                    message: "Video uploaded successfully to Cloudinary"
+                });
+            } catch (err: any) {
+                console.error("Cloudinary failed, falling back to local simulation.", err);
+                 return NextResponse.json({ error: 'Cloudinary upload failed: ' + err.message }, { status: 500 });
+            }
         }
 
-        return NextResponse.json(result);
+        // --- FALLBACK: LOCAL SIMULATION (For Vercel without keys or Local Dev) ---
+        console.warn("No Cloudinary keys found. Using ephemeral local storage.");
+        
+        // Handle Vercel Read-Only File System gracefully
+        try {
+            const result = await uploadToLocal(file);
+            return NextResponse.json(result);
+        } catch (error: any) {
+             if (error.code === 'EROFS' || error.code === 'EACCES') {
+                 console.warn("Read-only file system detected (Vercel). Returning mock success.");
+                 return NextResponse.json({
+                    success: true,
+                    url: "https://res.cloudinary.com/demo/video/upload/dog.mp4", // Permanent demo video
+                    thumbnail: "https://res.cloudinary.com/demo/video/upload/dog.jpg",
+                    fileId: "vid_mock_" + Math.random().toString(36).substring(7),
+                    message: "Upload Simulated (Server is Read-Only). Add Cloudinary Keys for real uploads."
+                });
+            }
+            throw error;
+        }
 
     } catch (error: any) {
         console.error("Upload error:", error);
-        
-        // Fallback to purely mock if write fails (e.g. Vercel read-only system files)
-        if (error.code === 'EROFS' || error.code === 'EACCES') {
-             return NextResponse.json({
-                success: true,
-                url: "https://www.w3schools.com/html/mov_bbb.mp4", // Fallback video
-                thumbnail: "/mock_thumbnail.jpg",
-                fileId: "vid_" + Math.random().toString(36).substring(7),
-                message: "Video uploaded (Simulation: Read-only File System detected)"
-            });
-        }
-
         return NextResponse.json({ error: 'Upload failed: ' + error.message }, { status: 500 });
     }
 }
@@ -75,13 +79,12 @@ async function uploadToLocal(file: File) {
     console.log(`Video uploaded locally to: ${filePath}`);
 
     const publicUrl = `/uploads/${fileName}`;
-    const thumbnail = "/mock_thumbnail.jpg"; 
 
     return {
         success: true,
         url: publicUrl,
-        thumbnail: thumbnail,
+        thumbnail: "/mock_thumbnail.jpg",
         fileId: fileName,
-        message: "Video uploaded successfully (Local Storage)"
+        message: "Video uploaded locally (Ephemeral)"
     };
 }

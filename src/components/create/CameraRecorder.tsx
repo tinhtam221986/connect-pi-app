@@ -1,44 +1,53 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Camera, StopCircle, RefreshCcw, Download, Check, Sparkles } from "lucide-react";
+import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { VIDEO_FILTERS } from "@/lib/video-filters";
 
 interface CameraRecorderProps {
     onVideoRecorded?: (blob: Blob) => void;
     script?: string;
 }
 
-const FILTERS = [
-    { name: "Normal", class: "" },
-    { name: "Vivid", class: "saturate-150 contrast-110" },
-    { name: "Mono", class: "grayscale contrast-110" },
-    { name: "Retro", class: "sepia-[.5] contrast-90 brightness-110" },
-    { name: "Cyber", class: "hue-rotate-180 contrast-125 saturate-150" },
-    { name: "Dreamy", class: "blur-[0.5px] brightness-110 saturate-125" },
-];
-
 export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const backgroundAudioRef = useRef<HTMLAudioElement | null>(null);
+    const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+    const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+
     const [isRecording, setIsRecording] = useState(false);
     const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [currentFilter, setCurrentFilter] = useState(FILTERS[0]);
+    const [currentFilter, setCurrentFilter] = useState(VIDEO_FILTERS[0]);
     const [timer, setTimer] = useState(0);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+
+    // Music State
+    const [audioFile, setAudioFile] = useState<File | null>(null);
+    const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
 
     // Initialize Camera
     const startCamera = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", aspectRatio: 9/16 }, 
+                video: { facingMode: "user", aspectRatio: 9/16, width: { ideal: 720 } },
                 audio: true 
             });
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                videoRef.current.play(); // Ensure it plays for the canvas to capture
             }
+
+            // Start the canvas render loop
+            drawToCanvas();
+
         } catch (err) {
             console.error("Error accessing camera:", err);
             toast.error("Could not access camera. Please check permissions.");
@@ -52,34 +61,129 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
                 tracks.forEach(track => track.stop());
             }
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+            if (audioContextRef.current) audioContextRef.current.close();
+            if (backgroundAudioRef.current) {
+                backgroundAudioRef.current.pause();
+                backgroundAudioRef.current = null;
+            }
         };
     }, []);
 
+    // Canvas Render Loop (Burns filters in)
+    const drawToCanvas = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+            // Match canvas size to video
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                canvas.width = video.videoWidth || 360;
+                canvas.height = video.videoHeight || 640;
+            }
+
+            // Apply filter
+            ctx.filter = currentFilter.filter;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Reset filter for next frame (optional, but good practice)
+            ctx.filter = 'none';
+        }
+
+        animationFrameRef.current = requestAnimationFrame(drawToCanvas);
+    };
+
+    // Handle Music Upload
+    const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setAudioFile(file);
+            const url = URL.createObjectURL(file);
+            setAudioPreviewUrl(url);
+
+            // Setup Audio Context for mixing
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+
+            // Create audio element for playback
+            if (backgroundAudioRef.current) {
+                 backgroundAudioRef.current.src = url;
+            } else {
+                 const audio = new Audio(url);
+                 audio.loop = true;
+                 backgroundAudioRef.current = audio;
+            }
+
+            toast.success("Music added! It will play when recording.");
+        }
+    };
+
+    const clearMusic = () => {
+        setAudioFile(null);
+        setAudioPreviewUrl(null);
+        if (backgroundAudioRef.current) {
+            backgroundAudioRef.current.pause();
+            backgroundAudioRef.current = null;
+        }
+    };
+
     // Handle Recording
     const startRecording = () => {
-        if (!videoRef.current?.srcObject) return;
+        if (!canvasRef.current) return;
 
         setRecordedChunks([]);
-        const stream = videoRef.current.srcObject as MediaStream;
         
-        // We need to capture the filtered canvas if we want to bake in filters,
-        // but for performance on mobile, we often just apply CSS filter to the video
-        // and save the raw video, applying filter again on playback.
-        // For a true "burned in" filter, we'd need a canvas loop.
-        // For this MVP, we will record the raw stream and save the filter metadata 
-        // OR just record raw and let the preview handle it. 
-        // Users expect "What You See Is What You Get".
-        // Let's stick to raw recording for stability, and maybe later add canvas processing.
-        // Actually, let's try to implement Canvas recording for filters if possible.
-        // Given complexity, let's stick to recording the raw stream for now 
-        // and allow the user to view it with the filter. 
-        // *However*, to burn it in, we'd need to draw video to canvas, apply filter context, and captureStream.
+        // 1. Get Video Stream from Canvas (Burned Filters)
+        const canvasStream = canvasRef.current.captureStream(30); // 30 FPS
         
-        // Simpler approach for "TikTok-like" feels: Just record raw, but save filter preference.
-        // Ideally, we record raw.
+        // 2. Get Audio Stream
+        let finalAudioStream: MediaStream;
+
+        // If we have music, we need to mix microphone + music
+        if (audioFile && backgroundAudioRef.current && audioContextRef.current) {
+             const ctx = audioContextRef.current;
+             const dest = ctx.createMediaStreamDestination();
+             destinationRef.current = dest;
+
+             // Mic Source
+             if (videoRef.current && videoRef.current.srcObject) {
+                 const micStream = videoRef.current.srcObject as MediaStream;
+                 const micSource = ctx.createMediaStreamSource(micStream);
+                 micSource.connect(dest);
+             }
+
+             // Music Source
+             // Note: Creating element source only once
+             if (!sourceNodeRef.current) {
+                 sourceNodeRef.current = ctx.createMediaElementSource(backgroundAudioRef.current);
+             }
+             // Connect music to destination AND speakers (so user can hear it)
+             sourceNodeRef.current.connect(dest);
+             sourceNodeRef.current.connect(ctx.destination);
+
+             // Play music
+             backgroundAudioRef.current.play();
+
+             finalAudioStream = dest.stream;
+        } else {
+             // Just use Mic
+             const stream = videoRef.current?.srcObject as MediaStream;
+             finalAudioStream = stream;
+        }
+
+        // Combine Video + Audio
+        const tracks = [
+            ...canvasStream.getVideoTracks(),
+            ...finalAudioStream.getAudioTracks()
+        ];
+        const combinedStream = new MediaStream(tracks);
         
         try {
-            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+            const mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9' });
             mediaRecorderRef.current = mediaRecorder;
 
             mediaRecorder.ondataavailable = (event) => {
@@ -91,6 +195,11 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
             mediaRecorder.onstop = () => {
                  // Stop timer
                  if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                 // Stop music
+                 if (backgroundAudioRef.current) {
+                     backgroundAudioRef.current.pause();
+                     backgroundAudioRef.current.currentTime = 0;
+                 }
             };
 
             mediaRecorder.start();
@@ -118,14 +227,13 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
             onVideoRecorded(blob);
         }
         setPreviewUrl(URL.createObjectURL(blob));
-        // We could also offer download here
     };
 
     const handleRetake = () => {
         setRecordedChunks([]);
         setPreviewUrl(null);
         setTimer(0);
-        startCamera();
+        // Music resets automatically in onStop
     };
 
     const formatTime = (seconds: number) => {
@@ -137,21 +245,21 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     return (
         <div className="relative w-full h-full flex flex-col items-center bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
             
-            {/* Video Preview Area */}
+            {/* Hidden Video Source (Raw) */}
+            <video ref={videoRef} autoPlay playsInline muted className="hidden" />
+
+            {/* Canvas Preview (Filtered) or Result Video */}
             <div className="relative w-full flex-1 bg-gray-900 flex items-center justify-center overflow-hidden">
                 {!previewUrl ? (
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className={`w-full h-full object-cover transition-all duration-300 ${currentFilter.class}`}
+                    <canvas
+                        ref={canvasRef}
+                        className="w-full h-full object-cover"
                     />
                 ) : (
                     <video
                         src={previewUrl}
                         controls
-                        className={`w-full h-full object-cover ${currentFilter.class}`}
+                        className="w-full h-full object-cover"
                     />
                 )}
 
@@ -174,6 +282,15 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                         {currentFilter.name}
                     </motion.div>
                 </AnimatePresence>
+
+                 {/* Music Indicator */}
+                 {audioFile && (
+                    <div className="absolute top-4 right-4 bg-purple-500/80 backdrop-blur px-3 py-1 rounded-full text-xs flex items-center gap-1 text-white z-30">
+                        <Music size={12} />
+                        <span className="max-w-[100px] truncate">{audioFile.name}</span>
+                        {!isRecording && <button onClick={clearMusic}><X size={12} /></button>}
+                    </div>
+                )}
             </div>
 
             {/* Controls */}
@@ -189,14 +306,14 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 {/* Filter Selector */}
                 {!isRecording && !previewUrl && (
                     <div className="flex gap-4 overflow-x-auto w-full px-4 pb-2 no-scrollbar justify-center">
-                        {FILTERS.map((filter) => (
+                        {VIDEO_FILTERS.map((filter) => (
                             <button
                                 key={filter.name}
                                 onClick={() => setCurrentFilter(filter)}
                                 className={`flex flex-col items-center gap-1 shrink-0 group`}
                             >
                                 <div className={`w-12 h-12 rounded-full border-2 overflow-hidden ${currentFilter.name === filter.name ? 'border-purple-500 scale-110' : 'border-gray-500'}`}>
-                                    <div className={`w-full h-full bg-gray-800 ${filter.class}`}></div>
+                                    <div className="w-full h-full bg-gray-800" style={{ filter: filter.filter, backgroundColor: '#555' }}></div>
                                 </div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-white">{filter.name}</span>
                             </button>
@@ -205,7 +322,7 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 )}
 
                 {/* Main Action Buttons */}
-                <div className="flex items-center gap-12">
+                <div className="flex items-center gap-8">
                     {previewUrl ? (
                         <>
                             <button onClick={handleRetake} className="p-4 bg-gray-800 rounded-full hover:bg-gray-700 transition">
@@ -217,6 +334,21 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                         </>
                     ) : (
                         <>
+                             {/* Music Button */}
+                             {!isRecording && (
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        accept="audio/*"
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        onChange={handleMusicUpload}
+                                    />
+                                    <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+                                        <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
+                                    </button>
+                                </div>
+                            )}
+
                             {!isRecording ? (
                                 <button 
                                     onClick={startRecording} 
@@ -232,6 +364,9 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                                     <div className="w-8 h-8 bg-red-500 rounded-sm shadow-lg shadow-red-900/50" />
                                 </button>
                             )}
+
+                             {/* Placeholder to balance layout */}
+                             {!isRecording && <div className="w-12" />}
                         </>
                     )}
                 </div>
