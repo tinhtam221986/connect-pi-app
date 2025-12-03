@@ -6,9 +6,11 @@ import { Hammer, Trophy, Zap, Coins, Gamepad2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
+import { useEconomy } from "@/components/economy/EconomyContext";
 
 export function GameCenter() {
     const { t } = useLanguage();
+    const { addBalance, refresh } = useEconomy();
     const [score, setScore] = useState(0);
     const [energy, setEnergy] = useState(100);
     const [clicks, setClicks] = useState<{id: number, x: number, y: number}[]>([]);
@@ -38,6 +40,7 @@ export function GameCenter() {
 
         // Optimistic UI Update
         setScore(prev => prev + 1);
+        addBalance(1); // Update global context immediately
         setEnergy(prev => Math.max(0, prev - 1));
 
         // Visual effect
@@ -54,6 +57,7 @@ export function GameCenter() {
         // Sync with Backend
         try {
             await apiClient.game.action('click');
+            // refresh(); // Optional: ensure exact sync occasionally
         } catch (error) {
             console.error("Sync failed", error);
         }
