@@ -60,7 +60,7 @@ contract GameFi {
 
             // Give reward on level up (10 tokens * new level)
             uint256 rewardAmount = p.level * 10 * 10**18; // Assuming 18 decimals
-
+            
             // Check if contract has enough balance
             if (rewardToken.balanceOf(address(this)) >= rewardAmount) {
                 bool success = rewardToken.transfer(_player, rewardAmount);
