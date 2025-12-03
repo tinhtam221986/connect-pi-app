@@ -5,3 +5,5 @@ dist
 build
 .env
 .env.local
+server.log
+*.log

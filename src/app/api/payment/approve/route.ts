@@ -12,15 +12,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // LẤY API KEY TỪ BIẾN MÔI TRƯỜNG HOẶC ĐIỀN TRỰC TIẾP VÀO ĐÂY (KHÔNG KHUYẾN KHÍCH)
-    // Get API Key from environment variable or paste here (not recommended for production)
-    const PI_API_KEY = process.env.PI_API_KEY || ""; 
+    const PI_API_KEY = process.env.PI_API_KEY;
 
-    if (!PI_API_KEY) {
-      return NextResponse.json(
-        { error: "Server Error: PI_API_KEY is not configured." },
-        { status: 500 }
-      );
+    // MOCK HANDLER
+    if (!PI_API_KEY || paymentId.startsWith('mock_')) {
+        console.warn("Using MOCK Payment Approval");
+        // Return a mock response structure matching Pi Platform
+        return NextResponse.json({
+            paymentId,
+            status: "APPROVED",
+            amount: 100, // Dummy
+            transaction_id: "" // To be filled in complete
+        });
     }
 
     const response = await fetch(

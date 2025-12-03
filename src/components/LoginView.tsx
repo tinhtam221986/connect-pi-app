@@ -2,12 +2,12 @@
 
 import { usePi } from "@/components/pi/pi-provider";
 import { PiNetworkStatus } from "@/components/pi/PiNetworkStatus";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
 
 export default function LoginView() {
-  const { authenticate, isInitialized, error } = usePi();
+  const { authenticate, isInitialized, error, forceMock } = usePi();
   const { t } = useLanguage();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -50,8 +50,17 @@ export default function LoginView() {
         <div className="p-8 space-y-6">
           
           {error && (
-            <div className="p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-200 text-sm flex items-center gap-2">
-              <span className="font-bold">Error:</span> {error}
+            <div className="flex flex-col gap-2">
+                <div
+                    onClick={forceMock}
+                    className="cursor-pointer p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-200 text-sm flex items-center gap-2 hover:bg-red-900/50 transition-colors"
+                >
+                    <AlertTriangle size={16} />
+                    <div>
+                        <span className="font-bold">Error:</span> {error}
+                        <div className="text-xs opacity-70 mt-1">Tap here to force Mock Mode (Dev)</div>
+                    </div>
+                </div>
             </div>
           )}
 
@@ -80,9 +89,18 @@ export default function LoginView() {
             </div>
           </button>
 
-          <p className="text-xs text-center text-gray-500 leading-relaxed">
-            {t('login.footer')}
-          </p>
+          <div className="flex justify-between items-center mt-4">
+             <p className="text-xs text-center text-gray-500 leading-relaxed flex-1">
+                {t('login.footer')}
+             </p>
+             <button
+                onClick={forceMock}
+                className="text-[10px] text-gray-700 hover:text-gray-500"
+                title="Force Mock Mode"
+             >
+                DEV
+             </button>
+          </div>
         </div>
       </div>
       

@@ -6,9 +6,11 @@ import { Hammer, Trophy, Zap, Coins, Gamepad2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
+import { useEconomy } from "@/components/economy/EconomyContext";
 
 export function GameCenter() {
     const { t } = useLanguage();
+    const { addBalance, refresh } = useEconomy();
     const [score, setScore] = useState(0);
     const [energy, setEnergy] = useState(100);
     const [clicks, setClicks] = useState<{id: number, x: number, y: number}[]>([]);
@@ -17,11 +19,15 @@ export function GameCenter() {
     useEffect(() => {
         const loadState = async () => {
             try {
-                const res = await apiClient.game.getState();
-                if (res.success && res.state) {
-                    setScore(res.state.score);
-                    // Use backend energy if provided, or default
-                    if (res.state.energy !== undefined) setEnergy(res.state.energy);
+                // Pass user id explicitly for now since auth might be mocked
+                const res = await apiClient.game.getState('user_current');
+                // Response format from SmartContractService: { score: number, lastActive: string, pets: [], ... }
+                // or the API wrapper: { ... }
+
+                // Check if res itself is the state object
+                if (res && typeof res.score === 'number') {
+                    setScore(res.score);
+                    // SmartContractService doesn't track energy yet, keep local state for now
                 }
             } catch (error) {
                 console.error("Failed to load game state", error);
@@ -38,6 +44,7 @@ export function GameCenter() {
 
         // Optimistic UI Update
         setScore(prev => prev + 1);
+        addBalance(1); // Update global context immediately
         setEnergy(prev => Math.max(0, prev - 1));
 
         // Visual effect
@@ -53,7 +60,8 @@ export function GameCenter() {
 
         // Sync with Backend
         try {
-            await apiClient.game.action('click');
+            // Action 'click' maps to logic in route.ts -> SmartContractService.updateGameState
+            await apiClient.game.action('click', { points: 1 });
         } catch (error) {
             console.error("Sync failed", error);
         }

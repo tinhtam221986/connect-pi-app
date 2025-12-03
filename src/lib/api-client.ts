@@ -45,17 +45,39 @@ export const apiClient = {
     },
   },
   game: {
-    getState: async () => {
-      const res = await fetch('/api/game/state');
+    getState: async (userId?: string) => {
+      const url = userId ? `/api/game/state?userId=${userId}` : '/api/game/state';
+      const res = await fetch(url);
       return res.json();
     },
     action: async (action: string, data?: any) => {
-      const res = await fetch('/api/game/action', {
+      const res = await fetch('/api/game/state', { // Using same route for simple state updates
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...data }),
+        // Add userId to body for mock consistency
+        body: JSON.stringify({ userId: 'user_current', action, data }),
       });
       return res.json();
+    }
+  },
+  feed: {
+    get: async () => {
+      const res = await fetch('/api/feed');
+      return res.json();
+    }
+  },
+  market: {
+    getListings: async () => {
+      const res = await fetch('/api/marketplace/listings');
+      return res.json();
+    },
+    buy: async (itemId: string) => {
+        const res = await fetch('/api/marketplace/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId })
+        });
+        return res.json();
     }
   },
   payment: {
@@ -67,11 +89,11 @@ export const apiClient = {
       });
       return res.json();
     },
-    complete: async (paymentId: string, txid: string) => {
+    complete: async (paymentId: string, txid: string, paymentData?: any) => {
       const res = await fetch("/api/payment/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, txid })
+        body: JSON.stringify({ paymentId, txid, paymentData })
       });
       return res.json();
     }
