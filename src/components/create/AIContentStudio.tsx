@@ -61,19 +61,28 @@ export function AIContentStudio() {
     };
 
     const handleVideoRecorded = async (blob: Blob) => {
+        // Create a local preview URL immediately for the best UX (avoids waiting for upload or Vercel read-only issues)
+        const localPreviewUrl = URL.createObjectURL(blob);
+
         // Upload video to backend
         const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'video/webm' });
         try {
             toast.loading("Uploading video...");
             const res = await apiClient.video.upload(file);
+
             if (res.success) {
                 toast.success("Video uploaded successfully!");
+
+                // Determine the URL to use. If the server returned a mock dog video (Vercel fallback),
+                // we prefer the local blob so the user sees *their* content during this session.
+                // In a real production with Cloudinary, res.url would be the permanent URL.
+                const useLocalUrl = res.url.includes("cloudinary.com/demo") || res.message?.includes("Simulated");
 
                 // Add to local 'My Videos' cache for immediate feedback
                 economy.addVideo({
                     id: res.fileId || `temp_${Date.now()}`,
-                    url: res.url,
-                    thumbnail: res.thumbnail || res.url,
+                    url: useLocalUrl ? localPreviewUrl : res.url,
+                    thumbnail: res.thumbnail || "/placeholder.jpg",
                     createdAt: Date.now(),
                     description: topic || "New Video"
                 });
