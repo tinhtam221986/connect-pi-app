@@ -7,9 +7,11 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
 import { CameraRecorder } from "./CameraRecorder";
+import { useEconomy } from "@/components/economy/EconomyContext";
 
 export function AIContentStudio() {
     const { t } = useLanguage();
+    const economy = useEconomy();
     const [mode, setMode] = useState<'script' | 'record' | 'live'>('script');
     const [topic, setTopic] = useState("");
     const [script, setScript] = useState("");
@@ -66,7 +68,16 @@ export function AIContentStudio() {
             const res = await apiClient.video.upload(file);
             if (res.success) {
                 toast.success("Video uploaded successfully!");
-                // Optionally navigate to feed or show result
+                
+                // Add to local 'My Videos' cache for immediate feedback
+                economy.addVideo({
+                    id: res.fileId || `temp_${Date.now()}`,
+                    url: res.url,
+                    thumbnail: res.thumbnail || res.url,
+                    createdAt: Date.now(),
+                    description: topic || "New Video"
+                });
+
             } else {
                 toast.error("Upload failed: " + res.error);
             }

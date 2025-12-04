@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
 import { MOCK_USERS } from "@/lib/mock-data";
-import { BadgeCheck, Settings, GripVertical, Award, Globe } from "lucide-react";
+import { BadgeCheck, Settings, GripVertical, Award, Globe, Play } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { ThemeCustomizer } from "@/components/ui/theme-customizer";
 import { ProfileFrame } from "./ProfileFrame";
+import { useEconomy } from "@/components/economy/EconomyContext";
 
 export function UserProfile() {
     const { user } = usePi();
+    const { myVideos } = useEconomy();
     const { t, language, setLanguage } = useLanguage();
     const [showSettings, setShowSettings] = useState(false);
 
@@ -96,13 +98,27 @@ export function UserProfile() {
 
              {/* Grid */}
              <div className="grid grid-cols-3 gap-0.5 mt-0.5">
-                 {[1,2,3,4,5,6,7,8,9,10,11,12].map((i) => (
-                     <div key={i} className="aspect-[3/4] bg-gray-900 relative group cursor-pointer hover:opacity-90">
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-700 font-bold group-hover:text-gray-500 transition-colors">
-                            VIDEO
+                 {myVideos.length > 0 ? (
+                     myVideos.map((video) => (
+                         <div key={video.id} className="aspect-[3/4] bg-gray-900 relative group cursor-pointer hover:opacity-90">
+                             {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={video.thumbnail} alt="" className="w-full h-full object-cover" />
+                            <div className="absolute bottom-1 right-1 flex items-center gap-1 text-[10px] text-white font-bold drop-shadow-md">
+                                <Play size={10} fill="currentColor" />
+                                <span>12</span>
+                            </div>
+                         </div>
+                     ))
+                 ) : (
+                    // Empty State or Placeholders
+                    [1,2,3].map((i) => (
+                        <div key={i} className="aspect-[3/4] bg-gray-900 relative group cursor-pointer opacity-30">
+                            <div className="absolute inset-0 flex items-center justify-center text-gray-700 font-bold">
+                                EMPTY
+                            </div>
                         </div>
-                     </div>
-                 ))}
+                    ))
+                 )}
              </div>
         </div>
     )

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X } from "lucide-react";
+import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon, Type, Sticker as StickerIcon } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { VIDEO_FILTERS } from "@/lib/video-filters";
@@ -10,6 +10,25 @@ interface CameraRecorderProps {
     onVideoRecorded?: (blob: Blob) => void;
     script?: string;
 }
+
+interface TextOverlay {
+    id: string;
+    text: string;
+    x: number;
+    y: number;
+    color: string;
+    scale: number;
+}
+
+interface StickerOverlay {
+    id: string;
+    emoji: string;
+    x: number;
+    y: number;
+    scale: number;
+}
+
+const STICKERS = ["🔥", "😂", "❤️", "👍", "🎉", "👀", "💎", "🚀", "🥧"];
 
 export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -23,34 +42,43 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     const [isRecording, setIsRecording] = useState(false);
     const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewType, setPreviewType] = useState<'video' | 'image'>('video');
     const [currentFilter, setCurrentFilter] = useState(VIDEO_FILTERS[0]);
     const [timer, setTimer] = useState(0);
+    const [countdown, setCountdown] = useState(0); 
+    const [useTimer, setUseTimer] = useState(false);
+    const [flashActive, setFlashActive] = useState(false);
+
+    // Overlays
+    const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+    const [stickerOverlays, setStickerOverlays] = useState<StickerOverlay[]>([]);
+    const [showTextInput, setShowTextInput] = useState(false);
+    const [currentText, setCurrentText] = useState("");
+    const [showStickerPicker, setShowStickerPicker] = useState(false);
+
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const animationFrameRef = useRef<number | null>(null);
-
-    // Music State
+    
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Initialize Camera
     const startCamera = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", aspectRatio: 9/16, width: { ideal: 720 } },
+                video: { facingMode: "user", aspectRatio: 9/16, width: { ideal: 720 } }, 
                 audio: true 
             });
-
+            
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.play(); // Ensure it plays for the canvas to capture
+                videoRef.current.play(); 
             }
-
-            // Start the canvas render loop
             drawToCanvas();
 
         } catch (err) {
             console.error("Error accessing camera:", err);
-            toast.error("Could not access camera. Please check permissions.");
         }
     };
 
@@ -70,46 +98,87 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         };
     }, []);
 
-    // Canvas Render Loop (Burns filters in)
     const drawToCanvas = () => {
         if (!videoRef.current || !canvasRef.current) return;
-
+        
         const video = videoRef.current;
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
 
         if (ctx) {
-            // Match canvas size to video
             if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                 canvas.width = video.videoWidth || 360;
                 canvas.height = video.videoHeight || 640;
             }
-
-            // Apply filter
+            
+            // Draw Video
             ctx.filter = currentFilter.filter;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Reset filter for next frame (optional, but good practice)
             ctx.filter = 'none';
-        }
 
+            // Draw Text Overlays
+            textOverlays.forEach(text => {
+                ctx.font = `bold ${30 * text.scale}px sans-serif`;
+                ctx.fillStyle = text.color;
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.textAlign = 'center';
+                ctx.strokeText(text.text, text.x, text.y);
+                ctx.fillText(text.text, text.x, text.y);
+            });
+
+            // Draw Sticker Overlays
+            stickerOverlays.forEach(sticker => {
+                ctx.font = `${50 * sticker.scale}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(sticker.emoji, sticker.x, sticker.y);
+            });
+        }
         animationFrameRef.current = requestAnimationFrame(drawToCanvas);
     };
 
-    // Handle Music Upload
+    const handleAddText = () => {
+        if (currentText.trim()) {
+            setTextOverlays([...textOverlays, {
+                id: Date.now().toString(),
+                text: currentText,
+                x: canvasRef.current ? canvasRef.current.width / 2 : 180,
+                y: canvasRef.current ? canvasRef.current.height / 2 : 320,
+                color: 'white',
+                scale: 1.5
+            }]);
+            setCurrentText("");
+            setShowTextInput(false);
+        }
+    };
+
+    const handleAddSticker = (emoji: string) => {
+        setStickerOverlays([...stickerOverlays, {
+            id: Date.now().toString(),
+            emoji: emoji,
+            x: canvasRef.current ? canvasRef.current.width / 2 : 180,
+            y: canvasRef.current ? canvasRef.current.height / 2 : 320,
+            scale: 2.0
+        }]);
+        setShowStickerPicker(false);
+    };
+
+    // Very basic drag logic for overlays (this updates the state which updates the canvas draw)
+    // For simplicity in this iteration, we place them center. Real drag requires mouse listeners on canvas.
+    // We will add random jitter to position to avoid overlap if multiple added.
+    
     const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setAudioFile(file);
             const url = URL.createObjectURL(file);
             setAudioPreviewUrl(url);
-
-            // Setup Audio Context for mixing
+            
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
             }
-
-            // Create audio element for playback
+            
             if (backgroundAudioRef.current) {
                  backgroundAudioRef.current.src = url;
             } else {
@@ -117,7 +186,6 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                  audio.loop = true;
                  backgroundAudioRef.current = audio;
             }
-
             toast.success("Music added! It will play when recording.");
         }
     };
@@ -131,54 +199,84 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         }
     };
 
-    // Handle Recording
-    const startRecording = () => {
+    const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+             const url = URL.createObjectURL(file);
+             setPreviewUrl(url);
+             
+             if (file.type.startsWith('image/')) {
+                 setPreviewType('image');
+                 toast.success("Image uploaded!");
+             } else {
+                 setPreviewType('video');
+                 toast.success("Video uploaded!");
+             }
+
+             const blob = new Blob([file], { type: file.type });
+             setRecordedChunks([blob]); 
+             if (onVideoRecorded) {
+                 onVideoRecorded(blob);
+             }
+        }
+    };
+
+    const startRecording = async () => {
         if (!canvasRef.current) return;
 
+        if (useTimer) {
+            setCountdown(3);
+            const countInterval = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(countInterval);
+                        performStartRecording();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            performStartRecording();
+        }
+    };
+
+    const performStartRecording = () => {
+        if (!canvasRef.current) return;
+        setFlashActive(true);
+        setTimeout(() => setFlashActive(false), 200);
+
         setRecordedChunks([]);
-        
-        // 1. Get Video Stream from Canvas (Burned Filters)
-        const canvasStream = canvasRef.current.captureStream(30); // 30 FPS
-        
-        // 2. Get Audio Stream
+        const canvasStream = canvasRef.current.captureStream(30);
         let finalAudioStream: MediaStream;
 
-        // If we have music, we need to mix microphone + music
         if (audioFile && backgroundAudioRef.current && audioContextRef.current) {
              const ctx = audioContextRef.current;
              const dest = ctx.createMediaStreamDestination();
              destinationRef.current = dest;
 
-             // Mic Source
              if (videoRef.current && videoRef.current.srcObject) {
                  const micStream = videoRef.current.srcObject as MediaStream;
                  const micSource = ctx.createMediaStreamSource(micStream);
                  micSource.connect(dest);
              }
 
-             // Music Source
-             // Note: Creating element source only once
              if (!sourceNodeRef.current) {
                  sourceNodeRef.current = ctx.createMediaElementSource(backgroundAudioRef.current);
              }
-             // Connect music to destination AND speakers (so user can hear it)
              sourceNodeRef.current.connect(dest);
              sourceNodeRef.current.connect(ctx.destination);
-
-             // Play music
              backgroundAudioRef.current.play();
 
              finalAudioStream = dest.stream;
         } else {
-             // Just use Mic
              const stream = videoRef.current?.srcObject as MediaStream;
              finalAudioStream = stream;
         }
 
-        // Combine Video + Audio
         const tracks = [
             ...canvasStream.getVideoTracks(),
-            ...finalAudioStream.getAudioTracks()
+            ...(finalAudioStream ? finalAudioStream.getAudioTracks() : [])
         ];
         const combinedStream = new MediaStream(tracks);
         
@@ -193,9 +291,7 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
             };
 
             mediaRecorder.onstop = () => {
-                 // Stop timer
                  if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-                 // Stop music
                  if (backgroundAudioRef.current) {
                      backgroundAudioRef.current.pause();
                      backgroundAudioRef.current.currentTime = 0;
@@ -226,6 +322,7 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         if (onVideoRecorded) {
             onVideoRecorded(blob);
         }
+        setPreviewType('video');
         setPreviewUrl(URL.createObjectURL(blob));
     };
 
@@ -233,7 +330,9 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         setRecordedChunks([]);
         setPreviewUrl(null);
         setTimer(0);
-        // Music resets automatically in onStop
+        setPreviewType('video');
+        setTextOverlays([]);
+        setStickerOverlays([]);
     };
 
     const formatTime = (seconds: number) => {
@@ -245,32 +344,83 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     return (
         <div className="relative w-full h-full flex flex-col items-center bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
             
-            {/* Hidden Video Source (Raw) */}
             <video ref={videoRef} autoPlay playsInline muted className="hidden" />
 
-            {/* Canvas Preview (Filtered) or Result Video */}
             <div className="relative w-full flex-1 bg-gray-900 flex items-center justify-center overflow-hidden">
+                <AnimatePresence>
+                    {flashActive && (
+                        <motion.div 
+                            initial={{ opacity: 0.8 }} 
+                            animate={{ opacity: 0 }} 
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-white z-50 pointer-events-none"
+                        />
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {countdown > 0 && (
+                        <motion.div 
+                            key={countdown}
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1.5, opacity: 1 }}
+                            exit={{ scale: 2, opacity: 0 }}
+                            className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none"
+                        >
+                            <span className="text-9xl font-bold text-white drop-shadow-2xl">{countdown}</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {!previewUrl ? (
-                    <canvas
-                        ref={canvasRef}
-                        className="w-full h-full object-cover"
-                    />
+                    <canvas ref={canvasRef} className="w-full h-full object-cover" />
                 ) : (
-                    <video
-                        src={previewUrl}
-                        controls
-                        className="w-full h-full object-cover"
-                    />
+                    previewType === 'video' ? (
+                        <video src={previewUrl} controls className="w-full h-full object-cover" />
+                    ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={previewUrl} alt="Preview" className="w-full h-full object-contain bg-black" />
+                    )
                 )}
 
-                {/* Script Teleprompter Overlay */}
+                {/* Text Input Modal */}
+                {showTextInput && (
+                    <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
+                        <input 
+                            autoFocus
+                            value={currentText}
+                            onChange={(e) => setCurrentText(e.target.value)}
+                            className="bg-transparent text-white text-3xl font-bold text-center outline-none border-b-2 border-purple-500 w-full mb-4"
+                            placeholder="Type something..."
+                        />
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowTextInput(false)} className="px-4 py-2 bg-gray-600 rounded-full text-white">Cancel</button>
+                            <button onClick={handleAddText} className="px-4 py-2 bg-purple-600 rounded-full text-white font-bold">Add Text</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Sticker Picker */}
+                {showStickerPicker && (
+                    <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                        <div className="bg-gray-800 p-4 rounded-xl grid grid-cols-3 gap-4">
+                            {STICKERS.map(emoji => (
+                                <button key={emoji} onClick={() => handleAddSticker(emoji)} className="text-4xl hover:scale-125 transition-transform">
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={() => setShowStickerPicker(false)} className="absolute bottom-10 px-4 py-2 bg-gray-600 rounded-full text-white">Close</button>
+                    </div>
+                )}
+
+                {/* Script Overlay */}
                 {script && !previewUrl && (
                     <div className="absolute top-10 left-4 right-4 bg-black/40 backdrop-blur-sm p-4 rounded-xl text-white text-lg font-medium leading-relaxed max-h-48 overflow-y-auto z-20 pointer-events-none border border-white/10 shadow-lg">
                         {script}
                     </div>
                 )}
 
-                {/* Filter Name Toast */}
                 <AnimatePresence>
                     <motion.div 
                         key={currentFilter.name}
@@ -283,7 +433,6 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                     </motion.div>
                 </AnimatePresence>
 
-                 {/* Music Indicator */}
                  {audioFile && (
                     <div className="absolute top-4 right-4 bg-purple-500/80 backdrop-blur px-3 py-1 rounded-full text-xs flex items-center gap-1 text-white z-30">
                         <Music size={12} />
@@ -293,19 +442,48 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 )}
             </div>
 
-            {/* Controls */}
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex flex-col items-center gap-6 z-30">
                 
-                {/* Timer */}
                 {isRecording && (
                     <div className="text-red-500 font-mono font-bold text-xl animate-pulse">
                         {formatTime(timer)}
                     </div>
                 )}
 
-                {/* Filter Selector */}
                 {!isRecording && !previewUrl && (
-                    <div className="flex gap-4 overflow-x-auto w-full px-4 pb-2 no-scrollbar justify-center">
+                    <div className="flex gap-4 overflow-x-auto w-full px-4 pb-2 no-scrollbar justify-start md:justify-center">
+                         <button 
+                            onClick={() => setUseTimer(!useTimer)}
+                            className={`flex flex-col items-center gap-1 shrink-0 group px-2 border-r border-gray-700 mr-2`}
+                        >
+                             <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${useTimer ? 'border-blue-500 bg-blue-500/20 text-blue-400' : 'border-gray-600 text-gray-400'}`}>
+                                <span className="text-xs font-bold">3s</span>
+                            </div>
+                            <span className="text-[10px] uppercase font-bold text-gray-400">Timer</span>
+                        </button>
+
+                        {/* Text Tool */}
+                         <button 
+                            onClick={() => setShowTextInput(true)}
+                            className={`flex flex-col items-center gap-1 shrink-0 group mr-2`}
+                        >
+                             <div className="w-12 h-12 rounded-full border-2 border-gray-600 flex items-center justify-center text-white bg-gray-800">
+                                <Type size={20} />
+                            </div>
+                            <span className="text-[10px] uppercase font-bold text-gray-400">Text</span>
+                        </button>
+
+                        {/* Sticker Tool */}
+                        <button 
+                            onClick={() => setShowStickerPicker(true)}
+                            className={`flex flex-col items-center gap-1 shrink-0 group mr-4`}
+                        >
+                             <div className="w-12 h-12 rounded-full border-2 border-gray-600 flex items-center justify-center text-white bg-gray-800">
+                                <StickerIcon size={20} />
+                            </div>
+                            <span className="text-[10px] uppercase font-bold text-gray-400">Sticker</span>
+                        </button>
+
                         {VIDEO_FILTERS.map((filter) => (
                             <button
                                 key={filter.name}
@@ -321,31 +499,32 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                     </div>
                 )}
 
-                {/* Main Action Buttons */}
                 <div className="flex items-center gap-8">
                     {previewUrl ? (
                         <>
                             <button onClick={handleRetake} className="p-4 bg-gray-800 rounded-full hover:bg-gray-700 transition">
                                 <RefreshCcw size={24} className="text-white" />
                             </button>
-                            <button onClick={() => { if(onVideoRecorded && recordedChunks.length) onVideoRecorded(new Blob(recordedChunks, { type: 'video/webm' })); toast.success("Video saved!") }} className="p-4 bg-purple-600 rounded-full hover:bg-purple-500 transition shadow-lg shadow-purple-900/50">
+                            <button onClick={() => { if(onVideoRecorded && recordedChunks.length) onVideoRecorded(new Blob(recordedChunks, { type: 'video/webm' })); toast.success("Content saved!") }} className="p-4 bg-purple-600 rounded-full hover:bg-purple-500 transition shadow-lg shadow-purple-900/50">
                                 <Check size={32} className="text-white" />
                             </button>
                         </>
                     ) : (
                         <>
-                             {/* Music Button */}
                              {!isRecording && (
-                                <div className="relative">
-                                    <input
-                                        type="file"
-                                        accept="audio/*"
-                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                        onChange={handleMusicUpload}
-                                    />
-                                    <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
-                                        <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
-                                    </button>
+                                <div className="relative flex flex-col items-center gap-2">
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            accept="audio/*" 
+                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            onChange={handleMusicUpload}
+                                        />
+                                        <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+                                            <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
+                                        </button>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-400">Sound</span>
                                 </div>
                             )}
 
@@ -365,8 +544,25 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                                 </button>
                             )}
 
-                             {/* Placeholder to balance layout */}
-                             {!isRecording && <div className="w-12" />}
+                             {!isRecording && (
+                                 <div className="flex flex-col items-center gap-2">
+                                     <button 
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
+                                     >
+                                         <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
+                                         <ImageIcon size={16} className="absolute text-white drop-shadow" />
+                                     </button>
+                                     <input 
+                                        type="file"
+                                        ref={fileInputRef}
+                                        accept="video/*,image/*"
+                                        className="hidden"
+                                        onChange={handleGalleryUpload}
+                                     />
+                                     <span className="text-[10px] font-bold text-gray-400">Upload</span>
+                                 </div>
+                             )} 
                         </>
                     )}
                 </div>

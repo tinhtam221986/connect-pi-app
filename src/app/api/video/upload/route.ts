@@ -79,7 +79,7 @@ async function uploadToLocal(file: File) {
     console.log(`Video uploaded locally to: ${filePath}`);
 
     const publicUrl = `/uploads/${fileName}`;
-
+    
     return {
         success: true,
         url: publicUrl,

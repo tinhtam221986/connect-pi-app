@@ -184,7 +184,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       };
 
       const authPromise = window.Pi.authenticate(scopes, onIncompletePaymentFound);
-
+      
       // Increased timeout to 120s for slow mobile networks
       const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error("Authentication timed out (120s).")), 120000)
@@ -197,17 +197,33 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       // Verify with backend
       try {
         const verifyRes = await apiClient.auth.verify(auth.accessToken);
+        
         if (verifyRes.success) {
            addLog("Backend verification success.");
            if (verifyRes.user) {
                auth.user = { ...auth.user, ...verifyRes.user };
            }
+        } else if (verifyRes.code === 'NO_API_KEY') {
+            addLog("CRITICAL: Missing PI_API_KEY on server.");
+            toast.error("SETUP REQUIRED: Missing PI_API_KEY on server.", {
+                description: "Real connection requires an API Key in Vercel/Env.",
+                duration: 10000,
+            });
+            setError("Server Misconfiguration: Missing PI_API_KEY");
+            // We DO NOT set local user if server is misconfigured for Real Connection request
+            // unless we are in explicit mock mode? 
+            // The prompt asks to "fix login errors", usually blocking login helps realize the issue.
+            // But to be safe for testing, we will warn but PROCEED if it's a mock token.
+            if (!auth.accessToken.startsWith('mock_')) {
+                 return; 
+            }
         } else {
-            addLog(`Backend verification warning: ${verifyRes.error}`);
-            toast.warning("Backend sync failed. Running in offline mode.");
+            addLog(`Backend Verification FAILED: ${verifyRes.error}`);
+            toast.error(`Login Error: ${verifyRes.error || "Verification failed"}.`);
+            setError(`Backend Verify Failed: ${verifyRes.error}`);
         }
-      } catch (backendErr) {
-          addLog("Backend connection error.");
+      } catch (backendErr: any) {
+          addLog(`Backend connection error: ${backendErr.message}`);
           toast.warning("Backend unreachable. Features limited.");
       }
 
