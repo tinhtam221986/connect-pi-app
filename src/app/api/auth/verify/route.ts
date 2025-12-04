@@ -11,6 +11,20 @@ export async function POST(request: Request) {
 
     // 0. Check for Server Configuration
     const apiKey = process.env.PI_API_KEY;
+
+    // Check if it's a mock token first to allow local dev without keys
+    if (accessToken.startsWith('mock_')) {
+        return NextResponse.json({
+            success: true,
+            user: {
+                uid: "mock_uid_" + Math.random().toString(36).substring(7),
+                username: "Chrome_Tester",
+                roles: ["user", "tester"]
+            },
+            message: 'Verified via Mock System'
+        });
+    }
+
     if (!apiKey) {
          // Special error code so frontend can warn the developer
          return NextResponse.json({
@@ -41,33 +55,14 @@ export async function POST(request: Request) {
                 message: 'Verified with Pi Network'
             });
         } else {
-             // Only log if it's not a known mock token
-             if (!accessToken.startsWith('mock_')) {
-                 console.warn("Pi Network Verify Failed:", piResponse.status, await piResponse.text());
-             }
+             const errorText = await piResponse.text();
+             console.warn("Pi Network Verify Failed:", piResponse.status, errorText);
+             return NextResponse.json({ error: `Pi Verification Failed: ${piResponse.status} - ${errorText}` }, { status: 401 });
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Pi Network Verification Connection Error:", e);
+        return NextResponse.json({ error: 'Pi Network Unreachable: ' + e.message }, { status: 502 });
     }
-
-    // 2. Fallback / Mock Logic (for Development/Review)
-    // If real verification failed, check if it's a valid mock token or we are in dev mode
-    // We treat any token starting with 'mock_' as valid for dev.
-    
-    if (accessToken.startsWith('mock_')) {
-        return NextResponse.json({
-            success: true,
-            user: {
-                uid: "mock_uid_" + Math.random().toString(36).substring(7),
-                username: "Chrome_Tester",
-                roles: ["user", "tester"]
-            },
-            message: 'Verified via Mock System'
-        });
-    }
-
-    // If we are here, it's neither a valid real token nor a mock token.
-    return NextResponse.json({ error: 'Invalid authentication token. Real verification failed and token is not a mock.' }, { status: 401 });
 
   } catch (error) {
     console.error("Auth API Error:", error);

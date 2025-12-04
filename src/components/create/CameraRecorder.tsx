@@ -1,15 +1,43 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon } from "lucide-react";
+import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon, Type, Sticker as StickerIcon, Clapperboard, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { VIDEO_FILTERS } from "@/lib/video-filters";
 
 interface CameraRecorderProps {
     onVideoRecorded?: (blob: Blob) => void;
     script?: string;
 }
+
+interface TextOverlay {
+    id: string;
+    text: string;
+    x: number;
+    y: number;
+    color: string;
+    scale: number;
+}
+
+interface StickerOverlay {
+    id: string;
+    emoji: string;
+    x: number;
+    y: number;
+    scale: number;
+}
+
+const STICKERS = ["🔥", "😂", "❤️", "👍", "🎉", "👀", "💎", "🚀", "🥧", "😻", "🎀", "💩", "🦄", "🌈", "⚡", "👽", "💸", "🍔"];
+
+const VIDEO_FILTERS = [
+    { name: "Normal", filter: "none", overlay: null },
+    { name: "Kawaii", filter: "saturate(1.2) contrast(1.1) brightness(1.1) hue-rotate(-10deg)", overlay: "sparkle" },
+    { name: "Mono", filter: "grayscale(100%) contrast(1.2)", overlay: null },
+    { name: "Retro", filter: "sepia(50%) contrast(0.9) noise(0.2)", overlay: "grain" },
+    { name: "Cyber", filter: "hue-rotate(180deg) saturate(2) contrast(1.2)", overlay: "glitch" },
+    { name: "Cinema", filter: "contrast(1.1) saturate(0.9)", overlay: "letterbox" },
+    { name: "News", filter: "none", overlay: "news" },
+];
 
 export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -23,12 +51,19 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     const [isRecording, setIsRecording] = useState(false);
     const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [previewType, setPreviewType] = useState<'video' | 'image'>('video'); // Track content type
+    const [previewType, setPreviewType] = useState<'video' | 'image'>('video');
     const [currentFilter, setCurrentFilter] = useState(VIDEO_FILTERS[0]);
     const [timer, setTimer] = useState(0);
     const [countdown, setCountdown] = useState(0);
     const [useTimer, setUseTimer] = useState(false);
     const [flashActive, setFlashActive] = useState(false);
+
+    // Overlays
+    const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+    const [stickerOverlays, setStickerOverlays] = useState<StickerOverlay[]>([]);
+    const [showTextInput, setShowTextInput] = useState(false);
+    const [currentText, setCurrentText] = useState("");
+    const [showStickerPicker, setShowStickerPicker] = useState(false);
 
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const animationFrameRef = useRef<number | null>(null);
@@ -37,6 +72,13 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Asset Loading for Filters
+    const [newsBanner, setNewsBanner] = useState<HTMLImageElement | null>(null);
+
+    useEffect(() => {
+        // Preload "News" banner if needed (using a simple drawn shape instead of image for reliability)
+    }, []);
 
     const startCamera = async () => {
         try {
@@ -53,7 +95,7 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
 
         } catch (err) {
             console.error("Error accessing camera:", err);
-            // Don't toast error immediately to avoid annoying user if they just want to upload
+            toast.error("Camera access denied or unavailable.");
         }
     };
 
@@ -85,11 +127,95 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 canvas.width = video.videoWidth || 360;
                 canvas.height = video.videoHeight || 640;
             }
+
+            // 1. Draw Video Base
             ctx.filter = currentFilter.filter;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.filter = 'none';
+
+            // 2. Draw Filter Overlays
+            if (currentFilter.overlay === "letterbox") {
+                const barHeight = canvas.height * 0.1;
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, canvas.width, barHeight);
+                ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+            } else if (currentFilter.overlay === "news") {
+                // Draw News Banner
+                const barHeight = 80;
+                const y = canvas.height - 120;
+                ctx.fillStyle = "rgba(200, 0, 0, 0.9)";
+                ctx.fillRect(0, y, canvas.width, barHeight);
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 24px Arial";
+                ctx.textAlign = "left";
+                ctx.fillText("BREAKING NEWS: LIVE ON CONNECT", 20, y + 50);
+
+                // Ticker
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(0, y + barHeight, canvas.width, 40);
+                ctx.fillStyle = "#fbbf24"; // Amber
+                ctx.font = "16px monospace";
+                const time = new Date().toLocaleTimeString();
+                ctx.fillText(`MARKET: PI UP 500% 🚀 | TIME: ${time}`, 20, y + barHeight + 25);
+            } else if (currentFilter.overlay === "sparkle") {
+                // Simple randomized sparkles
+                if (Math.random() > 0.8) {
+                     const x = Math.random() * canvas.width;
+                     const y = Math.random() * canvas.height;
+                     ctx.fillStyle = "white";
+                     ctx.beginPath();
+                     ctx.arc(x, y, Math.random() * 3, 0, Math.PI * 2);
+                     ctx.fill();
+                }
+            }
+
+            // 3. Draw Text Overlays
+            textOverlays.forEach(text => {
+                ctx.font = `bold ${30 * text.scale}px sans-serif`;
+                ctx.fillStyle = text.color;
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.textAlign = 'center';
+                ctx.strokeText(text.text, text.x, text.y);
+                ctx.fillText(text.text, text.x, text.y);
+            });
+
+            // 4. Draw Sticker Overlays
+            stickerOverlays.forEach(sticker => {
+                ctx.font = `${50 * sticker.scale}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(sticker.emoji, sticker.x, sticker.y);
+            });
         }
         animationFrameRef.current = requestAnimationFrame(drawToCanvas);
+    };
+
+    const handleAddText = () => {
+        if (currentText.trim()) {
+            setTextOverlays([...textOverlays, {
+                id: Date.now().toString(),
+                text: currentText,
+                x: canvasRef.current ? canvasRef.current.width / 2 : 180,
+                y: canvasRef.current ? canvasRef.current.height / 2 : 320,
+                color: 'white',
+                scale: 1.5
+            }]);
+            setCurrentText("");
+            setShowTextInput(false);
+        }
+    };
+
+    const handleAddSticker = (emoji: string) => {
+        setStickerOverlays([...stickerOverlays, {
+            id: Date.now().toString(),
+            emoji: emoji,
+            x: canvasRef.current ? canvasRef.current.width / 2 : 180,
+            y: canvasRef.current ? canvasRef.current.height / 2 : 320,
+            scale: 2.0
+        }]);
+        setShowStickerPicker(false);
     };
 
     const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +255,6 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
              const url = URL.createObjectURL(file);
              setPreviewUrl(url);
 
-             // Detect type
              if (file.type.startsWith('image/')) {
                  setPreviewType('image');
                  toast.success("Image uploaded!");
@@ -256,6 +381,8 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         setPreviewUrl(null);
         setTimer(0);
         setPreviewType('video');
+        setTextOverlays([]);
+        setStickerOverlays([]);
     };
 
     const formatTime = (seconds: number) => {
@@ -306,6 +433,38 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                     )
                 )}
 
+                {/* Text Input Modal */}
+                {showTextInput && (
+                    <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
+                        <input
+                            autoFocus
+                            value={currentText}
+                            onChange={(e) => setCurrentText(e.target.value)}
+                            className="bg-transparent text-white text-3xl font-bold text-center outline-none border-b-2 border-purple-500 w-full mb-4"
+                            placeholder="Type something..."
+                        />
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowTextInput(false)} className="px-4 py-2 bg-gray-600 rounded-full text-white">Cancel</button>
+                            <button onClick={handleAddText} className="px-4 py-2 bg-purple-600 rounded-full text-white font-bold">Add Text</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Sticker Picker */}
+                {showStickerPicker && (
+                    <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                        <div className="bg-gray-800 p-4 rounded-xl grid grid-cols-4 gap-4 max-h-[60%] overflow-y-auto">
+                            {STICKERS.map(emoji => (
+                                <button key={emoji} onClick={() => handleAddSticker(emoji)} className="text-4xl hover:scale-125 transition-transform">
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={() => setShowStickerPicker(false)} className="absolute bottom-10 px-4 py-2 bg-gray-600 rounded-full text-white">Close</button>
+                    </div>
+                )}
+
+                {/* Script Overlay */}
                 {script && !previewUrl && (
                     <div className="absolute top-10 left-4 right-4 bg-black/40 backdrop-blur-sm p-4 rounded-xl text-white text-lg font-medium leading-relaxed max-h-48 overflow-y-auto z-20 pointer-events-none border border-white/10 shadow-lg">
                         {script}
@@ -318,8 +477,10 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute top-4 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white z-30"
+                        className="absolute top-4 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white z-30 flex items-center gap-2"
                     >
+                        {currentFilter.name === 'Kawaii' && <Sparkles size={12} className="text-pink-400"/>}
+                        {currentFilter.name === 'News' && <Clapperboard size={12} className="text-red-400"/>}
                         {currentFilter.name}
                     </motion.div>
                 </AnimatePresence>
@@ -351,6 +512,28 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                                 <span className="text-xs font-bold">3s</span>
                             </div>
                             <span className="text-[10px] uppercase font-bold text-gray-400">Timer</span>
+                        </button>
+
+                        {/* Text Tool */}
+                         <button
+                            onClick={() => setShowTextInput(true)}
+                            className={`flex flex-col items-center gap-1 shrink-0 group mr-2`}
+                        >
+                             <div className="w-12 h-12 rounded-full border-2 border-gray-600 flex items-center justify-center text-white bg-gray-800">
+                                <Type size={20} />
+                            </div>
+                            <span className="text-[10px] uppercase font-bold text-gray-400">Text</span>
+                        </button>
+
+                        {/* Sticker Tool */}
+                        <button
+                            onClick={() => setShowStickerPicker(true)}
+                            className={`flex flex-col items-center gap-1 shrink-0 group mr-4`}
+                        >
+                             <div className="w-12 h-12 rounded-full border-2 border-gray-600 flex items-center justify-center text-white bg-gray-800">
+                                <StickerIcon size={20} />
+                            </div>
+                            <span className="text-[10px] uppercase font-bold text-gray-400">Sticker</span>
                         </button>
 
                         {VIDEO_FILTERS.map((filter) => (

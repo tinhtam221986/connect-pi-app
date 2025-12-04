@@ -19,6 +19,9 @@ export async function POST(request: Request) {
             console.log("Cloudinary detected. Uploading...");
             try {
                 const url = await uploadToCloudinary(file);
+                // In a real app, we would save the URL to the DB here.
+                // For now, we return it, and the client calls the create post endpoint.
+
                 return NextResponse.json({
                     success: true,
                     url: url,

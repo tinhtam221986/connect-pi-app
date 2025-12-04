@@ -79,6 +79,26 @@ function VideoPost({ video }: any) {
 
   const handleGift = () => {
       toast.success(`Sent 1 Pi to @${video.author}! 🎁`);
+      // Trigger confetti or similar effect here
+  }
+
+  const handleShare = async () => {
+      if (navigator.share) {
+          try {
+              await navigator.share({
+                  title: `Watch @${video.author} on CONNECT`,
+                  text: video.description,
+                  url: window.location.href // In a real app, this would be a deep link
+              });
+              toast.success("Shared successfully!");
+          } catch (err) {
+              console.log("Share cancelled");
+          }
+      } else {
+          // Fallback
+          navigator.clipboard.writeText(window.location.href);
+          toast.success("Link copied to clipboard!");
+      }
   }
 
   const handleVideoClick = (e: React.MouseEvent) => {
@@ -170,7 +190,7 @@ function VideoPost({ video }: any) {
         </div>
 
         <div className="flex flex-col items-center gap-1">
-            <Share2 size={32} className="text-white drop-shadow-lg cursor-pointer hover:text-green-500 transition-colors" />
+            <Share2 size={32} className="text-white drop-shadow-lg cursor-pointer hover:text-green-500 transition-colors" onClick={handleShare} />
             <span className="text-xs font-bold drop-shadow-lg">{video.shares}</span>
         </div>
 

@@ -1,151 +1,105 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 export default function WhitepaperPage() {
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/profile" className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
-                    <ArrowLeft className="text-white" />
-                </Link>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
-                    CONNECT Whitepaper
-                </h1>
-            </div>
-
-            <Card className="bg-gray-900 border-gray-800">
-                <CardHeader>
-                    <CardTitle className="text-2xl text-purple-400">
-                        DỰ ÁN "CONNECT": PHÁC THẢO SÁCH TRẮNG BAN ĐẦU
-                    </CardTitle>
-                    <p className="text-gray-400 italic">
-                        Web3 Social: Kiến tạo Vũ trụ Phi tập trung cho Sáng tạo, Kết nối và Kinh tế Mở trên Pi Network.
-                    </p>
-                </CardHeader>
-                <CardContent className="prose prose-invert max-w-none space-y-6 text-gray-300 leading-relaxed">
-
-                    <section>
-                        <h3 className="text-xl font-bold text-white mb-2">Tóm tắt Dự án</h3>
-                        <p>
-                            CONNECT là một siêu ứng dụng mạng xã hội video ngắn Web3 thế hệ mới, được thiết kế để trao quyền tối đa cho người dùng.
-                            Tích hợp sâu với hệ sinh thái Pi Network, CONNECT cung cấp một nền tảng toàn diện cho sáng tạo nội dung,
-                            thương mại điện tử phi tập trung, giải trí GameFi, và kết nối cộng đồng, tất cả được hỗ trợ bởi Trí tuệ Nhân tạo và công nghệ blockchain.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h3 className="text-xl font-bold text-white mb-2">1. Nền tảng Công nghệ & Trải nghiệm Người dùng Cốt lõi</h3>
-                        <ul className="list-disc pl-5 space-y-2">
-                            <li>
-                                <strong className="text-purple-300">Kiến trúc Next.js (App Router):</strong>
-                                Nền tảng phát triển tiên tiến, đảm bảo hiệu suất, khả năng mở rộng, SEO và trải nghiệm di động mượt mà. PWA Ready.
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Thiết kế Giao diện Tùy chỉnh (Full UI Customization):</strong>
-                                Người dùng có toàn quyền tùy chỉnh bảng màu, phông chữ, và hình nền. Marketplace nội bộ cho phép mua bán Themes.
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Tối ưu Di động & Pi Browser:</strong>
-                                Thiết kế "mobile-first", hoạt động hoàn hảo trong môi trường Pi Browser.
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Trạng thái Kết nối Pi SDK Tường minh:</strong>
-                                Hiển thị rõ ràng quá trình kết nối với Pi Network ("Đang tìm kiếm...", "Đã kết nối").
-                            </li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h3 className="text-xl font-bold text-white mb-2">2. Quản lý Tài khoản & Bảo mật (Đăng ký & Tuân thủ)</h3>
-                        <ul className="list-disc pl-5 space-y-2">
-                            <li>
-                                <strong className="text-purple-300">Đăng nhập Bằng Pi Network:</strong>
-                                Bắt buộc liên kết tài khoản Pi. Hỗ trợ cả người dùng chưa có ví Mainnet (khuyến khích KYC).
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Tuân thủ Chính sách Pi Core Team:</strong>
-                                Nghiêm ngặt tuân thủ KYC, chống rửa tiền (AML), và các quy định về tokenomics.
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Xác minh Tiên tiến (Enhanced Verification):</strong>
-                                Tích hợp kết quả KYC từ Pi. Hỗ trợ 2FA và xác minh sinh trắc học.
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Quét Vi Phạm (Content Moderation):</strong>
-                                AI tự động quét nội dung vi phạm (bạo lực, 18+, lừa đảo). Hệ thống báo cáo từ cộng đồng.
-                            </li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h3 className="text-xl font-bold text-white mb-2">3. Tích hợp Đa dạng & Sáng tạo với AI</h3>
-                        <ul className="list-disc pl-5 space-y-2">
-                            <li>
-                                <strong className="text-purple-300">AI Creation Studio:</strong>
-                                Công cụ biên tập video thông minh, tự động cắt ghép, thêm hiệu ứng, phụ đề. Trợ lý AI lên ý tưởng kịch bản.
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Hệ thống Quà tặng 3D & Emoji:</strong>
-                                Bộ sưu tập icon Pi độc quyền và quà tặng 3D động hiển thị tức thì trên màn hình livestream.
-                            </li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h3 className="text-xl font-bold text-white mb-2">4. Mô hình Kinh tế Pi & Tương tác Cộng đồng</h3>
-                        <ul className="list-disc pl-5 space-y-2">
-                            <li>
-                                <strong className="text-purple-300">Điểm danh (Daily Rewards):</strong>
-                                Nhận token tiện ích và quyền lợi khi điểm danh hàng ngày (Streak Bonus).
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Marketplace Phi tập trung:</strong>
-                                Creator Storefronts cho phép bán sản phẩm vật lý/số bằng Pi. Hỗ trợ Tiếp thị liên kết (Affiliate).
-                            </li>
-                            <li>
-                                <strong className="text-purple-300">Live Streaming Battles:</strong>
-                                Thi đấu trực tiếp, PK giữa các Creator với sự ủng hộ (Donate/Boost) từ khán giả.
-                            </li>
-                             <li>
-                                <strong className="text-purple-300">GameFi Ecosystem:</strong>
-                                Tích hợp game Play-to-Earn bên thứ 3.
-                            </li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h3 className="text-xl font-bold text-white mb-2">5. Cá nhân hóa & CONNECT AI Assistant</h3>
-                        <p>
-                            Chatbot AI với giao diện Hologram, có thể di chuyển tự do trên màn hình. Hỗ trợ giải đáp thông tin và tương tác thông minh.
-                            Khung Avatar phân cấp theo mức độ cống hiến.
-                        </p>
-                    </section>
-
-                    <section className="bg-red-950/30 p-4 rounded-lg border border-red-900/50">
-                        <h3 className="text-xl font-bold text-red-400 mb-2">6. Miễn Trừ Trách Nhiệm (Disclaimer)</h3>
-                        <ul className="list-disc pl-5 space-y-2 text-sm text-gray-400">
-                            <li>
-                                <strong>Tính chất Thử nghiệm:</strong> CONNECT đang chạy trên Pi Testnet. Mọi giá trị Pi Coin chỉ mang tính minh họa.
-                            </li>
-                            <li>
-                                <strong>Không phải Lời khuyên Tài chính:</strong> Thông tin không cấu thành lời khuyên đầu tư.
-                            </li>
-                            <li>
-                                <strong>Rủi ro:</strong> Tham gia Web3 luôn tiềm ẩn rủi ro kỹ thuật và pháp lý. Người dùng tự chịu trách nhiệm về hành động của mình.
-                            </li>
-                        </ul>
-                    </section>
-
-                </CardContent>
-            </Card>
+    <div className="min-h-screen bg-black text-white p-4 pb-24">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+            <Link href="/" className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+                <ArrowLeft size={24} />
+            </Link>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                Sách Trắng (Whitepaper)
+            </h1>
         </div>
+
+        <Card className="bg-gray-900 border-purple-500/30">
+          <CardContent className="p-6 md:p-10 space-y-8 text-gray-200 leading-relaxed">
+
+            <section className="space-y-4">
+                <h2 className="text-2xl font-bold text-white">DỰ ÁN "CONNECT": PHÁC THẢO SÁCH TRẮNG BAN ĐẦU</h2>
+                <h3 className="text-xl font-semibold text-purple-300">KIẾN TRÚC ỨNG DỤNG TOÀN DIỆN & TỐI ƯU</h3>
+                <p className="italic text-gray-400">Tiêu đề: CONNECT - Web3 Social: Kiến tạo Vũ trụ Phi tập trung cho Sáng tạo, Kết nối và Kinh tế Mở trên Pi Network.</p>
+
+                <div className="p-4 bg-purple-900/20 rounded-lg border border-purple-500/20">
+                    <h4 className="font-bold text-white mb-2">Tóm tắt Dự án</h4>
+                    <p>CONNECT là một siêu ứng dụng mạng xã hội video ngắn Web3 thế hệ mới, được thiết kế để trao quyền tối đa cho người dùng. Tích hợp sâu với hệ sinh thái Pi Network, CONNECT cung cấp một nền tảng toàn diện cho sáng tạo nội dung, thương mại điện tử phi tập trung, giải trí GameFi, và kết nối cộng đồng, tất cả được hỗ trợ bởi Trí tuệ Nhân tạo và công nghệ blockchain. Với khả năng tùy biến giao diện vô hạn, cơ chế bảo mật tài khoản hàng đầu, và một mô hình kinh tế công bằng, CONNECT hướng tới việc xây dựng một vũ trụ kỹ thuật số nơi người dùng là chủ thể sở hữu thực sự của giá trị và dữ liệu.</p>
+                </div>
+            </section>
+
+            <section className="space-y-4">
+                <h3 className="text-xl font-bold text-white border-b border-gray-700 pb-2">1. Nền tảng Công nghệ & Trải nghiệm Người dùng Cốt lõi</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Kiến trúc Next.js (Phiên bản 13+, App Router):</strong> Nền tảng phát triển tiên tiến, đảm bảo hiệu suất, khả năng mở rộng, SEO và trải nghiệm di động mượt mà. Tối ưu hóa tải trang bằng Server Components và hỗ trợ Progressive Web App (PWA).</li>
+                    <li><strong>Thiết kế Giao diện Tùy chỉnh Toàn diện:</strong> Thế giới Chủ đề Động, Thư viện Theme & Marketplace, Tính năng Phân Cấp Giao diện.</li>
+                    <li><strong>Tối ưu Di động & Pi Browser:</strong> Thiết kế "mobile-first", đảm bảo hiển thị tối ưu trên Pi Browser.</li>
+                    <li><strong>Trạng thái Kết nối Pi SDK Tường minh:</strong> Thanh thông báo động hiển thị rõ ràng quá trình kết nối với Pi Network.</li>
+                </ul>
+            </section>
+
+            <section className="space-y-4">
+                <h3 className="text-xl font-bold text-white border-b border-gray-700 pb-2">2. Quản lý Tài khoản & Bảo mật Tối cao</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Đăng nhập Bằng Tài khoản Pi Network:</strong> Đồng bộ hóa User Pi, Hỗ trợ người dùng Pi đa trạng thái (có/chưa có ví Mainnet).</li>
+                    <li><strong>Tuân thủ Chính sách Pi Network:</strong> Tuân thủ KYC, AML, chống gian lận của Pi Core Team.</li>
+                    <li><strong>Xác minh Tiên tiến & Uy tín:</strong> Tích hợp KYC của Pi, Xác minh đa yếu tố (MFA).</li>
+                    <li><strong>Quét Vi Phạm:</strong> AI-Powered Content Scan, Hệ thống báo cáo cộng đồng.</li>
+                </ul>
+            </section>
+
+            <section className="space-y-4">
+                <h3 className="text-xl font-bold text-white border-b border-gray-700 pb-2">3. Tích hợp Đa dạng & Sáng tạo với AI và Hệ sinh thái Pi</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Công cụ Sáng tạo Video Hỗ trợ AI:</strong> Biên tập AI-driven, Kịch bản & Ý tưởng AI, Tối ưu hóa đề xuất nội dung.</li>
+                    <li><strong>Hệ thống Quà tặng & Icon Tùy chỉnh:</strong> Thư viện Icon đa dạng, Quà tặng 3D & Hiệu ứng động.</li>
+                </ul>
+            </section>
+
+            <section className="space-y-4">
+                <h3 className="text-xl font-bold text-white border-b border-gray-700 pb-2">4. Tương tác Cộng đồng & Mô hình Kinh tế Pi Toàn diện</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Tính năng Mạng xã hội Đầy đủ:</strong> Hồ sơ cá nhân, tương tác, theo dõi, nhóm cộng đồng.</li>
+                    <li><strong>Chức năng Điểm danh:</strong> Phần thưởng đa dạng, Chuỗi điểm danh (Streak Bonus).</li>
+                    <li><strong>Thương mại Điện tử Phi tập trung:</strong> Cửa hàng người bán hàng cá nhân, Tiếp thị liên kết.</li>
+                    <li><strong>Thi đấu Live Trực Tiếp Nâng Cao:</strong> Tương tác đa chiều, Thử thách & Thi đấu đa người chơi.</li>
+                    <li><strong>Tích hợp Trò chơi Bên thứ 3 (GameFi):</strong> Mô hình Play-to-Earn.</li>
+                </ul>
+            </section>
+
+            <section className="space-y-4">
+                <h3 className="text-xl font-bold text-white border-b border-gray-700 pb-2">5. Cá nhân hóa & Cộng đồng Mạnh mẽ</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Chatbot AI "CONNECT AI Assistant":</strong> Giao diện đẹp mắt, Di chuyển tự do, Trí tuệ kết nối toàn cầu.</li>
+                    <li><strong>Khung Chat Riêng & Tùy chỉnh Màu sắc.</strong></li>
+                    <li><strong>Khung Hình Đại diện Phân Cấp.</strong></li>
+                </ul>
+            </section>
+
+            <section className="space-y-4">
+                <h3 className="text-xl font-bold text-white border-b border-gray-700 pb-2">6. Sách Trắng & Miễn Trừ Trách Nhiệm</h3>
+                <div className="bg-red-900/20 p-4 rounded border-l-4 border-red-500">
+                    <h4 className="font-bold text-red-400 mb-2">Miễn Trừ Trách Nhiệm (Disclaimer)</h4>
+                    <p className="text-sm">
+                        <strong>Tính chất Thử nghiệm (Testnet):</strong> CONNECT đang trong giai đoạn phát triển và thử nghiệm. Mọi tính năng và giá trị Pi Coin chỉ mang tính minh họa.<br/><br/>
+                        <strong>Không phải Lời khuyên Tài chính:</strong> Thông tin trong tài liệu này không cấu thành lời khuyên đầu tư.<br/><br/>
+                        <strong>Rủi ro:</strong> Tham gia vào các dự án Web3 luôn tiềm ẩn rủi ro kỹ thuật và thị trường.
+                    </p>
+                </div>
+            </section>
+
+            <section className="pt-8 border-t border-gray-800">
+                <h4 className="text-lg font-bold text-white mb-2">Tổng kết</h4>
+                <p>CONNECT được hình dung là một siêu hệ sinh thái Web3 hoàn chỉnh, lấy người dùng làm trung tâm, nơi sự sáng tạo và giá trị được trao quyền thông qua công nghệ Pi Network, AI và blockchain. Mục tiêu là tạo ra một nền tảng không ngừng học hỏi, phát triển và tối ưu hóa để đáp ứng mọi nhu cầu của người dùng, đồng thời duy trì tính minh bạch, an toàn và tuân thủ các quy định cần thiết.</p>
+            </section>
+
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
