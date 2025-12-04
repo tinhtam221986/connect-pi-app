@@ -3,10 +3,11 @@
 import { apiClient } from "@/lib/api-client";
 import { Heart, MessageCircle, Share2, Music2, Disc, Gift } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CommentsDrawer } from "./CommentsDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function VideoFeed() {
   const { t } = useLanguage();
@@ -72,15 +73,39 @@ function VideoPost({ video }: any) {
   const { t } = useLanguage();
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const [showHeart, setShowHeart] = useState(false);
+  const [heartPos, setHeartPos] = useState({ x: 0, y: 0 });
 
   const handleGift = () => {
       toast.success(`Sent 1 Pi to @${video.author}! 🎁`);
   }
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+      const currentTime = new Date().getTime();
+      const timeDiff = currentTime - lastClickTime;
+
+      if (timeDiff < 300) {
+          // Double click detected
+          setLiked(true);
+          setShowHeart(true);
+          // Calculate relative position for the heart
+          const rect = e.currentTarget.getBoundingClientRect();
+          setHeartPos({
+              x: e.clientX - rect.left,
+              y: e.clientY - rect.top
+          });
+
+          setTimeout(() => setShowHeart(false), 800);
+      }
+
+      setLastClickTime(currentTime);
+  }
   
   return (
-    <div className="h-full w-full snap-start relative flex items-center justify-center bg-gray-900">
+    <div className="h-full w-full snap-start relative flex items-center justify-center bg-gray-900" onClick={handleVideoClick}>
       {/* Video Background */}
-      <div className="absolute inset-0 bg-gray-900">
+      <div className="absolute inset-0 bg-gray-900 overflow-hidden">
          {/* eslint-disable-next-line @next/next/no-img-element */}
          {/* Using video tag for mock, ideally use Next Image for poster */}
          <video
@@ -92,6 +117,22 @@ function VideoPost({ video }: any) {
             autoPlay
          />
          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none"></div>
+
+         {/* Flying Heart Animation */}
+         <AnimatePresence>
+             {showHeart && (
+                 <motion.div
+                    initial={{ scale: 0, rotate: -45, opacity: 1 }}
+                    animate={{ scale: 1.5, rotate: 0, opacity: 0, y: -100 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="absolute pointer-events-none z-30 text-pink-500 drop-shadow-2xl"
+                    style={{ left: heartPos.x - 40, top: heartPos.y - 40 }}
+                 >
+                     <Heart size={100} fill="currentColor" />
+                 </motion.div>
+             )}
+         </AnimatePresence>
       </div>
 
       {/* Right Sidebar Actions */}

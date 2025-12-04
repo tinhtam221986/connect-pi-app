@@ -9,6 +9,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Access token is required' }, { status: 400 });
     }
 
+    // 0. Check for Server Configuration
+    const apiKey = process.env.PI_API_KEY;
+    if (!apiKey) {
+         // Special error code so frontend can warn the developer
+         return NextResponse.json({
+             error: 'Server Misconfiguration: PI_API_KEY is missing.',
+             code: 'NO_API_KEY',
+             instruction: 'Add PI_API_KEY to your .env file or Vercel Environment Variables.'
+         }, { status: 503 });
+    }
+
     // 1. Try Real Pi Network Verification
     try {
         const piResponse = await fetch('https://api.minepi.com/v2/me', {
@@ -42,7 +53,6 @@ export async function POST(request: Request) {
     // 2. Fallback / Mock Logic (for Development/Review)
     // If real verification failed, check if it's a valid mock token or we are in dev mode
     // We treat any token starting with 'mock_' as valid for dev.
-    // For "real connection" request, we should be strict, but we don't want to break the dev flow.
     
     if (accessToken.startsWith('mock_')) {
         return NextResponse.json({
@@ -57,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     // If we are here, it's neither a valid real token nor a mock token.
-    return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    return NextResponse.json({ error: 'Invalid authentication token. Real verification failed and token is not a mock.' }, { status: 401 });
 
   } catch (error) {
     console.error("Auth API Error:", error);
