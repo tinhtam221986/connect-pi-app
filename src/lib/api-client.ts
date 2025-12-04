@@ -24,12 +24,19 @@ export const apiClient = {
     },
   },
   video: {
-    upload: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
+    upload: async (input: File | FormData) => {
+      let body;
+      if (input instanceof File) {
+          const formData = new FormData();
+          formData.append('file', input);
+          body = formData;
+      } else {
+          body = input;
+      }
+
       const res = await fetch('/api/video/upload', {
         method: 'POST',
-        body: formData,
+        body: body,
       });
       return res.json();
     },
@@ -63,6 +70,14 @@ export const apiClient = {
   feed: {
     get: async () => {
       const res = await fetch('/api/feed');
+      return res.json();
+    },
+    create: async (data: any) => {
+      const res = await fetch('/api/feed', { // Assuming same route handles POST or new route
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+      });
       return res.json();
     }
   },

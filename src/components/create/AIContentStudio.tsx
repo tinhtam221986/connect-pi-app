@@ -1,231 +1,114 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Video, Mic, Wand2, Play, StopCircle, Upload, Film, Radio, Camera, Image as ImageIcon } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { X, Check, Music2 } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 import { CameraRecorder } from "./CameraRecorder";
-import { useEconomy } from "@/components/economy/EconomyContext";
 
-export function AIContentStudio() {
+export default function AIContentStudio() {
     const { t } = useLanguage();
-    const economy = useEconomy();
-    const [mode, setMode] = useState<'script' | 'record' | 'live'>('script');
-    const [topic, setTopic] = useState("");
+    const router = useRouter();
+    const [isUploading, setIsUploading] = useState(false);
+    const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
     const [script, setScript] = useState("");
-    const [generatedImage, setGeneratedImage] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
 
-    const generateScript = async () => {
-        if (!topic) {
-            toast.error("Please enter a topic");
-            return;
-        }
-        setIsGenerating(true);
-        try {
-            const response = await apiClient.ai.generate(topic, 'script');
-            if (response.success) {
-                setScript(response.result);
-                toast.success("Script generated successfully!");
-            } else {
-                toast.error(response.error || "Failed to generate script");
-            }
-        } catch (error) {
-            toast.error("An error occurred");
-        } finally {
-            setIsGenerating(false);
-        }
+    const handleVideoRecorded = (blob: Blob) => {
+        setRecordedBlob(blob);
     };
 
-    const generateThumbnail = async () => {
-        if (!topic) {
-            toast.error("Please enter a topic");
-            return;
-        }
-        setIsGenerating(true);
+    const handleUpload = async () => {
+        if (!recordedBlob) return;
+        setIsUploading(true);
+
         try {
-            const response = await apiClient.ai.generate(topic, 'image');
-            if (response.success) {
-                setGeneratedImage(response.result);
-                toast.success("Thumbnail generated successfully!");
-            } else {
-                toast.error(response.error || "Failed to generate thumbnail");
-            }
-        } catch (error) {
-            toast.error("An error occurred");
-        } finally {
-            setIsGenerating(false);
-        }
-    };
+            const file = new File([recordedBlob], `recording_${Date.now()}.webm`, { type: 'video/webm' });
 
-    const handleVideoRecorded = async (blob: Blob) => {
-        // Create a local preview URL immediately for the best UX (avoids waiting for upload or Vercel read-only issues)
-        const localPreviewUrl = URL.createObjectURL(blob);
+            // 1. Upload Video
+            const formData = new FormData();
+            formData.append('file', file);
 
-        // Upload video to backend
-        const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'video/webm' });
-        try {
-            toast.loading("Uploading video...");
-            const res = await apiClient.video.upload(file);
+            const uploadRes = await apiClient.video.upload(formData);
 
-            if (res.success) {
-                toast.success("Video uploaded successfully!");
-
-                // Determine the URL to use. If the server returned a mock dog video (Vercel fallback),
-                // we prefer the local blob so the user sees *their* content during this session.
-                // In a real production with Cloudinary, res.url would be the permanent URL.
-                const useLocalUrl = res.url.includes("cloudinary.com/demo") || res.message?.includes("Simulated");
-
-                // Add to local 'My Videos' cache for immediate feedback
-                economy.addVideo({
-                    id: res.fileId || `temp_${Date.now()}`,
-                    url: useLocalUrl ? localPreviewUrl : res.url,
-                    thumbnail: res.thumbnail || "/placeholder.jpg",
-                    createdAt: Date.now(),
-                    description: topic || "New Video"
+            if (uploadRes.success) {
+                // 2. Create Post
+                await apiClient.feed.create({
+                    videoUrl: uploadRes.url,
+                    description: script || "Check out my new video on Connect! #PiNetwork #Web3",
+                    thumbnail: uploadRes.thumbnail || uploadRes.url,
+                    author: "Me",
                 });
 
+                toast.success("Video uploaded successfully!");
+                router.push('/'); // Go to feed
             } else {
-                toast.error("Upload failed: " + res.error);
+                toast.error(uploadRes.error || "Upload failed");
             }
-        } catch (e) {
-            console.error(e);
-            toast.error("Upload error");
+
+        } catch (error) {
+            console.error(error);
+            toast.error("An error occurred during upload.");
         } finally {
-            toast.dismiss();
+            setIsUploading(false);
         }
+    };
+
+    const handleRetake = () => {
+        setRecordedBlob(null);
     };
 
     return (
-        <div className="h-full bg-black text-white flex flex-col">
-             {/* Header */}
-             <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/50 backdrop-blur-md sticky top-0 z-10">
-                 <h2 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 flex items-center gap-2">
-                     <Sparkles size={20} className="text-purple-400" /> {t('studio.title')}
-                 </h2>
-             </div>
-
-             {/* Mode Switcher */}
-             <div className="flex p-2 gap-2 bg-gray-900 justify-center shrink-0">
-                 <button onClick={() => setMode('script')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'script' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
-                     <Wand2 size={16} /> {t('studio.magic_script')}
+        <div className="h-full w-full bg-black relative overflow-hidden flex flex-col">
+            {/* Header / Top Bar */}
+            <div className="absolute top-0 left-0 right-0 p-4 z-20 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
+                 <button onClick={() => router.back()} className="text-white p-2 rounded-full bg-black/20 backdrop-blur-md pointer-events-auto">
+                     <X size={24} />
                  </button>
-                 <button onClick={() => setMode('record')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'record' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
-                     <Camera size={16} /> {t('studio.record')}
-                 </button>
-                 <button onClick={() => setMode('live')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'live' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
-                     <Radio size={16} /> {t('studio.start_live')}
-                 </button>
-             </div>
 
-             {/* Content Area */}
-             <div className="flex-1 overflow-y-auto p-4 relative">
-                 <AnimatePresence mode="wait">
-                     {mode === 'script' && (
-                         <motion.div
-                             key="script"
-                             initial={{ opacity: 0, x: -20 }}
-                             animate={{ opacity: 1, x: 0 }}
-                             exit={{ opacity: 0, x: 20 }}
-                             className="space-y-4 pb-20"
-                         >
-                             <div className="bg-gray-900 rounded-xl p-4 border border-purple-500/30">
-                                 <label className="text-sm font-bold text-purple-300 mb-2 block">{t('studio.topic_placeholder')}</label>
-                                 <div className="flex gap-2">
-                                     <input
-                                         value={topic}
-                                         onChange={(e) => setTopic(e.target.value)}
-                                         className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
-                                         placeholder="e.g. Crypto Trends 2024"
-                                     />
-                                     <button onClick={generateScript} disabled={isGenerating} className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white">
-                                         <Wand2 size={24} className={isGenerating ? "animate-spin" : ""} />
-                                     </button>
-                                     <button onClick={generateThumbnail} disabled={isGenerating} className="p-2 bg-gray-700 rounded-lg text-white hover:bg-gray-600 transition-colors">
-                                         <ImageIcon size={24} className={isGenerating ? "animate-pulse" : ""} />
-                                     </button>
-                                 </div>
-                             </div>
+                 {/* Only show upload button if we have a recording */}
+                 {recordedBlob && (
+                     <button
+                        onClick={handleUpload}
+                        disabled={isUploading}
+                        className="bg-pink-600 text-white px-4 py-2 rounded-full font-bold shadow-lg shadow-pink-500/50 flex items-center gap-2 pointer-events-auto animate-in fade-in zoom-in"
+                    >
+                         {isUploading ? (
+                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                         ) : (
+                             <Check size={16} />
+                         )}
+                         {isUploading ? 'Posting...' : 'Post'}
+                     </button>
+                 )}
+            </div>
 
-                             {generatedImage && (
-                                 <div className="bg-gray-800 rounded-xl p-2 border border-gray-700 relative group">
-                                     <img src={generatedImage} alt="AI Thumbnail" className="w-full h-48 object-cover rounded-lg" />
-                                     <div className="absolute bottom-3 right-3 bg-black/70 px-2 py-1 rounded text-xs text-white backdrop-blur-sm flex items-center gap-1">
-                                         <Sparkles size={10} className="text-purple-400" /> AI Generated
-                                     </div>
-                                 </div>
-                             )}
-
-                             {script && (
-                                 <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 animate-in fade-in zoom-in">
-                                     <h3 className="font-bold mb-2 text-green-400">{t('studio.script_result')}</h3>
-                                     <div className="bg-black/50 p-3 rounded-lg border border-gray-700">
-                                         <pre className="whitespace-pre-wrap font-mono text-sm text-gray-300">{script}</pre>
-                                     </div>
-                                     <button onClick={() => setMode('record')} className="w-full mt-4 py-3 bg-red-600 rounded-lg font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20">
-                                         {t('studio.record')} (Use Script)
-                                     </button>
-                                 </div>
-                             )}
-
-                             <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-                                 <h4 className="font-bold text-sm text-gray-400 mb-2">{t('studio.tips')}</h4>
-                                 <ul className="text-xs text-gray-500 space-y-1 list-disc list-inside">
-                                     <li>Keep videos under 60 seconds for better reach.</li>
-                                     <li>Use trending hashtags.</li>
-                                     <li>Engage with your audience in the first 3 seconds.</li>
-                                 </ul>
-                             </div>
-                         </motion.div>
-                     )}
-
-                     {mode === 'record' && (
-                         <motion.div
-                            key="record"
-                             initial={{ opacity: 0, scale: 0.9 }}
-                             animate={{ opacity: 1, scale: 1 }}
-                             className="flex flex-col items-center justify-center h-full pb-20"
-                         >
-                             <div className="w-full max-w-sm aspect-[9/16] bg-gray-800 rounded-2xl relative overflow-hidden flex items-center justify-center border-2 border-gray-700 shadow-2xl">
-                                <CameraRecorder script={script} onVideoRecorded={handleVideoRecorded} />
-                             </div>
-                         </motion.div>
-                     )}
-
-                     {mode === 'live' && (
-                         <motion.div
-                            key="live"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex flex-col items-center justify-center h-full text-center pb-20"
-                         >
-                             <div className="w-32 h-32 rounded-full bg-blue-900/20 flex items-center justify-center mb-6 animate-blob relative">
-                                 <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping"></div>
-                                 <Radio size={64} className="text-blue-500 relative z-10" />
-                             </div>
-                             <h3 className="text-3xl font-bold mb-2">Ready to Go Live?</h3>
-                             <p className="text-gray-400 mb-8 max-w-xs leading-relaxed">Interact with your fans in real-time, host battles, and earn Pi Gifts directly.</p>
-
-                             <div className="grid grid-cols-2 gap-4 mb-8 w-full max-w-xs">
-                                 <div className="bg-gray-900 p-3 rounded-xl border border-gray-800">
-                                     <span className="text-xs text-gray-500 uppercase font-bold">Followers</span>
-                                     <p className="text-xl font-bold text-white">1.2k</p>
-                                 </div>
-                                 <div className="bg-gray-900 p-3 rounded-xl border border-gray-800">
-                                     <span className="text-xs text-gray-500 uppercase font-bold">Pi Gifts</span>
-                                     <p className="text-xl font-bold text-yellow-500">Enabled</p>
-                                 </div>
-                             </div>
-
-                             <button className="px-10 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full font-bold text-white shadow-xl shadow-blue-500/20 hover:scale-105 transition-transform flex items-center gap-2">
-                                 <Radio size={20} /> Start Live Stream
-                             </button>
-                         </motion.div>
-                     )}
-                 </AnimatePresence>
-             </div>
+            {/* Main Camera View */}
+            <div className="flex-1 bg-gray-900 overflow-hidden relative">
+                {recordedBlob ? (
+                    <div className="w-full h-full relative">
+                        <video
+                            src={URL.createObjectURL(recordedBlob)}
+                            className="w-full h-full object-cover"
+                            controls
+                            autoPlay
+                            loop
+                        />
+                         <button
+                            onClick={handleRetake}
+                            className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full font-bold shadow-lg pointer-events-auto"
+                        >
+                            Retake
+                        </button>
+                    </div>
+                ) : (
+                    <CameraRecorder
+                        onVideoRecorded={handleVideoRecorded}
+                        script={script}
+                    />
+                )}
+            </div>
         </div>
-    )
+    );
 }

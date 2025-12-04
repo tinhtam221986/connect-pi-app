@@ -5,7 +5,7 @@ import { PiNetworkStatus } from "@/components/pi/PiNetworkStatus";
 import { VideoFeed } from "@/components/feed/VideoFeed";
 import { UserProfile } from "@/components/profile/UserProfile";
 import { AIAssistant } from "@/components/ai/AIAssistant";
-import { AIContentStudio } from "@/components/create/AIContentStudio";
+import AIContentStudio from "@/components/create/AIContentStudio"; // Default import
 import { GameCenter } from "@/components/game/GameCenter";
 import { MarketplaceView } from "@/components/market/MarketplaceView";
 import { Home, PlusSquare, User, Wallet, CalendarCheck, Gamepad2, ShoppingBag } from "lucide-react";
