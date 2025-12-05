@@ -1,114 +1,109 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react"
-import Script from "next/script"
-import { useRouter } from "next/navigation"
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import Script from "next/script";
 
+// Định nghĩa kiểu dữ liệu User
 interface PiUser {
-  username: string
-  uid: string
-  accessToken?: string
+  username: string;
+  uid: string;
+  accessToken?: string;
 }
 
+// Định nghĩa Context Type - Đã thêm authenticate
 interface PiContextType {
-  isInitialized: boolean
-  isAuthenticated: boolean
-  user: PiUser | null
-  loading: boolean
-  error: string | null
+  isInitialized: boolean;
+  user: PiUser | null;
+  error: string | null;
+  forceMock: () => void;
+  authenticate: () => Promise<void>; 
 }
 
-const PiContext = createContext<PiContextType>({
-  isInitialized: false,
-  isAuthenticated: false,
-  user: null,
-  loading: true,
-  error: null,
-})
+const PiContext = createContext<PiContextType | null>(null);
 
-export const usePi = () => useContext(PiContext)
+export function usePi() {
+  const context = useContext(PiContext);
+  if (!context) {
+    throw new Error("usePi must be used within a PiSDKProvider");
+  }
+  return context;
+}
 
-// --- QUAN TRỌNG: Phải dùng export function (Named Export) ---
-export function PiSDKProvider({ children }: { children: ReactNode }) {
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<PiUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+export function PiSDKProvider({ children }: { children: React.ReactNode }) {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [user, setUser] = useState<PiUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Hàm Force Mock cho Testing
+  const forceMock = useCallback(() => {
+    console.log("Forcing Mock Mode");
+    setIsInitialized(true);
+    setUser({ username: "MockUser", uid: "mock_uid_123" });
+    setError(null);
+  }, []);
+
+  // Hàm Authenticate chính
+  const authenticate = useCallback(async () => {
+    if (!isInitialized) {
+      console.warn("Pi SDK chưa sẵn sàng.");
+      return;
+    }
+
+    try {
+      if (typeof window !== 'undefined' && (window as any).Pi) {
+        const scopes = ['username', 'payments'];
+        const authResult = await (window as any).Pi.authenticate(scopes, onIncompletePaymentFound);
+        setUser({
+            username: authResult.user.username,
+            uid: authResult.user.uid,
+            accessToken: authResult.accessToken
+        });
+      } else {
+        // Fallback nếu không có Pi SDK (trên trình duyệt thường)
+        console.log("Không tìm thấy Pi SDK, chuyển sang Mock Mode");
+        forceMock();
+      }
+    } catch (err: any) {
+      console.error("Lỗi xác thực:", err);
+      setError(err.message || "Xác thực thất bại");
+      // Fallback tự động trong môi trường dev
+      if (process.env.NODE_ENV === 'development') {
+          forceMock();
+      }
+    }
+  }, [isInitialized, forceMock]);
+
+  const onIncompletePaymentFound = (payment: any) => {
+      console.log("Tìm thấy giao dịch chưa hoàn tất:", payment);
+  };
 
   useEffect(() => {
     const initPi = async () => {
       try {
-        if (!window.Pi) {
-          console.warn("Pi SDK not found, waiting for script...")
-          return
+        if (typeof window !== 'undefined' && (window as any).Pi) {
+          await (window as any).Pi.init({ version: "2.0", sandbox: true });
+          setIsInitialized(true);
+          console.log("Pi SDK Initialized");
+        } else {
+             setTimeout(() => {
+                 if (typeof window !== 'undefined' && (window as any).Pi) {
+                    (window as any).Pi.init({ version: "2.0", sandbox: true });
+                    setIsInitialized(true);
+                 }
+             }, 3000);
         }
-
-        // Khởi tạo Pi SDK
-        await window.Pi.init({ version: "2.0", sandbox: true })
-        setIsInitialized(true)
-        console.log("Pi SDK Initialized")
-
-        // Xác thực người dùng (Auth)
-        const scopes = ['username', 'payments']
-        
-        // Dùng Promise.race để tránh treo mãi mãi nếu Pi Browser không phản hồi
-        const onIncompletePaymentFound = (payment: any) => {
-            console.log("Incomplete payment found", payment)
-            // Xử lý thanh toán chưa hoàn tất ở đây nếu cần
-        }
-
-        const authResult = await Promise.race([
-          window.Pi.authenticate(scopes, onIncompletePaymentFound),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 15000))
-        ]) as any
-
-        if (authResult) {
-          setUser({
-            username: authResult.user.username,
-            uid: authResult.user.uid,
-            accessToken: authResult.accessToken
-          })
-          setIsAuthenticated(true)
-        }
-
       } catch (err: any) {
-        console.error("Pi SDK Error:", err)
-        setError(err.message || "Failed to connect to Pi Network")
-        // Ở môi trường dev/chrome thường, ta có thể cho qua để test giao diện
-        if (process.env.NODE_ENV === 'development') {
-            console.log("Dev mode: Simulating login")
-        }
-      } finally {
-        setLoading(false)
+        setError(err.message || "Không thể khởi tạo Pi SDK");
       }
-    }
+    };
 
-    // Kiểm tra xem script đã load chưa
-    const checkPi = setInterval(() => {
-        if (window.Pi) {
-            clearInterval(checkPi)
-            initPi()
-        }
-    }, 500)
-
-    // Timeout an toàn sau 5s nếu không thấy Pi
-    setTimeout(() => {
-        clearInterval(checkPi)
-        if (loading) setLoading(false) 
-    }, 5000)
-
-    return () => clearInterval(checkPi)
-  }, [])
+    initPi();
+  }, []);
 
   return (
-    <PiContext.Provider value={{ isInitialized, isAuthenticated, user, loading, error }}>
-      <Script 
-        src="https://sdk.minepi.com/pi-sdk.js" 
-        strategy="afterInteractive" 
-      />
+    <PiContext.Provider value={{ isInitialized, user, error, forceMock, authenticate }}>
+      <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
       {children}
     </PiContext.Provider>
-  )
+  );
 }
