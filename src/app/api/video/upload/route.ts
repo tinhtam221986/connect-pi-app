@@ -11,28 +11,20 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as Blob;
-    
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    // Upload to Cloudinary
+    
     const result: any = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { resource_type: 'video', folder: 'connect-pi-app' },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'connect-pi', resource_type: 'video' },
+        (error, result) => error ? reject(error) : resolve(result)
       );
-      uploadStream.end(buffer);
+      stream.end(buffer);
     });
 
     return NextResponse.json({ url: result.secure_url });
-  } catch (error) {
-    console.error('Upload Error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: 'Upload Failed' }, { status: 500 });
   }
 }
