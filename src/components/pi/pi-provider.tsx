@@ -1,120 +1,114 @@
-'use client';
+"use client"
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import Script from 'next/script';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import Script from "next/script"
+import { useRouter } from "next/navigation"
 
 interface PiUser {
-  uid: string;
-  username: string;
-  firstname?: string;
-  lastname?: string;
-  roles?: string[];
-  accessToken?: string;
+  username: string
+  uid: string
+  accessToken?: string
 }
 
 interface PiContextType {
-  sdkLoaded: boolean;
-  isAuthenticated: boolean;
-  currentUser: PiUser | null;
-  authenticate: () => Promise<void>;
-  createPayment: (paymentData: any, callbacks: any) => void;
-  openShareDialog: (title: string, message: string) => void;
-  error: string | null;
-  loading: boolean;
+  isInitialized: boolean
+  isAuthenticated: boolean
+  user: PiUser | null
+  loading: boolean
+  error: string | null
 }
 
 const PiContext = createContext<PiContextType>({
-  sdkLoaded: false,
+  isInitialized: false,
   isAuthenticated: false,
-  currentUser: null,
-  authenticate: async () => {},
-  createPayment: () => {},
-  openShareDialog: () => {},
+  user: null,
+  loading: true,
   error: null,
-  loading: false,
-});
+})
 
-export const usePi = () => useContext(PiContext);
+export const usePi = () => useContext(PiContext)
 
-export function PiProvider({ children }: { children: React.ReactNode }) {
-  const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<PiUser | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// --- QUAN TRỌNG: Phải dùng export function (Named Export) ---
+export function PiSDKProvider({ children }: { children: ReactNode }) {
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState<PiUser | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
-    const checkPi = setInterval(() => {
-      if ((window as any).Pi) {
-        clearInterval(checkPi);
-        setSdkLoaded(true);
-        try {
-          (window as any).Pi.init({ version: '2.0', sandbox: true }); 
-          console.log('Pi SDK Initialized');
-        } catch (err) {
-          console.error('Pi SDK Init Error:', err);
+    const initPi = async () => {
+      try {
+        if (!window.Pi) {
+          console.warn("Pi SDK not found, waiting for script...")
+          return
         }
+
+        // Khởi tạo Pi SDK
+        await window.Pi.init({ version: "2.0", sandbox: true })
+        setIsInitialized(true)
+        console.log("Pi SDK Initialized")
+
+        // Xác thực người dùng (Auth)
+        const scopes = ['username', 'payments']
+        
+        // Dùng Promise.race để tránh treo mãi mãi nếu Pi Browser không phản hồi
+        const onIncompletePaymentFound = (payment: any) => {
+            console.log("Incomplete payment found", payment)
+            // Xử lý thanh toán chưa hoàn tất ở đây nếu cần
+        }
+
+        const authResult = await Promise.race([
+          window.Pi.authenticate(scopes, onIncompletePaymentFound),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 15000))
+        ]) as any
+
+        if (authResult) {
+          setUser({
+            username: authResult.user.username,
+            uid: authResult.user.uid,
+            accessToken: authResult.accessToken
+          })
+          setIsAuthenticated(true)
+        }
+
+      } catch (err: any) {
+        console.error("Pi SDK Error:", err)
+        setError(err.message || "Failed to connect to Pi Network")
+        // Ở môi trường dev/chrome thường, ta có thể cho qua để test giao diện
+        if (process.env.NODE_ENV === 'development') {
+            console.log("Dev mode: Simulating login")
+        }
+      } finally {
+        setLoading(false)
       }
-    }, 500);
-    return () => clearInterval(checkPi);
-  }, []);
-
-  const onIncompletePaymentFound = (payment: any) => {
-    console.log('Incomplete payment:', payment);
-  };
-
-  const authenticate = useCallback(async () => {
-    if (!sdkLoaded) return setError('Pi SDK loading...');
-    setLoading(true);
-    setError(null);
-
-    // 15s Timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Login timed out. Please try again.')), 15000)
-    );
-
-    try {
-      const scopes = ['username', 'payments'];
-      const authResult: any = await Promise.race([
-        (window as any).Pi.authenticate(scopes, onIncompletePaymentFound),
-        timeoutPromise
-      ]);
-
-      if (!authResult.accessToken) throw new Error('No access token');
-
-      // Verify with Server
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: authResult.accessToken }),
-      });
-
-      if (!res.ok) throw new Error('Server verification failed');
-      const data = await res.json();
-      
-      setCurrentUser({ ...authResult.user, ...data.user });
-      setIsAuthenticated(true);
-
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Login Failed');
-    } finally {
-      setLoading(false);
     }
-  }, [sdkLoaded]);
 
-  const createPayment = (paymentData: any, callbacks: any) => {
-    if ((window as any).Pi) (window as any).Pi.createPayment(paymentData, callbacks);
-  };
-  const openShareDialog = (title: string, message: string) => {
-    if ((window as any).Pi) (window as any).Pi.openShareDialog(title, message);
-  };
+    // Kiểm tra xem script đã load chưa
+    const checkPi = setInterval(() => {
+        if (window.Pi) {
+            clearInterval(checkPi)
+            initPi()
+        }
+    }, 500)
+
+    // Timeout an toàn sau 5s nếu không thấy Pi
+    setTimeout(() => {
+        clearInterval(checkPi)
+        if (loading) setLoading(false) 
+    }, 5000)
+
+    return () => clearInterval(checkPi)
+  }, [])
 
   return (
-    <PiContext.Provider value={{ sdkLoaded, isAuthenticated, currentUser, authenticate, createPayment, openShareDialog, error, loading }}>
-      <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" onLoad={() => setSdkLoaded(true)} />
+    <PiContext.Provider value={{ isInitialized, isAuthenticated, user, loading, error }}>
+      <Script 
+        src="https://sdk.minepi.com/pi-sdk.js" 
+        strategy="afterInteractive" 
+      />
       {children}
     </PiContext.Provider>
-  );
+  )
 }
