@@ -8,6 +8,7 @@ import { CommentsDrawer } from "./CommentsDrawer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { getVideoFromDB } from "@/lib/video-storage";
 
 export function VideoFeed() {
   const { t } = useLanguage();
@@ -18,10 +19,28 @@ export function VideoFeed() {
   useEffect(() => {
     async function fetchFeed() {
       try {
-        const data = await apiClient.feed.get();
-        if (Array.isArray(data)) {
-          setVideos(data);
+        // 1. Fetch Backend Data
+        let backendData = [];
+        try {
+            backendData = await apiClient.feed.get();
+        } catch (e) {
+            console.warn("Backend unavailable, using local data only.");
         }
+        let combinedVideos = Array.isArray(backendData) ? backendData : [];
+
+        // 2. Fetch Local Uploads Metadata
+        try {
+             const localUploadsRaw = localStorage.getItem('connect_uploads');
+             if (localUploadsRaw) {
+                 const localUploads = JSON.parse(localUploadsRaw);
+                 // Prepend local uploads to the feed
+                 combinedVideos = [...localUploads, ...combinedVideos];
+             }
+        } catch (e) {
+            console.error("Error loading local uploads:", e);
+        }
+
+        setVideos(combinedVideos);
       } catch (err) {
         console.error("Error fetching feed:", err);
       } finally {
@@ -85,6 +104,23 @@ function VideoPost({ video }: any) {
   const [likesCount, setLikesCount] = useState(video.likes || 0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [videoSrc, setVideoSrc] = useState(video.videoUrl);
+
+  // Load from IndexedDB if it's a local db URL
+  useEffect(() => {
+      if (video.videoUrl && video.videoUrl.startsWith('localdb://')) {
+          const fileId = video.videoUrl.replace('localdb://', '');
+          getVideoFromDB(fileId).then((blob) => {
+              if (blob) {
+                  const blobUrl = URL.createObjectURL(blob);
+                  setVideoSrc(blobUrl);
+              } else {
+                  console.error(`Video blob not found for ID: ${fileId}`);
+                  setVideoSrc(''); // Handle error state?
+              }
+          });
+      }
+  }, [video.videoUrl]);
 
   const togglePlay = () => {
       if (videoRef.current) {
@@ -97,11 +133,9 @@ function VideoPost({ video }: any) {
       }
   }
 
-  // Auto-play/pause based on visibility (Intersection Observer could be added here for optimization)
 
   const handleGift = () => {
       toast.success(`Sent 1 Pi to @${video.author}! 🎁`);
-      // Trigger confetti or similar effect here
   }
 
   const handleShare = async () => {
@@ -110,14 +144,13 @@ function VideoPost({ video }: any) {
               await navigator.share({
                   title: `Watch @${video.author} on CONNECT`,
                   text: video.description,
-                  url: window.location.href // In a real app, this would be a deep link
+                  url: window.location.href
               });
               toast.success("Shared successfully!");
           } catch (err) {
               console.log("Share cancelled");
           }
       } else {
-          // Fallback
           navigator.clipboard.writeText(window.location.href);
           toast.success("Link copied to clipboard!");
       }
@@ -127,7 +160,12 @@ function VideoPost({ video }: any) {
       const newLikedState = !liked;
       setLiked(newLikedState);
       setLikesCount((prev: number) => newLikedState ? prev + 1 : prev - 1);
-      // In a real app, call API here
+      if (newLikedState) {
+          // Play a small pop sound if we had one, for now just haptic feedback if possible
+          if (window.navigator && window.navigator.vibrate) {
+              window.navigator.vibrate(50);
+          }
+      }
   };
 
   const handleVideoClick = (e: React.MouseEvent) => {
@@ -141,7 +179,6 @@ function VideoPost({ video }: any) {
               handleLike();
           }
           setShowHeart(true);
-          // Calculate relative position for the heart
           const rect = e.currentTarget.getBoundingClientRect();
           setHeartPos({
               x: e.clientX - rect.left,
@@ -160,18 +197,22 @@ function VideoPost({ video }: any) {
     <div className="h-full w-full snap-start relative flex items-center justify-center bg-gray-900 overflow-hidden">
       {/* Video Background */}
       <div className="absolute inset-0 bg-gray-900 w-full h-full cursor-pointer" onClick={handleVideoClick}>
-         {/* eslint-disable-next-line @next/next/no-img-element */}
-         {/* Using video tag for mock, ideally use Next Image for poster */}
-         <video
-            ref={videoRef}
-            src={video.videoUrl}
-            className="h-full w-full object-cover"
-            loop
-            muted={false} // Allow sound
-            playsInline
-            autoPlay
-            poster={video.thumbnail}
-         />
+         {videoSrc ? (
+             <video
+                ref={videoRef}
+                src={videoSrc}
+                className="h-full w-full object-cover"
+                loop
+                muted={false}
+                playsInline
+                autoPlay
+                poster={video.thumbnail}
+             />
+         ) : (
+             <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-500">
+                 Video Unavailable
+             </div>
+         )}
 
          {/* Play/Pause Indicator Overlay */}
          {!isPlaying && (

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Check, Music2 } from "lucide-react";
+import { X, Check, Music2, AlertCircle } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { CameraRecorder } from "./CameraRecorder";
+import { saveVideoToDB } from "@/lib/video-storage";
 
 export default function AIContentStudio() {
     const { t } = useLanguage();
@@ -25,31 +26,76 @@ export default function AIContentStudio() {
 
         try {
             const file = new File([recordedBlob], `recording_${Date.now()}.webm`, { type: 'video/webm' });
-
-            // 1. Upload Video
             const formData = new FormData();
             formData.append('file', file);
 
-            const uploadRes = await apiClient.video.upload(formData);
-
-            if (uploadRes.success) {
-                // 2. Create Post
-                await apiClient.feed.create({
-                    videoUrl: uploadRes.url,
-                    description: script || "Check out my new video on Connect! #PiNetwork #Web3",
-                    thumbnail: uploadRes.thumbnail || uploadRes.url,
-                    author: "Me",
-                });
-
-                toast.success("Video uploaded successfully!");
-                router.push('/'); // Go to feed
-            } else {
-                toast.error(uploadRes.error || "Upload failed");
+            // 1. Attempt Server Upload
+            let uploadRes;
+            try {
+                 uploadRes = await apiClient.video.upload(formData);
+            } catch (e) {
+                 console.warn("Server unreachable, forcing local fallback");
+                 uploadRes = { success: false, useLocalFallback: true };
             }
 
-        } catch (error) {
+            let finalVideoUrl = "";
+            let finalThumbnail = "";
+            let fileId = uploadRes.fileId || `local_${Date.now()}`;
+            let isLocal = false;
+
+            if (uploadRes.success) {
+                finalVideoUrl = uploadRes.url;
+                finalThumbnail = uploadRes.thumbnail;
+                fileId = uploadRes.fileId;
+            } else if (uploadRes.useLocalFallback) {
+                // Fallback: Save to IndexedDB
+                console.log("Using Local IndexedDB Fallback for Video");
+                await saveVideoToDB(fileId, recordedBlob);
+
+                // We store a special URL prefix to indicate it needs to be loaded from DB
+                finalVideoUrl = `localdb://${fileId}`;
+                finalThumbnail = ""; // Generate placeholder or grab frame later? For now empty.
+                isLocal = true;
+
+                toast.info("Uploaded locally (Offline Mode)", {
+                    description: "Video saved to device storage."
+                });
+            } else {
+                throw new Error(uploadRes.error || "Upload failed");
+            }
+
+            // 2. Create Post Metadata Object
+            const newPost = {
+                id: fileId,
+                videoUrl: finalVideoUrl,
+                description: script || "Check out my new video on Connect! #PiNetwork #Web3",
+                thumbnail: finalThumbnail,
+                author: "Me",
+                likes: 0,
+                comments: 0,
+                shares: 0,
+                songName: "Original Sound",
+                isLocal: true, // Always true for "my" posts in this demo context
+                timestamp: Date.now()
+            };
+
+            // 3. Save Metadata to LocalStorage (for Feed to find it)
+            try {
+                const savedUploads = JSON.parse(localStorage.getItem('connect_uploads') || '[]');
+                // Limit local storage items to prevent overflow
+                const updatedUploads = [newPost, ...savedUploads].slice(0, 20);
+                localStorage.setItem('connect_uploads', JSON.stringify(updatedUploads));
+            } catch (e) {
+                console.error("Failed to save metadata to local storage", e);
+                toast.error("Storage Full: Could not save post metadata.");
+            }
+
+            toast.success("Video posted!");
+            router.push('/'); // Go to feed
+
+        } catch (error: any) {
             console.error(error);
-            toast.error("An error occurred during upload.");
+            toast.error(`Upload Error: ${error.message}`);
         } finally {
             setIsUploading(false);
         }

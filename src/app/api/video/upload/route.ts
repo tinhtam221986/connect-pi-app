@@ -13,7 +13,6 @@ export async function POST(request: Request) {
         console.log(`Processing upload for file: ${file.name}`);
 
         // Try to upload to Cloudinary first
-        // Note: The lib/cloudinary.ts has fallbacks for Name/Key, but SECRET must be in Env.
         if (process.env.CLOUDINARY_API_SECRET) {
             console.log("Cloudinary API Secret found. Attempting real upload...");
             try {
@@ -28,15 +27,21 @@ export async function POST(request: Request) {
                 });
             } catch (err: any) {
                 console.error("Cloudinary upload failed:", err);
+                // If Cloudinary fails, we tell frontend to use local fallback
                 return NextResponse.json({
+                    success: false,
+                    useLocalFallback: true,
                     error: 'Cloudinary upload failed. Check API Keys/Secret. ' + err.message
-                }, { status: 500 });
+                }, { status: 200 }); // Status 200 so frontend can handle gracefully
             }
         } else {
-             console.warn("Missing CLOUDINARY_API_SECRET. Cannot upload to Cloudinary.");
+             console.warn("Missing CLOUDINARY_API_SECRET. Using Local Fallback.");
+             // Return success: false but with a flag telling frontend to use IndexedDB
              return NextResponse.json({
-                error: "Configuration Error: CLOUDINARY_API_SECRET is missing. Please add it to your Vercel Environment Variables."
-             }, { status: 500 });
+                success: false,
+                useLocalFallback: true,
+                error: "Cloudinary not configured. Using local storage."
+             }, { status: 200 });
         }
 
     } catch (error: any) {
