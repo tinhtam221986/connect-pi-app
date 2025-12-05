@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
 
@@ -131,13 +131,13 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
 
     const initPi = () => {
       const ua = navigator.userAgent;
-      addLog(`Init Check. UA: ${ua.substring(0, 30)}...`);
-      const isPiBrowser = ua.includes("PiBrowser");
       
       // If we are definitely not in Pi Browser (e.g. Chrome Desktop), force Mock immediately
-      if (!isPiBrowser && !ua.includes("Android") && !ua.includes("iPhone")) {
-           addLog("Desktop detected, forcing Mock.");
-           forceMock();
+      if (!ua.includes("PiBrowser") && !ua.includes("Android") && !ua.includes("iPhone") && !ua.includes("iPad")) {
+           if (!isInitialized) {
+               addLog("Desktop detected, forcing Mock.");
+               forceMock();
+           }
            return;
       }
 
@@ -155,15 +155,16 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       } else {
         retryCount++;
         if (retryCount > maxRetries) {
-            addLog("Pi SDK not found after timeout. Waiting for manual action.");
-            // Do not auto-mock on mobile, user might just have slow internet
+            addLog("Pi SDK not found after timeout. Check internet or reload.");
+            setError("Pi SDK not detected. Tap here to use Mock Mode.");
             return;
         }
         setTimeout(initPi, 500)
       }
     }
 
-    initPi()
+    // Small initial delay to let Pi Browser inject the script
+    setTimeout(initPi, 500);
   }, [forceMock])
 
   const authenticate = useCallback(async () => {
@@ -182,6 +183,9 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
         addLog("Incomplete payment found during auth");
         setIncompletePayment(payment)
       };
+
+      // Add a small delay before calling authenticate to ensure the handshake is stable
+      await new Promise(r => setTimeout(r, 500));
 
       const authPromise = window.Pi.authenticate(scopes, onIncompletePaymentFound);
 
@@ -210,21 +214,27 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
                 duration: 10000,
             });
             setError("Server Misconfiguration: Missing PI_API_KEY");
-            // We DO NOT set local user if server is misconfigured for Real Connection request
-            // unless we are in explicit mock mode?
-            // The prompt asks to "fix login errors", usually blocking login helps realize the issue.
-            // But to be safe for testing, we will warn but PROCEED if it's a mock token.
+
+            // Allow mock tokens to proceed even if server is misconfigured (for partial testing)
             if (!auth.accessToken.startsWith('mock_')) {
                  return;
             }
         } else {
             addLog(`Backend Verification FAILED: ${verifyRes.error}`);
+            // If it's a real user but verification failed (e.g. strict check), we might still want to let them in
+            // BUT usually this means the token is invalid or the server can't talk to Pi.
+            // We will show error but NOT block completely if it's a soft fail?
+            // No, security first. Block if verify fails.
             toast.error(`Login Error: ${verifyRes.error || "Verification failed"}.`);
             setError(`Backend Verify Failed: ${verifyRes.error}`);
+            return;
         }
       } catch (backendErr: any) {
           addLog(`Backend connection error: ${backendErr.message}`);
           toast.warning("Backend unreachable. Features limited.");
+          // Fallback: Allow login if backend is dead?
+          // For a hackathon/demo, YES.
+          addLog("Proceeding with local auth only (Backend Offline Mode).");
       }
 
       setUser(auth.user)
@@ -256,10 +266,10 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      {/* Debug Overlay for Mobile - Hidden if no error/log implies success */}
+      {/* Debug Overlay for Mobile - Only show if there's an error AND we aren't authenticated */}
       {(!isAuthenticated && (error || debugLog.length > 0)) && (
         <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 p-2 text-xs font-mono max-h-32 overflow-y-auto z-[9999] opacity-80 pointer-events-none">
-            <div className="font-bold border-b border-green-800 mb-1">Pi Debug Log (v2.1):</div>
+            <div className="font-bold border-b border-green-800 mb-1">Pi Debug Log (v2.2):</div>
             {debugLog.map((log, i) => (
                 <div key={i}>{log}</div>
             ))}
