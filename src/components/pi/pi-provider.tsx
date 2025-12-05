@@ -50,9 +50,8 @@ export function PiProvider({ children }: { children: React.ReactNode }) {
         clearInterval(checkPi);
         setSdkLoaded(true);
         try {
-          // Initialize Pi SDK - use sandbox:true for Testnet development
           (window as any).Pi.init({ version: '2.0', sandbox: true }); 
-          console.log('Pi SDK Initialized (Sandbox Mode)');
+          console.log('Pi SDK Initialized');
         } catch (err) {
           console.error('Pi SDK Init Error:', err);
         }
@@ -62,56 +61,44 @@ export function PiProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const onIncompletePaymentFound = (payment: any) => {
-    console.log('Incomplete payment found:', payment);
-    // Ideally call backend to settle, but for now just log it
+    console.log('Incomplete payment:', payment);
   };
 
   const authenticate = useCallback(async () => {
-    if (!sdkLoaded) {
-      setError('Pi SDK not loaded yet.');
-      return;
-    }
+    if (!sdkLoaded) return setError('Pi SDK loading...');
     setLoading(true);
     setError(null);
 
-    // Set a client-side timeout to prevent infinite hanging
+    // 15s Timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Authentication timed out (15s). Check Pi Browser network.')), 15000)
+      setTimeout(() => reject(new Error('Login timed out. Please try again.')), 15000)
     );
 
     try {
-      console.log('Starting Pi Authentication...');
       const scopes = ['username', 'payments'];
-      
-      // Race the authentication against the timeout
       const authResult: any = await Promise.race([
         (window as any).Pi.authenticate(scopes, onIncompletePaymentFound),
         timeoutPromise
       ]);
 
-      console.log('Pi Auth Result:', authResult);
-      if (!authResult || !authResult.accessToken) {
-        throw new Error('No access token received.');
-      }
+      if (!authResult.accessToken) throw new Error('No access token');
 
-      // Verify with backend
-      const verifyResponse = await fetch('/api/auth/verify', {
+      // Verify with Server
+      const res = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: authResult.accessToken }),
       });
 
-      if (!verifyResponse.ok) {
-        throw new Error('Server verification failed');
-      }
-
-      const userData = await verifyResponse.json();
-      setCurrentUser({ ...authResult.user, ...userData.user });
+      if (!res.ok) throw new Error('Server verification failed');
+      const data = await res.json();
+      
+      setCurrentUser({ ...authResult.user, ...data.user });
       setIsAuthenticated(true);
 
     } catch (err: any) {
-      console.error('Auth Error:', err);
-      setError(err.message || 'Login failed');
+      console.error(err);
+      setError(err.message || 'Login Failed');
     } finally {
       setLoading(false);
     }
@@ -120,7 +107,6 @@ export function PiProvider({ children }: { children: React.ReactNode }) {
   const createPayment = (paymentData: any, callbacks: any) => {
     if ((window as any).Pi) (window as any).Pi.createPayment(paymentData, callbacks);
   };
-
   const openShareDialog = (title: string, message: string) => {
     if ((window as any).Pi) (window as any).Pi.openShareDialog(title, message);
   };
