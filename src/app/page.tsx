@@ -1,28 +1,43 @@
 "use client";
 
-import { usePi } from "@/components/pi/pi-provider";
-import LoginView from "@/components/LoginView";
-import MainAppView from "@/components/MainAppView";
 import { useEffect, useState } from "react";
+import { usePi } from "@/components/pi/pi-provider";
+import LoginView from "@/components/auth/LoginView";
+import MainAppView from "@/components/MainAppView";
 
 export default function Home() {
-  const { isAuthenticated, isInitialized } = usePi();
+  // Correctly destructure 'user' instead of the non-existent 'isAuthenticated'
+  const { user, isInitialized } = usePi();
   const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch
+  // Avoid hydration mismatch by rendering only after mount
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
-
-  // Logic:
-  // 1. If not authenticated -> Show Login Screen
-  // 2. If authenticated -> Show Main App (Feed)
-  
-  if (!isAuthenticated) {
-    return <LoginView />;
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-black text-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+      </div>
+    );
   }
 
-  return <MainAppView />;
+  // If Pi SDK is not initialized yet, show loading
+  if (!isInitialized) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+            <p className="text-yellow-500 animate-pulse">Initializing Pi Network...</p>
+        </div>
+    );
+  }
+
+  // If user is logged in (user object exists), show Main App
+  if (user) {
+    return <MainAppView />;
+  }
+
+  // Otherwise show Login Screen
+  return <LoginView />;
 }
