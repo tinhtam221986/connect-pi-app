@@ -1,30 +1,49 @@
-import { NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
+import { NextResponse } from "next/server";
+import { v2 as cloudinary } from "cloudinary";
 
+// Config Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as Blob;
-    if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    
-    const result: any = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: 'connect-pi', resource_type: 'video' },
-        (error, result) => error ? reject(error) : resolve(result)
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { 
+          folder: "connect-pi-app", 
+          resource_type: "auto" 
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
       );
-      stream.end(buffer);
+      uploadStream.end(buffer);
     });
 
-    return NextResponse.json({ url: result.secure_url });
-  } catch (e) {
-    return NextResponse.json({ error: 'Upload Failed' }, { status: 500 });
+    return NextResponse.json({ 
+        url: (result as any).secure_url,
+        public_id: (result as any).public_id,
+        resource_type: (result as any).resource_type
+    });
+
+  } catch (error: any) {
+    console.error("Upload Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
