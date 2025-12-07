@@ -44,7 +44,7 @@ export default function PaymentTester() {
     setStatus("Initializing payment...");
     setPaymentId(null);
 
-    if (!window.Pi || !isInitialized) {
+    if (!(window as any).Pi || !isInitialized) {
       setLocalError("Pi SDK is not loaded.");
       return;
     }

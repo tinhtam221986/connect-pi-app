@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
-import LoginView from "@/components/auth/LoginView";
+import LoginView from "@/components/LoginView";
 import MainAppView from "@/components/MainAppView";
 
 export default function Home() {
