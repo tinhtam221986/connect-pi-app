@@ -51,15 +51,31 @@ export default function LoginView() {
           
           {error && (
             <div className="flex flex-col gap-2">
-                <div 
-                    onClick={forceMock}
-                    className="cursor-pointer p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-200 text-sm flex items-center gap-2 hover:bg-red-900/50 transition-colors"
-                >
-                    <AlertTriangle size={16} />
+                <div className="p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-200 text-sm flex items-center gap-2">
+                    <AlertTriangle size={24} className="shrink-0" />
                     <div>
                         <span className="font-bold">Error:</span> {error}
-                        <div className="text-xs opacity-70 mt-1">Tap here to force Mock Mode (Dev)</div>
+                        {error.toLowerCase().includes("time") && (
+                            <div className="text-xs mt-2 bg-black/30 p-2 rounded">
+                                <span className="font-bold">Suggestion:</span> Please verify your "Trusted Domain" in the Pi Developer Portal (whitelist <span className="font-mono text-yellow-300">localhost:3000</span> or your Vercel URL).
+                            </div>
+                        )}
                     </div>
+                </div>
+
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleLogin}
+                        className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors"
+                    >
+                        Retry Login
+                    </button>
+                    <button
+                        onClick={forceMock}
+                        className="flex-1 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-200 border border-red-900/50 rounded-lg text-xs font-medium transition-colors"
+                    >
+                        Force Mock Mode (Dev)
+                    </button>
                 </div>
             </div>
           )}

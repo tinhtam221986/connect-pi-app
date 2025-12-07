@@ -9,12 +9,21 @@ cloudinary.config({
 });
 
 export async function POST(request: Request) {
+  // Check for missing Cloudinary keys
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error("Server Misconfiguration: Cloudinary keys are missing.");
+      return NextResponse.json({
+          success: false,
+          error: "Cloudinary keys are missing in server environment. Please configure them in Vercel Settings."
+      }, { status: 500 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
     // Convert file to buffer
@@ -37,6 +46,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ 
+        success: true,
         url: (result as any).secure_url,
         public_id: (result as any).public_id,
         resource_type: (result as any).resource_type
@@ -44,6 +54,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("Upload Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
