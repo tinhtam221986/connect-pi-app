@@ -1,60 +1,65 @@
-# Hướng dẫn Cấu hình Môi trường Thật (Real Environment)
+# HƯỚNG DẪN CÀI ĐẶT MÔI TRƯỜNG THỰC TẾ (REAL ENVIRONMENT)
 
-Tài liệu này hướng dẫn bạn cách chuyển đổi từ chế độ **Mock (Giả lập)** sang **Real (Thật)** để:
-1.  Đăng nhập bằng tài khoản Pi Network thật (Sửa lỗi "Authentication timed out").
-2.  Tải video lên Cloud storage (thay vì lưu tạm vào bộ nhớ trình duyệt).
+Tài liệu này hướng dẫn chi tiết cách cấu hình ứng dụng **CONNECT** để chạy hoàn hảo trên Pi Network (Pi Browser) với đầy đủ tính năng Đăng nhập thật và Upload Video/Ảnh.
 
 ---
 
-## 1. Sửa lỗi "Authentication timed out" (Quan trọng)
+## BƯỚC 1: Đăng ký Ứng dụng trên Pi Developer Portal
 
-Lỗi bạn gặp phải trong screenshot (`Authentication timed out`) xảy ra do **Pi Browser chặn kết nối** từ tên miền chưa được khai báo.
-
-### Cách khắc phục:
-1.  Copy đường dẫn trang web của bạn trên Vercel (ví dụ: `https://connect-pi-app-9v46.vercel.app`). **Lưu ý: Bỏ dấu `/` ở cuối nếu có.**
-2.  Truy cập [Pi Developer Portal](https://develop.minepi.com/).
-3.  Chọn App của bạn.
-4.  Vào mục **Configuration**.
-5.  Tìm phần **Domains**.
-6.  Dán đường dẫn Vercel của bạn vào đây.
-7.  Nhấn **Submit** hoặc **Save**.
-
-> **Lưu ý:** Nếu bạn đang chạy Sandbox, hãy đảm bảo bạn đang truy cập qua Pi Browser.
+1.  Mở ứng dụng **Pi Browser** trên điện thoại.
+2.  Truy cập địa chỉ: `develop.pi`
+3.  Nhấn **New App** (nếu chưa tạo) hoặc chọn App của bạn.
+4.  Điền thông tin:
+    *   **App Name:** CONNECT.
+    *   **App Network:** Chọn **Pi Mainnet** (hoặc Testnet).
+5.  **Cấu hình URL (Quan trọng nhất):**
+    *   **App URL:** Nhập địa chỉ Vercel của bạn (ví dụ: `https://connect-app.vercel.app`).
+    *   **Hosting URL:** Phải trùng khớp với App URL và **bắt buộc là HTTPS**.
+    *   *Lưu ý:* Nếu chạy local, dùng `ngrok` để tạo link HTTPS.
 
 ---
 
-## 2. Cấu hình Biến Môi trường (Environment Variables) trên Vercel
+## BƯỚC 2: Đăng ký Cloudinary (Để Upload Video)
 
-Để các chức năng backend hoạt động (xác thực Pi server-side, upload ảnh/video), bạn cần cấu hình các biến sau trong phần **Settings -> Environment Variables** của dự án trên Vercel.
+Để người dùng có thể đăng video và ảnh thật (thay vì lưu local), bạn cần dịch vụ Cloudinary miễn phí.
 
-### A. Pi Network API (Cho chức năng thanh toán & xác thực nâng cao)
-*   **Key:** `PI_API_KEY`
-*   **Value:** Lấy từ trang quản lý Pi Developer Portal (mục API Key).
-    *   *Nếu chưa có, bạn có thể bỏ qua tạm thời, nhưng chức năng xác thực server-side (`/api/auth/verify`) sẽ không hoạt động.*
-
-### B. Cloudinary (Để tải video/ảnh)
-Hiện tại dự án đang dùng bộ nhớ tạm (IndexedDB) nếu không có Cloudinary. Để lưu trữ thật:
-
-1.  Đăng ký tài khoản tại [Cloudinary](https://cloudinary.com/).
-2.  Lấy thông tin từ Dashboard.
-3.  Thêm các biến sau vào Vercel:
-
-*   **Key:** `CLOUDINARY_CLOUD_NAME`
-*   **Value:** (Tên cloud của bạn)
-*   **Key:** `CLOUDINARY_API_KEY`
-*   **Value:** (API Key của bạn)
-*   **Key:** `CLOUDINARY_API_SECRET`
-*   **Value:** (API Secret của bạn)
+1.  Truy cập [cloudinary.com](https://cloudinary.com) và đăng ký tài khoản miễn phí.
+2.  Vào **Dashboard**, tìm mục "Account Details".
+3.  Copy 3 thông số sau:
+    *   `Cloud Name`
+    *   `API Key`
+    *   `API Secret`
 
 ---
 
-## 3. Kiểm tra lại
+## BƯỚC 3: Cài đặt Biến Môi trường (Environment Variables)
 
-Sau khi cấu hình xong trên Vercel:
-1.  Vào tab **Deployments** trên Vercel.
-2.  Redeploy (Re-build) lại dự án để các biến môi trường có hiệu lực.
-3.  Mở Pi Browser và truy cập lại link Vercel.
+Vào **Vercel** -> **Settings** -> **Environment Variables** (hoặc file `.env.local` nếu chạy local) và thêm các biến sau:
 
-**Dấu hiệu thành công:**
-*   Màn hình Login không còn hiện lỗi timeout.
-*   Khi nhấn "Đăng nhập bằng Pi", popup xác thực của Pi Browser sẽ hiện ra ngay lập tức.
+| Tên Biến | Giá trị | Mô tả |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_PI_SANDBOX` | `false` | **Quan trọng**. Tắt chế độ Sandbox web để chạy trên Pi Browser. |
+| `PI_API_KEY` | `Key_của_bạn` | Lấy từ Pi Developer Portal. |
+| `CLOUDINARY_CLOUD_NAME` | `Tên_Cloud_của_bạn` | Lấy từ Cloudinary Dashboard. |
+| `CLOUDINARY_API_KEY` | `Key_Cloudinary` | Lấy từ Cloudinary Dashboard. |
+| `CLOUDINARY_API_SECRET` | `Secret_Cloudinary` | Lấy từ Cloudinary Dashboard. |
+
+---
+
+## BƯỚC 4: Kiểm thử Toàn diện
+
+1.  **Deploy** code mới lên Vercel.
+2.  Mở **Pi Browser** trên điện thoại.
+3.  Truy cập URL App.
+4.  **Kiểm tra Đăng nhập:** Nhấn "Đăng nhập". Thanh trạng thái phải hiện "Đã kết nối Pi Network".
+5.  **Kiểm tra Upload:** Vào Tab "Tạo" (Create) -> Upload Video. Nếu Cloudinary đúng, video sẽ được tải lên server và người khác có thể xem.
+
+---
+
+## KHẮC PHỤC SỰ CỐ
+
+*   **Lỗi Upload 500:** Do chưa cấu hình Cloudinary keys.
+*   **Lỗi Đăng nhập (Loading SDK...):** Do chưa set `NEXT_PUBLIC_PI_SANDBOX=false` hoặc không chạy trên Pi Browser.
+*   **Màn hình đen/trắng:** Kiểm tra tab Console (dùng `eruda` hoặc nối máy tính debug) để xem lỗi JS.
+
+Chúc bạn thành công đưa CONNECT đến với cộng đồng Pi Network! 🚀
