@@ -92,7 +92,12 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     const initPi = async () => {
       try {
         if (typeof window !== 'undefined' && (window as any).Pi) {
-          await (window as any).Pi.init({ version: "2.0", sandbox: true });
+          // Check for Sandbox Mode via Env Var (Default to false for Production/Real Pi)
+          // Set NEXT_PUBLIC_PI_SANDBOX="true" in .env to enable Sandbox
+          const isSandbox = process.env.NEXT_PUBLIC_PI_SANDBOX === 'true';
+          console.log(`Initializing Pi SDK (Sandbox: ${isSandbox})`);
+
+          await (window as any).Pi.init({ version: "2.0", sandbox: isSandbox });
           setIsInitialized(true);
           console.log("Pi SDK Initialized");
         } else {
