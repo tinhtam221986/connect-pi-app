@@ -1,0 +1,18 @@
+{
+  "chainId": 314159,
+  "network": "Pi Testnet (Mock)",
+  "contracts": {
+    "ConnectToken": {
+      "address": "0xbb011aee37ab4fd1492088138c77476a529261b8",
+      "abi": []
+    },
+    "ConnectMarketplace": {
+      "address": "0xe2bd2128d382a4759b088ce8bcd00aec6fc039bf",
+      "abi": []
+    },
+    "GameFi": {
+      "address": "0xdc4a8ed9f4b0bebb07c9441031bbfc342c83cad3",
+      "abi": []
+    }
+  }
+}
