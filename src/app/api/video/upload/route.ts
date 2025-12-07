@@ -9,6 +9,14 @@ cloudinary.config({
 });
 
 export async function POST(request: Request) {
+  // Check for missing Cloudinary keys
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error("Server Misconfiguration: Cloudinary keys are missing.");
+      return NextResponse.json({
+          error: "Cloudinary keys are missing in server environment. Please configure them in Vercel Settings."
+      }, { status: 500 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
