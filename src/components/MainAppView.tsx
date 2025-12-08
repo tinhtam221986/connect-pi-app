@@ -25,33 +25,33 @@ export default function MainAppView() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white">
+    <div className="flex flex-col h-screen bg-background text-foreground selection:bg-primary/30">
       <main className="flex-1 overflow-hidden relative">
         {renderContent()}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="h-16 border-t border-gray-800 bg-black flex justify-around items-center z-50 pb-safe">
-        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center ${activeTab === 'home' ? 'text-pink-500' : 'text-gray-400'}`}>
+      {/* Bottom Navigation (Cyber Glass Style) */}
+      <nav className="h-16 glass border-t border-white/10 flex justify-around items-center z-50 pb-safe fixed bottom-0 w-full">
+        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center transition-all duration-300 ${activeTab === 'home' ? 'text-primary neon-text scale-110' : 'text-muted-foreground hover:text-white'}`}>
           <span className="text-2xl">🏠</span>
-          <span className="text-[10px] mt-1">Home</span>
+          <span className="text-[10px] mt-1 font-medium">Home</span>
         </button>
-        <button onClick={() => setActiveTab('market')} className={`flex flex-col items-center ${activeTab === 'market' ? 'text-pink-500' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('market')} className={`flex flex-col items-center transition-all duration-300 ${activeTab === 'market' ? 'text-primary neon-text scale-110' : 'text-muted-foreground hover:text-white'}`}>
           <span className="text-2xl">🛒</span>
-          <span className="text-[10px] mt-1">Shop</span>
+          <span className="text-[10px] mt-1 font-medium">Shop</span>
         </button>
-        <button onClick={() => setActiveTab('create')} className="flex flex-col items-center -mt-6">
-          <div className="w-14 h-14 bg-gradient-to-tr from-pink-500 to-violet-600 rounded-full flex items-center justify-center shadow-lg border-2 border-black hover:scale-105 transition-transform">
-            <span className="text-3xl font-bold text-white">+</span>
+        <button onClick={() => setActiveTab('create')} className="flex flex-col items-center -mt-8 group">
+          <div className="w-16 h-16 bg-gradient-to-tr from-primary to-secondary rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.5)] border-4 border-background group-hover:scale-110 transition-transform duration-300">
+            <span className="text-3xl font-bold text-white drop-shadow-md">+</span>
           </div>
         </button>
-        <button onClick={() => setActiveTab('game')} className={`flex flex-col items-center ${activeTab === 'game' ? 'text-pink-500' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('game')} className={`flex flex-col items-center transition-all duration-300 ${activeTab === 'game' ? 'text-primary neon-text scale-110' : 'text-muted-foreground hover:text-white'}`}>
             <span className="text-2xl">🎮</span>
-            <span className="text-[10px] mt-1">Game</span>
+            <span className="text-[10px] mt-1 font-medium">Game</span>
         </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center ${activeTab === 'profile' ? 'text-pink-500' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center transition-all duration-300 ${activeTab === 'profile' ? 'text-primary neon-text scale-110' : 'text-muted-foreground hover:text-white'}`}>
           <span className="text-2xl">👤</span>
-          <span className="text-[10px] mt-1">Me</span>
+          <span className="text-[10px] mt-1 font-medium">Me</span>
         </button>
       </nav>
     </div>
