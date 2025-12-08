@@ -120,8 +120,15 @@ export default function LoginView() {
         </div>
       </div>
       
-      <div className="absolute bottom-4 text-xs text-gray-600 z-10">
-         {t('login.version')}
+      <div className="absolute bottom-4 z-10 flex flex-col items-center gap-2">
+         <div className="flex gap-4 text-xs text-gray-400">
+             <a href="/whitepaper" className="hover:text-purple-400 underline transition-colors">Whitepaper</a>
+             <a href="#" className="hover:text-purple-400 underline transition-colors">Privacy Policy</a>
+             <a href="#" className="hover:text-purple-400 underline transition-colors">Terms of Service</a>
+         </div>
+         <div className="text-[10px] text-gray-600">
+            {t('login.version')}
+         </div>
       </div>
     </div>
   );

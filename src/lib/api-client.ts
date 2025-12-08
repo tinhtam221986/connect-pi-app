@@ -10,8 +10,9 @@ export const apiClient = {
     },
   },
   user: {
-    getProfile: async () => {
-      const res = await fetch('/api/user/profile');
+    getProfile: async (username?: string) => {
+      const url = username ? `/api/user/profile?username=${username}` : '/api/user/profile';
+      const res = await fetch(url);
       return res.json();
     },
     updateProfile: async (data: any) => {
@@ -24,9 +25,12 @@ export const apiClient = {
     },
   },
   video: {
-    upload: async (file: File) => {
+    upload: async (file: File, metadata?: { username?: string; description?: string }) => {
       const formData = new FormData();
       formData.append('file', file);
+      if (metadata?.username) formData.append('username', metadata.username);
+      if (metadata?.description) formData.append('description', metadata.description);
+
       const res = await fetch('/api/video/upload', {
         method: 'POST',
         body: formData,
@@ -51,10 +55,9 @@ export const apiClient = {
       return res.json();
     },
     action: async (action: string, data?: any) => {
-      const res = await fetch('/api/game/state', { // Using same route for simple state updates
+      const res = await fetch('/api/game/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Add userId to body for mock consistency
         body: JSON.stringify({ userId: 'user_current', action, data }),
       });
       return res.json();

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
 import LoginView from "@/components/LoginView";
 import MainAppView from "@/components/MainAppView";
+import { EconomyProvider } from "@/components/economy/EconomyContext";
 
 export default function Home() {
   // Correctly destructure 'user' instead of the non-existent 'isAuthenticated'
@@ -35,7 +36,11 @@ export default function Home() {
 
   // If user is logged in (user object exists), show Main App
   if (user) {
-    return <MainAppView />;
+    return (
+      <EconomyProvider>
+        <MainAppView />
+      </EconomyProvider>
+    );
   }
 
   // Otherwise show Login Screen

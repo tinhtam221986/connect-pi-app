@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
+import { usePi } from '@/components/pi/pi-provider';
 
 export interface VideoItem {
     id: string;
@@ -35,6 +36,7 @@ const EconomyContext = createContext<EconomyState>({
 });
 
 export function EconomyProvider({ children }: { children: React.ReactNode }) {
+    const { user } = usePi();
     const [balance, setBalance] = useState(0);
     const [level, setLevel] = useState(1);
     const [inventory, setInventory] = useState<string[]>([]);
@@ -43,21 +45,15 @@ export function EconomyProvider({ children }: { children: React.ReactNode }) {
 
     const refresh = async () => {
         try {
+            if (!user?.username) return;
             // Load persistent profile from backend
-            const profile = await apiClient.user.getProfile();
+            const profile = await apiClient.user.getProfile(user.username);
             if (profile && !profile.error) {
                 setBalance(profile.balance);
                 setLevel(profile.level);
                 setInventory(profile.inventory || []);
-            }
-
-            // Load local "My Videos" cache
-            const localVideos = localStorage.getItem('connect_my_videos');
-            if (localVideos) {
-                try {
-                    setMyVideos(JSON.parse(localVideos));
-                } catch (e) {
-                    console.error("Failed to parse local videos", e);
+                if (profile.videos) {
+                    setMyVideos(profile.videos);
                 }
             }
         } catch (e) {
@@ -80,8 +76,10 @@ export function EconomyProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        refresh();
-    }, []);
+        if (user?.username) {
+            refresh();
+        }
+    }, [user?.username]);
 
     return (
         <EconomyContext.Provider value={{ balance, level, inventory, myVideos, isLoading, refresh, addBalance, addVideo }}>

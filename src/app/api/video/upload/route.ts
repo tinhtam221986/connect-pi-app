@@ -21,6 +21,8 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
+    const username = formData.get("username") as string;
+    const description = formData.get("description") as string;
 
     if (!file) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
@@ -35,7 +37,12 @@ export async function POST(request: Request) {
       const uploadStream = cloudinary.uploader.upload_stream(
         { 
           folder: "connect-pi-app", 
-          resource_type: "auto" 
+          resource_type: "auto",
+          context: {
+              username: username || 'Anonymous',
+              caption: description || ''
+          },
+          tags: ['connect_video', `user_${username || 'anon'}`]
         },
         (error, result) => {
           if (error) reject(error);

@@ -8,10 +8,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
 import { CameraRecorder } from "./CameraRecorder";
 import { useEconomy } from "@/components/economy/EconomyContext";
+import { usePi } from "@/components/pi/pi-provider";
 
 export function AIContentStudio() {
     const { t } = useLanguage();
     const economy = useEconomy();
+    const { user } = usePi();
     const [mode, setMode] = useState<'script' | 'record' | 'live'>('script');
     const [topic, setTopic] = useState("");
     const [script, setScript] = useState("");
@@ -65,7 +67,10 @@ export function AIContentStudio() {
         const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'video/webm' });
         try {
             toast.loading("Uploading video...");
-            const res = await apiClient.video.upload(file);
+            const res = await apiClient.video.upload(file, {
+                username: user?.username || "Anonymous",
+                description: topic || "New Video"
+            });
             if (res.success) {
                 toast.success("Video uploaded successfully!");
                 
