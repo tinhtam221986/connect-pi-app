@@ -67,6 +67,36 @@ export async function GET(request: Request) {
         }
     }
 
+    // 2.5. Merge with Immediate DB Cache (Fix for indexing latency)
+    try {
+        const scFeedItems = await SmartContractService.getFeedItems();
+        const userImmediateItems = scFeedItems.filter((item: any) => item.username === username);
+
+        const existingIds = new Set(videos.map(v => v.id));
+
+        // Add items from DB that are not yet in Cloudinary search results
+        // Reverse to maintain order if unshifting, or just iterate normal?
+        // scFeedItems is usually sorted newest first.
+        for (const item of userImmediateItems) {
+            if (!existingIds.has(item.id)) {
+                videos.unshift({
+                    id: item.id,
+                    url: item.url,
+                    thumbnail: item.thumbnail,
+                    description: item.description,
+                    createdAt: new Date(item.created_at).getTime()
+                });
+                existingIds.add(item.id);
+            }
+        }
+
+        // Re-sort just in case
+        videos.sort((a, b) => b.createdAt - a.createdAt);
+
+    } catch (e) {
+        console.error("Smart Contract Feed Sync Error", e);
+    }
+
     // 3. Sync with Smart Contract Service (Persistence)
     try {
         const scId = 'user_current'; // Using single user for demo simplicity
