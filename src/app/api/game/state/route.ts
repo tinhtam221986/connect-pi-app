@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const gameState = SmartContractService.getGameState(userId);
+    const gameState = await SmartContractService.getGameState(userId);
     return NextResponse.json(gameState);
   } catch (error) {
     console.error('Game State API Error:', error);
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     
     // In a real app, this would transact with the GameFi contract
     // For now, we update the mock state
-    const newState = SmartContractService.updateGameState(userId, action, data);
+    const newState = await SmartContractService.updateGameState(userId, action, data);
     
     return NextResponse.json(newState);
   } catch (error) {
