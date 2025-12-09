@@ -44,5 +44,30 @@ export default function Home() {
   }
 
   // Otherwise show Login Screen
-  return <LoginView />;
+    // --- ĐOẠN CODE MỚI THÊM NÚT TẮT ---
+  return (
+    <div style={{ position: 'relative' }}>
+      <LoginView />
+      
+      {/* Nút tắt dẫn sang phòng Upload */}
+      <a href="/upload" style={{
+        position: 'fixed',
+        bottom: '30px', 
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        padding: '12px 25px',
+        backgroundColor: '#ff0050', // Màu đỏ giống TikTok
+        color: 'white',
+        borderRadius: '50px',
+        fontWeight: 'bold',
+        textDecoration: 'none',
+        boxShadow: '0 5px 15px rgba(0,0,0,0.5)',
+        border: '2px solid white'
+      }}>
+        🎥 ĐĂNG VIDEO (TEST)
+      </a>
+    </div>
+  );
+  
 }
