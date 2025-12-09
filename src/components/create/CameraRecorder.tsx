@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon, Type, Sticker as StickerIcon } from "lucide-react";
+import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon, RotateCcw, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { VIDEO_FILTERS } from "@/lib/video-filters";
@@ -10,25 +10,6 @@ interface CameraRecorderProps {
     onVideoRecorded?: (blob: Blob) => void;
     script?: string;
 }
-
-interface TextOverlay {
-    id: string;
-    text: string;
-    x: number;
-    y: number;
-    color: string;
-    scale: number;
-}
-
-interface StickerOverlay {
-    id: string;
-    emoji: string;
-    x: number;
-    y: number;
-    scale: number;
-}
-
-const STICKERS = ["🔥", "😂", "❤️", "👍", "🎉", "👀", "💎", "🚀", "🥧"];
 
 export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,20 +22,12 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
 
     const [isRecording, setIsRecording] = useState(false);
     const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [previewType, setPreviewType] = useState<'video' | 'image'>('video');
     const [currentFilter, setCurrentFilter] = useState(VIDEO_FILTERS[0]);
     const [timer, setTimer] = useState(0);
     const [countdown, setCountdown] = useState(0); 
-    const [useTimer, setUseTimer] = useState(false);
+    const [timerMode, setTimerMode] = useState<0|3|10>(0); // 0, 3s, 10s
     const [flashActive, setFlashActive] = useState(false);
-
-    // Overlays
-    const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
-    const [stickerOverlays, setStickerOverlays] = useState<StickerOverlay[]>([]);
-    const [showTextInput, setShowTextInput] = useState(false);
-    const [currentText, setCurrentText] = useState("");
-    const [showStickerPicker, setShowStickerPicker] = useState(false);
+    const [facingMode, setFacingMode] = useState<'user'|'environment'>('user');
 
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const animationFrameRef = useRef<number | null>(null);
@@ -65,9 +38,14 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const startCamera = async () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+            tracks.forEach(track => track.stop());
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", aspectRatio: 9/16, width: { ideal: 720 } }, 
+                video: { facingMode: facingMode, aspectRatio: 9/16, width: { ideal: 720 } },
                 audio: true 
             });
             
@@ -79,6 +57,7 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
 
         } catch (err) {
             console.error("Error accessing camera:", err);
+            toast.error("Could not access camera");
         }
     };
 
@@ -111,62 +90,27 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 canvas.height = video.videoHeight || 640;
             }
             
-            // Draw Video
+            // Draw Video (Mirror if user facing)
+            ctx.save();
+            if (facingMode === 'user') {
+                 ctx.translate(canvas.width, 0);
+                 ctx.scale(-1, 1);
+            }
             ctx.filter = currentFilter.filter;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none';
-
-            // Draw Text Overlays
-            textOverlays.forEach(text => {
-                ctx.font = `bold ${30 * text.scale}px sans-serif`;
-                ctx.fillStyle = text.color;
-                ctx.strokeStyle = 'black';
-                ctx.lineWidth = 2;
-                ctx.textAlign = 'center';
-                ctx.strokeText(text.text, text.x, text.y);
-                ctx.fillText(text.text, text.x, text.y);
-            });
-
-            // Draw Sticker Overlays
-            stickerOverlays.forEach(sticker => {
-                ctx.font = `${50 * sticker.scale}px serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(sticker.emoji, sticker.x, sticker.y);
-            });
+            ctx.restore();
         }
         animationFrameRef.current = requestAnimationFrame(drawToCanvas);
     };
 
-    const handleAddText = () => {
-        if (currentText.trim()) {
-            setTextOverlays([...textOverlays, {
-                id: Date.now().toString(),
-                text: currentText,
-                x: canvasRef.current ? canvasRef.current.width / 2 : 180,
-                y: canvasRef.current ? canvasRef.current.height / 2 : 320,
-                color: 'white',
-                scale: 1.5
-            }]);
-            setCurrentText("");
-            setShowTextInput(false);
-        }
+    const toggleCamera = () => {
+        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
     };
 
-    const handleAddSticker = (emoji: string) => {
-        setStickerOverlays([...stickerOverlays, {
-            id: Date.now().toString(),
-            emoji: emoji,
-            x: canvasRef.current ? canvasRef.current.width / 2 : 180,
-            y: canvasRef.current ? canvasRef.current.height / 2 : 320,
-            scale: 2.0
-        }]);
-        setShowStickerPicker(false);
-    };
+    useEffect(() => {
+        startCamera();
+    }, [facingMode]);
 
-    // Very basic drag logic for overlays (this updates the state which updates the canvas draw)
-    // For simplicity in this iteration, we place them center. Real drag requires mouse listeners on canvas.
-    // We will add random jitter to position to avoid overlap if multiple added.
     
     const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -199,33 +143,11 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         }
     };
 
-    const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-             const url = URL.createObjectURL(file);
-             setPreviewUrl(url);
-             
-             if (file.type.startsWith('image/')) {
-                 setPreviewType('image');
-                 toast.success("Image uploaded!");
-             } else {
-                 setPreviewType('video');
-                 toast.success("Video uploaded!");
-             }
-
-             const blob = new Blob([file], { type: file.type });
-             setRecordedChunks([blob]); 
-             if (onVideoRecorded) {
-                 onVideoRecorded(blob);
-             }
-        }
-    };
-
     const startRecording = async () => {
         if (!canvasRef.current) return;
 
-        if (useTimer) {
-            setCountdown(3);
+        if (timerMode > 0) {
+            setCountdown(timerMode);
             const countInterval = setInterval(() => {
                 setCountdown(prev => {
                     if (prev <= 1) {
@@ -322,17 +244,6 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         if (onVideoRecorded) {
             onVideoRecorded(blob);
         }
-        setPreviewType('video');
-        setPreviewUrl(URL.createObjectURL(blob));
-    };
-
-    const handleRetake = () => {
-        setRecordedChunks([]);
-        setPreviewUrl(null);
-        setTimer(0);
-        setPreviewType('video');
-        setTextOverlays([]);
-        setStickerOverlays([]);
     };
 
     const formatTime = (seconds: number) => {
@@ -345,6 +256,18 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         <div className="relative w-full h-full flex flex-col items-center bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
             
             <video ref={videoRef} autoPlay playsInline muted className="hidden" />
+
+            {/* Top Controls */}
+            <div className="absolute top-4 right-4 z-40 flex flex-col gap-4">
+                 <button onClick={toggleCamera} className="p-2 bg-black/40 backdrop-blur rounded-full text-white">
+                     <RotateCcw size={20} />
+                     <span className="text-[10px] block text-center">Flip</span>
+                 </button>
+                 <button onClick={() => setTimerMode(prev => prev === 0 ? 3 : prev === 3 ? 10 : 0)} className="p-2 bg-black/40 backdrop-blur rounded-full text-white">
+                     <Timer size={20} className={timerMode > 0 ? "text-blue-400" : ""} />
+                     <span className="text-[10px] block text-center">{timerMode > 0 ? `${timerMode}s` : 'Off'}</span>
+                 </button>
+            </div>
 
             <div className="relative w-full flex-1 bg-gray-900 flex items-center justify-center overflow-hidden">
                 <AnimatePresence>
@@ -372,51 +295,11 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                     )}
                 </AnimatePresence>
 
-                {!previewUrl ? (
-                    <canvas ref={canvasRef} className="w-full h-full object-cover" />
-                ) : (
-                    previewType === 'video' ? (
-                        <video src={previewUrl} controls className="w-full h-full object-cover" />
-                    ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={previewUrl} alt="Preview" className="w-full h-full object-contain bg-black" />
-                    )
-                )}
-
-                {/* Text Input Modal */}
-                {showTextInput && (
-                    <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
-                        <input 
-                            autoFocus
-                            value={currentText}
-                            onChange={(e) => setCurrentText(e.target.value)}
-                            className="bg-transparent text-white text-3xl font-bold text-center outline-none border-b-2 border-purple-500 w-full mb-4"
-                            placeholder="Type something..."
-                        />
-                        <div className="flex gap-4">
-                            <button onClick={() => setShowTextInput(false)} className="px-4 py-2 bg-gray-600 rounded-full text-white">Cancel</button>
-                            <button onClick={handleAddText} className="px-4 py-2 bg-purple-600 rounded-full text-white font-bold">Add Text</button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Sticker Picker */}
-                {showStickerPicker && (
-                    <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                        <div className="bg-gray-800 p-4 rounded-xl grid grid-cols-3 gap-4">
-                            {STICKERS.map(emoji => (
-                                <button key={emoji} onClick={() => handleAddSticker(emoji)} className="text-4xl hover:scale-125 transition-transform">
-                                    {emoji}
-                                </button>
-                            ))}
-                        </div>
-                        <button onClick={() => setShowStickerPicker(false)} className="absolute bottom-10 px-4 py-2 bg-gray-600 rounded-full text-white">Close</button>
-                    </div>
-                )}
+                <canvas ref={canvasRef} className="w-full h-full object-cover" />
 
                 {/* Script Overlay */}
-                {script && !previewUrl && (
-                    <div className="absolute top-10 left-4 right-4 bg-black/40 backdrop-blur-sm p-4 rounded-xl text-white text-lg font-medium leading-relaxed max-h-48 overflow-y-auto z-20 pointer-events-none border border-white/10 shadow-lg">
+                {script && (
+                    <div className="absolute top-10 left-4 right-16 bg-black/40 backdrop-blur-sm p-4 rounded-xl text-white text-lg font-medium leading-relaxed max-h-48 overflow-y-auto z-20 pointer-events-none border border-white/10 shadow-lg">
                         {script}
                     </div>
                 )}
@@ -427,14 +310,14 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute top-4 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white z-30"
+                        className="absolute top-4 left-4 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white z-30"
                     >
                         {currentFilter.name}
                     </motion.div>
                 </AnimatePresence>
 
                  {audioFile && (
-                    <div className="absolute top-4 right-4 bg-purple-500/80 backdrop-blur px-3 py-1 rounded-full text-xs flex items-center gap-1 text-white z-30">
+                    <div className="absolute top-4 left-20 bg-purple-500/80 backdrop-blur px-3 py-1 rounded-full text-xs flex items-center gap-1 text-white z-30">
                         <Music size={12} />
                         <span className="max-w-[100px] truncate">{audioFile.name}</span>
                         {!isRecording && <button onClick={clearMusic}><X size={12} /></button>}
@@ -450,40 +333,8 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                     </div>
                 )}
 
-                {!isRecording && !previewUrl && (
+                {!isRecording && (
                     <div className="flex gap-4 overflow-x-auto w-full px-4 pb-2 no-scrollbar justify-start md:justify-center">
-                         <button 
-                            onClick={() => setUseTimer(!useTimer)}
-                            className={`flex flex-col items-center gap-1 shrink-0 group px-2 border-r border-gray-700 mr-2`}
-                        >
-                             <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${useTimer ? 'border-blue-500 bg-blue-500/20 text-blue-400' : 'border-gray-600 text-gray-400'}`}>
-                                <span className="text-xs font-bold">3s</span>
-                            </div>
-                            <span className="text-[10px] uppercase font-bold text-gray-400">Timer</span>
-                        </button>
-
-                        {/* Text Tool */}
-                         <button 
-                            onClick={() => setShowTextInput(true)}
-                            className={`flex flex-col items-center gap-1 shrink-0 group mr-2`}
-                        >
-                             <div className="w-12 h-12 rounded-full border-2 border-gray-600 flex items-center justify-center text-white bg-gray-800">
-                                <Type size={20} />
-                            </div>
-                            <span className="text-[10px] uppercase font-bold text-gray-400">Text</span>
-                        </button>
-
-                        {/* Sticker Tool */}
-                        <button 
-                            onClick={() => setShowStickerPicker(true)}
-                            className={`flex flex-col items-center gap-1 shrink-0 group mr-4`}
-                        >
-                             <div className="w-12 h-12 rounded-full border-2 border-gray-600 flex items-center justify-center text-white bg-gray-800">
-                                <StickerIcon size={20} />
-                            </div>
-                            <span className="text-[10px] uppercase font-bold text-gray-400">Sticker</span>
-                        </button>
-
                         {VIDEO_FILTERS.map((filter) => (
                             <button
                                 key={filter.name}
@@ -500,71 +351,70 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 )}
 
                 <div className="flex items-center gap-8">
-                    {previewUrl ? (
-                        <>
-                            <button onClick={handleRetake} className="p-4 bg-gray-800 rounded-full hover:bg-gray-700 transition">
-                                <RefreshCcw size={24} className="text-white" />
-                            </button>
-                            <button onClick={() => { if(onVideoRecorded && recordedChunks.length) onVideoRecorded(new Blob(recordedChunks, { type: 'video/webm' })); toast.success("Content saved!") }} className="p-4 bg-purple-600 rounded-full hover:bg-purple-500 transition shadow-lg shadow-purple-900/50">
-                                <Check size={32} className="text-white" />
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                             {!isRecording && (
-                                <div className="relative flex flex-col items-center gap-2">
-                                    <div className="relative">
-                                        <input 
-                                            type="file" 
-                                            accept="audio/*" 
-                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                            onChange={handleMusicUpload}
-                                        />
-                                        <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
-                                            <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
-                                        </button>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-400">Sound</span>
-                                </div>
-                            )}
-
-                            {!isRecording ? (
-                                <button 
-                                    onClick={startRecording} 
-                                    className="w-20 h-20 rounded-full border-[6px] border-white/30 flex items-center justify-center group transition-all hover:scale-105"
-                                >
-                                    <div className="w-16 h-16 bg-red-500 rounded-full group-hover:scale-90 transition-transform shadow-lg shadow-red-900/50" />
+                     {!isRecording && (
+                        <div className="relative flex flex-col items-center gap-2">
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept="audio/*"
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    onChange={handleMusicUpload}
+                                />
+                                <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+                                    <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
                                 </button>
-                            ) : (
-                                <button 
-                                    onClick={() => { stopRecording(); setTimeout(handleSave, 500); }} 
-                                    className="w-20 h-20 rounded-full border-[6px] border-red-500/30 flex items-center justify-center transition-all hover:scale-105"
-                                >
-                                    <div className="w-8 h-8 bg-red-500 rounded-sm shadow-lg shadow-red-900/50" />
-                                </button>
-                            )}
-
-                             {!isRecording && (
-                                 <div className="flex flex-col items-center gap-2">
-                                     <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
-                                     >
-                                         <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
-                                         <ImageIcon size={16} className="absolute text-white drop-shadow" />
-                                     </button>
-                                     <input 
-                                        type="file"
-                                        ref={fileInputRef}
-                                        accept="video/*,image/*"
-                                        className="hidden"
-                                        onChange={handleGalleryUpload}
-                                     />
-                                     <span className="text-[10px] font-bold text-gray-400">Upload</span>
-                                 </div>
-                             )} 
-                        </>
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-400">Sound</span>
+                        </div>
                     )}
+
+                    {!isRecording ? (
+                        <button
+                            onClick={startRecording}
+                            className="w-20 h-20 rounded-full border-[6px] border-white/30 flex items-center justify-center group transition-all hover:scale-105"
+                        >
+                            <div className="w-16 h-16 bg-red-500 rounded-full group-hover:scale-90 transition-transform shadow-lg shadow-red-900/50" />
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => { stopRecording(); setTimeout(handleSave, 500); }}
+                            className="w-20 h-20 rounded-full border-[6px] border-red-500/30 flex items-center justify-center transition-all hover:scale-105"
+                        >
+                            <div className="w-8 h-8 bg-red-500 rounded-sm shadow-lg shadow-red-900/50" />
+                        </button>
+                    )}
+
+                     {!isRecording && (
+                         <div className="flex flex-col items-center gap-2">
+                             <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
+                             >
+                                 <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
+                                 <ImageIcon size={16} className="absolute text-white drop-shadow" />
+                             </button>
+                             <input
+                                type="file"
+                                ref={fileInputRef}
+                                accept="video/*,image/*"
+                                className="hidden"
+                                // Note: This redirects to a callback, but we need to check if 'handleGalleryUpload' exists in scope?
+                                // Ah, I removed it in SEARCH block? I need to check.
+                                // I will re-add it if needed or assume the parent CreateFlow handles upload separately via the SELECTION screen.
+                                // The User asked for "Upload" button inside Camera too (TikTok has it).
+                                // So I should restore handleGalleryUpload logic or pass a prop.
+                                // But CreateFlow has a separate Upload stage.
+                                // I will keep it here as a shortcut.
+                                onChange={(e) => {
+                                    if(e.target.files?.[0] && onVideoRecorded) {
+                                         const file = e.target.files[0];
+                                         onVideoRecorded(new Blob([file], {type: file.type}));
+                                    }
+                                }}
+                             />
+                             <span className="text-[10px] font-bold text-gray-400">Upload</span>
+                         </div>
+                     )}
                 </div>
             </div>
         </div>

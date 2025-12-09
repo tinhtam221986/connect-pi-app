@@ -9,7 +9,7 @@ import { VideoFeed } from '@/components/feed/VideoFeed';
 import { MarketplaceView } from '@/components/market/MarketplaceView';
 import { GameCenter } from '@/components/game/GameCenter';
 import { UserProfile } from '@/components/profile/UserProfile';
-import { AIContentStudio } from '@/components/create/AIContentStudio';
+import { CreateFlow } from '@/components/create/CreateFlow';
 
 export default function MainAppView() {
   const { user } = usePi();
@@ -19,7 +19,7 @@ export default function MainAppView() {
     switch (activeTab) {
       case 'home': return <VideoFeed />;
       case 'market': return <MarketplaceView />;
-      case 'create': return <AIContentStudio />;
+      case 'create': return <CreateFlow />;
       case 'game': return <GameCenter />;
       case 'profile': return <UserProfile />;
       default: return <VideoFeed />;

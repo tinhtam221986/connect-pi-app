@@ -24,6 +24,8 @@ export async function POST(request: Request) {
     const file = formData.get("file") as File;
     const username = formData.get("username") as string;
     const description = formData.get("description") as string;
+    const hashtags = formData.get("hashtags") as string;
+    const privacy = formData.get("privacy") as string;
 
     if (!file) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
@@ -66,7 +68,9 @@ export async function POST(request: Request) {
         likes: 0,
         comments: 0,
         resource_type: resAny.resource_type || 'image',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        hashtags: hashtags ? JSON.parse(hashtags) : [],
+        privacy: privacy || 'public'
     });
 
     return NextResponse.json({ 
