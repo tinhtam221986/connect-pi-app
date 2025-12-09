@@ -71,10 +71,10 @@ export function AIAssistant() {
                         exit={{ opacity: 0, y: 50, scale: 0.9 }}
                         drag
                         dragMomentum={false}
-                        className="fixed bottom-24 right-4 w-80 sm:w-96 h-[30rem] bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden"
+                        className="fixed bottom-24 right-4 w-80 sm:w-96 h-[30rem] bg-gray-900/90 backdrop-blur-md border border-cyan-500/40 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.2)] flex flex-col z-50 overflow-hidden"
                     >
                         {/* Header - Drag Handle */}
-                        <div className="p-4 bg-gradient-to-r from-gray-800 to-gray-900 flex justify-between items-center border-b border-gray-700 cursor-grab active:cursor-grabbing">
+                        <div className="p-4 bg-gradient-to-r from-gray-900 to-cyan-950/30 flex justify-between items-center border-b border-cyan-500/20 cursor-grab active:cursor-grabbing">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-full bg-cyan-900/50 flex items-center justify-center border border-cyan-500/30">
                                     <Bot size={18} className="text-cyan-400" />

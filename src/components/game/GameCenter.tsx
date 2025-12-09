@@ -8,9 +8,11 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { useEconomy } from "@/components/economy/EconomyContext";
 import { usePiPayment } from "@/hooks/use-pi-payment";
+import { usePi } from "@/components/pi/pi-provider";
 
 export function GameCenter() {
     const { t } = useLanguage();
+    const { user } = usePi();
     const { inventory, refresh, balance } = useEconomy();
     const { createPayment } = usePiPayment();
 
@@ -49,7 +51,7 @@ export function GameCenter() {
                 .filter(item => item !== null)
                 .map(item => item.id);
 
-            const res = await apiClient.game.breed('user_current', materialIds);
+            const res = await apiClient.game.breed(user?.username || 'user_current', materialIds);
 
             if (res.success) {
                 setNewPet(res.pet);
@@ -80,7 +82,7 @@ export function GameCenter() {
             await createPayment(
                 item.price,
                 `Buy ${item.name}`,
-                { type: 'marketplace_buy', itemId: item.id, userId: 'user_current' },
+                { type: 'marketplace_buy', itemId: item.id, userId: user?.username || 'user_current' },
                 {
                     onSuccess: async () => {
                         // toast handled by hook

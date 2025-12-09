@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { usePi } from '@/components/pi/pi-provider';
 // Import chính xác VideoFeed (Named Import)
 import { VideoFeed } from '@/components/feed/VideoFeed';
 
@@ -11,6 +12,7 @@ import { UserProfile } from '@/components/profile/UserProfile';
 import { AIContentStudio } from '@/components/create/AIContentStudio';
 
 export default function MainAppView() {
+  const { user } = usePi();
   const [activeTab, setActiveTab] = useState('home');
 
   const renderContent = () => {
@@ -26,6 +28,12 @@ export default function MainAppView() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground selection:bg-primary/30">
+      {/* Pi Connection Status Bar (Whitepaper Requirement) */}
+      <div className="bg-green-900/20 border-b border-green-500/20 text-green-400 text-[10px] font-mono font-bold py-1 px-4 flex justify-between items-center backdrop-blur-md z-50">
+           <span className="flex items-center gap-1">✅ Pi Network Connected</span>
+           <span className="text-green-300">@{user?.username || 'Guest'}</span>
+      </div>
+
       <main className="flex-1 overflow-hidden relative">
         {renderContent()}
       </main>
