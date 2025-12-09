@@ -56,8 +56,10 @@ export function VideoFeed() {
 function VideoItem({ video }: { video: any }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const isImage = video.resource_type === 'image';
 
     const togglePlay = () => {
+        if (isImage) return;
         if (!videoRef.current) return;
         if (isPlaying) {
             videoRef.current.pause();
@@ -72,22 +74,30 @@ function VideoItem({ video }: { video: any }) {
 
     return (
         <div className="w-full h-[100dvh] snap-start relative flex items-center justify-center bg-black border-b border-white/5">
-            {/* Video Player */}
-            <video
-                ref={videoRef}
-                src={video.url}
-                loop
-                playsInline
-                onClick={togglePlay}
-                className="w-full h-full object-cover"
-                poster={video.thumbnail}
-            />
+            {/* Media Player */}
+            {isImage ? (
+                <img
+                    src={video.url}
+                    className="w-full h-full object-contain bg-black"
+                    alt={video.description}
+                />
+            ) : (
+                <video
+                    ref={videoRef}
+                    src={video.url}
+                    loop
+                    playsInline
+                    onClick={togglePlay}
+                    className="w-full h-full object-cover"
+                    poster={video.thumbnail}
+                />
+            )}
 
             {/* Overlay Gradient */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80 pointer-events-none" />
 
-            {/* Play Button (if paused) */}
-            {!isPlaying && (
+            {/* Play Button (if paused and is video) */}
+            {!isImage && !isPlaying && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
                         <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[20px] border-l-white border-b-[10px] border-b-transparent ml-1" />

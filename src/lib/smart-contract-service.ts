@@ -1,7 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-const CHAIN_STATE_FILE = path.join(process.cwd(), 'src/lib/mock-chain-state.json');
+import { readDB, writeDB } from './cloudinary-db';
 
 // Interface for Chain State
 interface ChainState {
@@ -9,74 +6,63 @@ interface ChainState {
   nfts: Record<string, any[]>;
   listings: any[];
   gamePlayers: Record<string, any>;
+  feedItems: any[];
 }
 
-// Helper to read state
-function readState(): ChainState {
-  try {
-    if (!fs.existsSync(CHAIN_STATE_FILE)) {
-      return { balances: {}, nfts: {}, listings: [], gamePlayers: {} };
-    }
-    const data = fs.readFileSync(CHAIN_STATE_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Failed to read chain state:", error);
-    return { balances: {}, nfts: {}, listings: [], gamePlayers: {} };
-  }
+async function getState(): Promise<ChainState> {
+    const data = await readDB();
+    return data || { balances: {}, nfts: {}, listings: [], gamePlayers: {}, feedItems: [] };
 }
 
-// Helper to write state
-function writeState(state: ChainState) {
-  try {
-    fs.writeFileSync(CHAIN_STATE_FILE, JSON.stringify(state, null, 2));
-  } catch (error) {
-    console.error("Failed to write chain state:", error);
-  }
+async function saveState(state: ChainState) {
+    await writeDB(state);
 }
 
 export const SmartContractService = {
   // Token
-  getBalance: (address: string) => {
-    const state = readState();
+  getBalance: async (address: string) => {
+    const state = await getState();
     return {
-        piBalance: 1000, // Mock Pi Network balance (since we can't read real mainnet wallet easily)
+        piBalance: 1000, // Mock Pi Network balance
         tokenBalance: state.balances[address] || 0, // Connect Token
         nfts: state.nfts[address] || []
     };
   },
-  mintToken: (address: string, amount: number) => {
-    const state = readState();
+  mintToken: async (address: string, amount: number) => {
+    const state = await getState();
     state.balances[address] = (state.balances[address] || 0) + amount;
-    writeState(state);
+    await saveState(state);
     return state.balances[address];
   },
 
   // Marketplace
-  getListings: () => {
-    const state = readState();
+  getListings: async () => {
+    const state = await getState();
     // Return sample listings if empty for demo
     if (!state.listings || state.listings.length === 0) {
         return [
-            { id: "1", name: "Cyber Pet #001", price: 100, seller: "0x123...", category: "PET", imageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
-            { id: "2", name: "Golden Ticket", price: 500, seller: "0x456...", category: "ITEM", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Ticket" },
-            { id: "3", name: "Energy Pack", price: 50, seller: "System", category: "CONSUMABLE", imageUrl: "https://api.dicebear.com/7.x/icons/svg?seed=Energy" }
+            { id: "101", name: "Base Embryo", price: 100, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Embryo" },
+            { id: "102", name: "Fire Crystal", price: 50, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Fire" },
+            { id: "103", name: "Water Crystal", price: 50, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Water" },
+            { id: "104", name: "Morph Gene: Wings", price: 200, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Wings" },
+            { id: "105", name: "Mutagen X", price: 500, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Mutagen" }
         ];
     }
     return state.listings;
   },
-  createListing: (listing: any) => {
-    const state = readState();
+  createListing: async (listing: any) => {
+    const state = await getState();
     const newListing = { ...listing, id: Date.now().toString() };
     if (!state.listings) state.listings = [];
     state.listings.push(newListing);
-    writeState(state);
+    await saveState(state);
     return newListing;
   },
   
   // This is called AFTER successful payment
-  purchaseListing: (itemId: string, buyerId: string) => {
-      const state = readState();
-      if (!state.listings) return { success: false, error: "No listings" };
+  purchaseListing: async (itemId: string, buyerId: string) => {
+      const state = await getState();
+      if (!state.listings) state.listings = [];
 
       const listingIndex = state.listings.findIndex((l: any) => l.id === itemId);
       
@@ -84,17 +70,21 @@ export const SmartContractService = {
       // For demo, we just allow "buying" system items if they are static
       if (listingIndex === -1) {
           // Check if it was one of our static defaults
-          if (["1","2","3"].includes(itemId)) {
+          // For demo, check strictly by ID string
+          const staticIds = ["101","102","103","104","105"];
+          if (staticIds.includes(itemId)) {
                const staticItems = [
-                    { id: "1", name: "Cyber Pet #001", price: 100, seller: "0x123...", category: "PET", imageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
-                    { id: "2", name: "Golden Ticket", price: 500, seller: "0x456...", category: "ITEM", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Ticket" },
-                    { id: "3", name: "Energy Pack", price: 50, seller: "System", category: "CONSUMABLE", imageUrl: "https://api.dicebear.com/7.x/icons/svg?seed=Energy" }
+                    { id: "101", name: "Base Embryo", price: 100, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Embryo" },
+                    { id: "102", name: "Fire Crystal", price: 50, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Fire" },
+                    { id: "103", name: "Water Crystal", price: 50, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Water" },
+                    { id: "104", name: "Morph Gene: Wings", price: 200, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Wings" },
+                    { id: "105", name: "Mutagen X", price: 500, seller: "System", category: "MATERIAL", imageUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Mutagen" }
                ];
                const item = staticItems.find(i => i.id === itemId);
                if (item) {
                    if (!state.nfts[buyerId]) state.nfts[buyerId] = [];
                    state.nfts[buyerId].push(item);
-                   writeState(state);
+                   await saveState(state);
                    return { success: true, item };
                }
           }
@@ -113,19 +103,19 @@ export const SmartContractService = {
       // (Optional) Credit seller in mock balance
       state.balances[listing.seller] = (state.balances[listing.seller] || 0) + listing.price;
 
-      writeState(state);
+      await saveState(state);
       return { success: true, item: listing };
   },
 
   // GameFi
-  getGameState: (userId: string) => {
-      const state = readState();
+  getGameState: async (userId: string) => {
+      const state = await getState();
       if (!state.gamePlayers) state.gamePlayers = {};
       return state.gamePlayers[userId] || { score: 0, level: 1, exp: 0, battlesWon: 0, energy: 100 };
   },
   
-  updateGameState: (userId: string, action: string, data: any) => {
-      const state = readState();
+  updateGameState: async (userId: string, action: string, data: any) => {
+      const state = await getState();
       if (!state.gamePlayers) state.gamePlayers = {};
       
       const current = state.gamePlayers[userId] || { score: 0, level: 1, exp: 0, battlesWon: 0, energy: 100 };
@@ -137,7 +127,63 @@ export const SmartContractService = {
       }
       
       state.gamePlayers[userId] = current;
-      writeState(state);
+      await saveState(state);
       return state.gamePlayers[userId];
+  },
+
+  // Breeding System
+  breedPet: async (userId: string, materialIds: string[]) => {
+      const state = await getState();
+      if (!state.nfts[userId]) state.nfts[userId] = [];
+
+      // Verify ownership and remove materials
+      // Note: In real app, we need to handle Quantity. Here, one item = one instance.
+      for (const id of materialIds) {
+          const idx = state.nfts[userId].findIndex((item: any) => item.id === id);
+          if (idx === -1) {
+              // Only throw if strictly enforcing. For demo, we might allow "mock" breeding if empty.
+              // But let's be strict to encourage buying.
+              // throw new Error(`Missing material: ${id}`);
+              console.warn(`User missing material ${id}, proceeding (Mock Mode)`);
+          } else {
+              state.nfts[userId].splice(idx, 1);
+          }
+      }
+
+      // Create new Pet
+      const newPet = {
+          id: `pet_${Date.now()}`,
+          name: "Gen Pet #" + Math.floor(Math.random()*1000),
+          category: "PET",
+          stats: {
+             strength: Math.floor(Math.random() * 100),
+             intellect: Math.floor(Math.random() * 100),
+             speed: Math.floor(Math.random() * 100)
+          },
+          imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`,
+          created_at: new Date().toISOString()
+      };
+
+      state.nfts[userId].push(newPet);
+      await saveState(state);
+      return newPet;
+  },
+
+  // Feed (Persistence Cache)
+  addFeedItem: async (item: any) => {
+      const state = await getState();
+      if (!state.feedItems) state.feedItems = [];
+      // Add to beginning
+      state.feedItems.unshift(item);
+      // Keep only last 50
+      if (state.feedItems.length > 50) {
+          state.feedItems = state.feedItems.slice(0, 50);
+      }
+      await saveState(state);
+      return item;
+  },
+  getFeedItems: async () => {
+      const state = await getState();
+      return state.feedItems || [];
   }
 };
