@@ -39,6 +39,7 @@ export default function MainAppView() {
       </main>
 
       {/* Bottom Navigation (Cyber Glass Style) */}
+      {activeTab !== 'create' && (
       <nav className="h-16 glass border-t border-white/10 flex justify-around items-center z-50 pb-safe fixed bottom-0 w-full">
         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center transition-all duration-300 ${activeTab === 'home' ? 'text-primary neon-text scale-110' : 'text-muted-foreground hover:text-white'}`}>
           <span className="text-2xl">🏠</span>
@@ -62,6 +63,7 @@ export default function MainAppView() {
           <span className="text-[10px] mt-1 font-medium">Me</span>
         </button>
       </nav>
+      )}
     </div>
   );
 }
