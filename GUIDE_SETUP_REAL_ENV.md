@@ -1,65 +1,27 @@
-# HƯỚNG DẪN CÀI ĐẶT MÔI TRƯỜNG THỰC TẾ (REAL ENVIRONMENT)
+# CẤU HÌNH MÔI TRƯỜNG THỰC TẾ (REAL ENVIRONMENT SETUP)
 
-Tài liệu này hướng dẫn chi tiết cách cấu hình ứng dụng **CONNECT** để chạy hoàn hảo trên Pi Network (Pi Browser) với đầy đủ tính năng Đăng nhập thật và Upload Video/Ảnh.
+Để ứng dụng hoạt động chính xác trên Pi Browser và lưu trữ được video, bạn cần cấu hình các biến môi trường (Environment Variables) trên Vercel như sau:
 
----
+## 1. Cloudinary (Lưu trữ Video & Database)
+Đăng ký tài khoản miễn phí tại [cloudinary.com](https://cloudinary.com) và lấy thông tin từ Dashboard:
 
-## BƯỚC 1: Đăng ký Ứng dụng trên Pi Developer Portal
+- `CLOUDINARY_CLOUD_NAME`: Tên cloud của bạn (ví dụ: `duong-connect-app`).
+- `CLOUDINARY_API_KEY`: API Key (ví dụ: `1234567890`).
+- `CLOUDINARY_API_SECRET`: API Secret.
 
-1.  Mở ứng dụng **Pi Browser** trên điện thoại.
-2.  Truy cập địa chỉ: `develop.pi`
-3.  Nhấn **New App** (nếu chưa tạo) hoặc chọn App của bạn.
-4.  Điền thông tin:
-    *   **App Name:** CONNECT.
-    *   **App Network:** Chọn **Pi Mainnet** (hoặc Testnet).
-5.  **Cấu hình URL (Quan trọng nhất):**
-    *   **App URL:** Nhập địa chỉ Vercel của bạn (ví dụ: `https://connect-app.vercel.app`).
-    *   **Hosting URL:** Phải trùng khớp với App URL và **bắt buộc là HTTPS**.
-    *   *Lưu ý:* Nếu chạy local, dùng `ngrok` để tạo link HTTPS.
+**Tại sao cần cái này?**
+Hệ thống sử dụng Cloudinary không chỉ để chứa video mà còn để lưu trữ "Cơ sở dữ liệu" (JSON Database) của Game và Feed. Nếu thiếu, video sẽ không hiện và Game sẽ không lưu được thú cưng.
 
----
+## 2. Pi Network (Xác thực & Thanh toán)
+- `PI_API_KEY`: Key từ Pi Developer Portal (dùng để xác thực User trên server).
+- `NEXT_PUBLIC_PI_SANDBOX`: Đặt là `false` nếu muốn chạy Mainnet thật. Đặt `true` để test trên Sandbox.
 
-## BƯỚC 2: Đăng ký Cloudinary (Để Upload Video)
+## 3. Cấu hình trên Vercel
+1. Vào Project trên Vercel -> **Settings** -> **Environment Variables**.
+2. Thêm các biến trên vào.
+3. **Redeploy** (Deploy lại) để áp dụng thay đổi.
 
-Để người dùng có thể đăng video và ảnh thật (thay vì lưu local), bạn cần dịch vụ Cloudinary miễn phí.
-
-1.  Truy cập [cloudinary.com](https://cloudinary.com) và đăng ký tài khoản miễn phí.
-2.  Vào **Dashboard**, tìm mục "Account Details".
-3.  Copy 3 thông số sau:
-    *   `Cloud Name`
-    *   `API Key`
-    *   `API Secret`
-
----
-
-## BƯỚC 3: Cài đặt Biến Môi trường (Environment Variables)
-
-Vào **Vercel** -> **Settings** -> **Environment Variables** (hoặc file `.env.local` nếu chạy local) và thêm các biến sau:
-
-| Tên Biến | Giá trị | Mô tả |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_PI_SANDBOX` | `false` | **Quan trọng**. Tắt chế độ Sandbox web để chạy trên Pi Browser. |
-| `PI_API_KEY` | `Key_của_bạn` | Lấy từ Pi Developer Portal. |
-| `CLOUDINARY_CLOUD_NAME` | `Tên_Cloud_của_bạn` | Lấy từ Cloudinary Dashboard. |
-| `CLOUDINARY_API_KEY` | `Key_Cloudinary` | Lấy từ Cloudinary Dashboard. |
-| `CLOUDINARY_API_SECRET` | `Secret_Cloudinary` | Lấy từ Cloudinary Dashboard. |
-
----
-
-## BƯỚC 4: Kiểm thử Toàn diện
-
-1.  **Deploy** code mới lên Vercel.
-2.  Mở **Pi Browser** trên điện thoại.
-3.  Truy cập URL App.
-4.  **Kiểm tra Đăng nhập:** Nhấn "Đăng nhập". Thanh trạng thái phải hiện "Đã kết nối Pi Network".
-5.  **Kiểm tra Upload:** Vào Tab "Tạo" (Create) -> Upload Video. Nếu Cloudinary đúng, video sẽ được tải lên server và người khác có thể xem.
-
----
-
-## KHẮC PHỤC SỰ CỐ
-
-*   **Lỗi Upload 500:** Do chưa cấu hình Cloudinary keys.
-*   **Lỗi Đăng nhập (Loading SDK...):** Do chưa set `NEXT_PUBLIC_PI_SANDBOX=false` hoặc không chạy trên Pi Browser.
-*   **Màn hình đen/trắng:** Kiểm tra tab Console (dùng `eruda` hoặc nối máy tính debug) để xem lỗi JS.
-
-Chúc bạn thành công đưa CONNECT đến với cộng đồng Pi Network! 🚀
+## Kiểm tra sau khi Deploy
+1. Mở App trên Pi Browser.
+2. Nhìn lên thanh trạng thái trên cùng, phải thấy dòng chữ "✅ Pi Network Connected".
+3. Vào Tab "Game", thử mua vật phẩm hoặc lai tạo. Nếu thành công, hệ thống đã hoạt động tốt.
