@@ -124,8 +124,8 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                  </div>
             </div>
 
-            {/* Settings Group */}
-            <div className="bg-white p-4 space-y-6 mb-20">
+            {/* Settings Group - Added margin-bottom to ensure content is not hidden by fixed footer */}
+            <div className="bg-white p-4 space-y-6 mb-32">
 
                 <div className="flex items-center gap-3 text-sm text-gray-700 hover:bg-gray-50 p-2 rounded-lg cursor-pointer">
                     <Hash size={20} />

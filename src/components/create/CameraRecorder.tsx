@@ -386,17 +386,35 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
 
                      {!isRecording && (
                          <div className="flex flex-col items-center gap-2">
-                             <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
-                             >
-                                 <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
-                                 <ImageIcon size={16} className="absolute text-white drop-shadow" />
-                             </button>
+                             {/* Fallback Native Camera Button (Crucial for Mobile WebViews) */}
+                             <div className="relative">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
+                                >
+                                    <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
+                                    <ImageIcon size={16} className="absolute text-white drop-shadow" />
+                                </button>
+                                {/* Native Input Overlay for direct tap interaction if button fails */}
+                                <input
+                                    type="file"
+                                    accept="video/*"
+                                    capture="environment"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={(e) => {
+                                        if(e.target.files?.[0] && onVideoRecorded) {
+                                            const file = e.target.files[0];
+                                            onVideoRecorded(new Blob([file], {type: file.type}));
+                                        }
+                                    }}
+                                />
+                             </div>
+
                              <input
                                 type="file"
                                 ref={fileInputRef}
                                 accept="video/*,image/*"
+                                capture="environment"
                                 className="hidden"
                                 // Note: This redirects to a callback, but we need to check if 'handleGalleryUpload' exists in scope?
                                 // Ah, I removed it in SEARCH block? I need to check.
