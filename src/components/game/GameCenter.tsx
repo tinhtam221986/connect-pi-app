@@ -2,163 +2,275 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
-import { Hammer, Trophy, Zap, Coins, Gamepad2 } from "lucide-react";
+import { Dna, ShoppingCart, TestTube, Zap, X, FlaskConical, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { useEconomy } from "@/components/economy/EconomyContext";
+import { usePiPayment } from "@/hooks/use-pi-payment";
 
 export function GameCenter() {
     const { t } = useLanguage();
-    const { addBalance, refresh } = useEconomy();
-    const [score, setScore] = useState(0);
-    const [energy, setEnergy] = useState(100);
-    const [clicks, setClicks] = useState<{id: number, x: number, y: number}[]>([]);
+    const { inventory, refresh, balance } = useEconomy();
+    const { createPayment } = usePiPayment();
 
-    // Load initial state from backend
-    useEffect(() => {
-        const loadState = async () => {
-            try {
-                // Pass user id explicitly for now since auth might be mocked
-                const res = await apiClient.game.getState('user_current');
-                // Response format from SmartContractService: { score: number, lastActive: string, pets: [], ... }
-                // or the API wrapper: { ... }
-                
-                // Check if res itself is the state object
-                if (res && typeof res.score === 'number') {
-                    setScore(res.score);
-                    // SmartContractService doesn't track energy yet, keep local state for now
-                }
-            } catch (error) {
-                console.error("Failed to load game state", error);
-            }
-        };
-        loadState();
-    }, []);
+    const [view, setView] = useState<'lab' | 'market'>('lab');
+    const [slots, setSlots] = useState<{ [key: string]: any | null }>({
+        embryo: null,
+        crystal: null,
+        morph: null,
+        mutagen: null
+    });
+    const [breeding, setBreeding] = useState(false);
+    const [newPet, setNewPet] = useState<any>(null);
 
-    const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-        if (energy <= 0) {
-            toast.error("Out of energy! Wait a moment.");
+    // Filter inventory for ease of use
+    const materials = inventory.filter((i: any) => i.category === 'MATERIAL');
+    const pets = inventory.filter((i: any) => i.category === 'PET');
+
+    const handleSlotClick = (type: string, item: any) => {
+        setSlots(prev => ({ ...prev, [type]: item }));
+    };
+
+    const handleRemoveSlot = (type: string) => {
+        setSlots(prev => ({ ...prev, [type]: null }));
+    };
+
+    const handleBreed = async () => {
+        if (!slots.embryo) {
+            toast.error("Base Embryo is required!");
             return;
         }
 
-        // Optimistic UI Update
-        setScore(prev => prev + 1);
-        addBalance(1); // Update global context immediately
-        setEnergy(prev => Math.max(0, prev - 1));
-
-        // Visual effect
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const id = Date.now();
-        setClicks(prev => [...prev, {id, x, y}]);
-        setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 1000);
-
-        // Vibration
-        if (navigator.vibrate) navigator.vibrate(50);
-
-        // Sync with Backend
+        setBreeding(true);
         try {
-            // Action 'click' maps to logic in route.ts -> SmartContractService.updateGameState
-            await apiClient.game.action('click', { points: 1 });
-        } catch (error) {
-            console.error("Sync failed", error);
+            // Collect IDs
+            const materialIds = Object.values(slots)
+                .filter(item => item !== null)
+                .map(item => item.id);
+
+            const res = await apiClient.game.breed('user_current', materialIds);
+
+            if (res.success) {
+                setNewPet(res.pet);
+                setSlots({ embryo: null, crystal: null, morph: null, mutagen: null });
+                toast.success("Breeding Successful!");
+                await refresh();
+            } else {
+                toast.error("Breeding Failed: " + res.error);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("An error occurred during synthesis.");
+        } finally {
+            setBreeding(false);
         }
     };
 
-    // Recover energy locally
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setEnergy(prev => Math.min(100, prev + 2));
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
+    const shopItems = [
+        { id: "101", name: "Base Embryo", price: 100, type: "embryo", icon: "🥚" },
+        { id: "102", name: "Fire Crystal", price: 50, type: "crystal", icon: "🔥" },
+        { id: "103", name: "Water Crystal", price: 50, type: "crystal", icon: "💧" },
+        { id: "104", name: "Wings Gene", price: 200, type: "morph", icon: "🕊️" },
+        { id: "105", name: "Mutagen X", price: 500, type: "mutagen", icon: "🧪" },
+    ];
+
+    const handleBuy = async (item: any) => {
+        try {
+            await createPayment(
+                item.price,
+                `Buy ${item.name}`,
+                { type: 'marketplace_buy', itemId: item.id, userId: 'user_current' },
+                {
+                    onSuccess: async () => {
+                        // toast handled by hook
+                        await refresh();
+                    }
+                }
+            );
+        } catch (e) {
+            console.error("Payment failed", e);
+            // toast handled by hook
+        }
+    };
 
     return (
-        <div className="h-full bg-black text-white flex flex-col pb-20 overflow-y-auto">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center">
-                 <h2 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-600 flex items-center gap-2">
-                     <Gamepad2 size={24} className="text-yellow-500" /> {t('game.title')}
+        <div className="h-full bg-black text-white flex flex-col overflow-y-auto pb-20 relative">
+             {/* Header */}
+             <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center">
+                 <h2 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600 flex items-center gap-2">
+                     <Dna size={24} className="text-blue-500" /> Pi Gene Lab
                  </h2>
-                 <div className="bg-gray-800 px-3 py-1 rounded-full flex items-center gap-2 border border-yellow-500/30">
-                     <Coins size={16} className="text-yellow-400" />
-                     <span className="font-bold text-yellow-400">{score.toFixed(0)} Pi</span>
+                 <div className="flex gap-2">
+                     <button
+                        onClick={() => setView('lab')}
+                        className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${view === 'lab' ? 'bg-blue-600' : 'bg-gray-800'}`}
+                     >
+                        <FlaskConical size={14} /> Lab
+                     </button>
+                     <button
+                        onClick={() => setView('market')}
+                        className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${view === 'market' ? 'bg-green-600' : 'bg-gray-800'}`}
+                     >
+                        <ShoppingCart size={14} /> Shop
+                     </button>
                  </div>
             </div>
 
-            {/* Featured Game: Pi Clicker */}
-            <div className="p-6 flex flex-col items-center flex-1 justify-center relative overflow-hidden">
-                {/* Background Decor */}
-                <div className="absolute top-10 left-10 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl animate-pulse"></div>
+            {/* Main Content */}
+            <div className="flex-1 p-4 relative">
+                {view === 'lab' ? (
+                    <div className="flex flex-col items-center gap-8 mt-4">
+                        {/* Synthesis Circle */}
+                        <div className="relative w-64 h-64">
+                             {/* Central Result / Button */}
+                             <div className="absolute inset-0 flex items-center justify-center z-10">
+                                 <motion.button
+                                     whileHover={{ scale: 1.05 }}
+                                     whileTap={{ scale: 0.95 }}
+                                     onClick={handleBreed}
+                                     disabled={breeding}
+                                     className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-xl shadow-purple-500/30 flex flex-col items-center justify-center border-4 border-blue-300 z-20"
+                                 >
+                                     {breeding ? <Sparkles className="animate-spin" size={32} /> : <Dna size={40} />}
+                                     <span className="text-xs font-bold mt-1 uppercase">{breeding ? "Synthesizing..." : "Create"}</span>
+                                 </motion.button>
+                             </div>
 
-                <div className="text-center mb-8 relative z-10">
-                    <h3 className="text-2xl font-bold mb-1">{t('game.clicker_title')}</h3>
-                    <p className="text-gray-400 text-sm">{t('game.clicker_desc')}</p>
-                </div>
+                             {/* Slots */}
+                             {['embryo', 'crystal', 'morph', 'mutagen'].map((type, i) => {
+                                 const angle = (i * 90) * (Math.PI / 180);
+                                 const radius = 100;
+                                 const x = Math.cos(angle) * radius; // correct math for positioning?
+                                 // Simple CSS positioning might be easier
+                                 const positions = [
+                                     'top-0 left-1/2 -translate-x-1/2', // Top
+                                     'right-0 top-1/2 -translate-y-1/2', // Right
+                                     'bottom-0 left-1/2 -translate-x-1/2', // Bottom
+                                     'left-0 top-1/2 -translate-y-1/2', // Left
+                                 ];
+                                 const labels = ['Embryo (Required)', 'Crystal', 'Morph', 'Mutagen'];
 
-                <div className="relative">
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleClick}
-                        className="w-48 h-48 rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 shadow-2xl shadow-orange-500/40 border-8 border-yellow-300 flex items-center justify-center relative group"
-                    >
-                        <Hammer size={64} className="text-white drop-shadow-md group-active:rotate-12 transition-transform" />
-                    </motion.button>
+                                 return (
+                                     <div key={type} className={`absolute ${positions[i]} w-20 h-20 rounded-xl bg-gray-800 border-2 border-dashed ${slots[type] ? 'border-green-500 bg-gray-800' : 'border-gray-600'} flex items-center justify-center flex-col`}>
+                                         {slots[type] ? (
+                                             <div onClick={() => handleRemoveSlot(type)} className="relative w-full h-full p-2 flex items-center justify-center">
+                                                 <img src={slots[type].imageUrl} className="w-12 h-12 object-contain" />
+                                                 <X size={12} className="absolute top-1 right-1 text-red-500 bg-white rounded-full" />
+                                             </div>
+                                         ) : (
+                                             <span className="text-[10px] text-gray-500 text-center">{labels[i]}</span>
+                                         )}
+                                     </div>
+                                 )
+                             })}
+                        </div>
 
-                    {/* Floating Numbers */}
-                    <AnimatePresence>
-                        {clicks.map(click => (
-                            <motion.span
-                                key={click.id}
-                                initial={{ opacity: 1, y: 0, scale: 1 }}
-                                animate={{ opacity: 0, y: -100, scale: 1.5 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute text-2xl font-bold text-white pointer-events-none"
-                                style={{ top: '20%', left: '40%' }} // Centerish
-                            >
-                                +1
-                            </motion.span>
-                        ))}
-                    </AnimatePresence>
-                </div>
+                        {/* Inventory Strip */}
+                        <div className="w-full mt-8">
+                            <h3 className="font-bold text-gray-400 mb-2 flex items-center gap-2"><TestTube size={16}/> Your Materials</h3>
+                            <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+                                {materials.length === 0 ? (
+                                    <p className="text-xs text-gray-500 italic p-2">No materials. Buy some in Shop!</p>
+                                ) : (
+                                    materials.map((item: any) => (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => {
+                                                // Auto-assign to slot based on name/id logic or category
+                                                if (item.name.includes("Embryo")) handleSlotClick('embryo', item);
+                                                else if (item.name.includes("Crystal")) handleSlotClick('crystal', item);
+                                                else if (item.name.includes("Gene")) handleSlotClick('morph', item);
+                                                else handleSlotClick('mutagen', item);
+                                            }}
+                                            className="min-w-[80px] h-24 bg-gray-900 rounded-lg border border-gray-700 p-2 flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
+                                        >
+                                            <img src={item.imageUrl} className="w-10 h-10" />
+                                            <span className="text-[10px] text-center line-clamp-2 leading-tight">{item.name}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
 
-                {/* Energy Bar */}
-                <div className="w-64 mt-8">
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                        <span className="flex items-center gap-1 text-yellow-500"><Zap size={12} fill="currentColor" /> Energy</span>
-                        <span>{energy}/100</span>
+                        {/* Pets Display */}
+                        <div className="w-full">
+                             <h3 className="font-bold text-gray-400 mb-2 flex items-center gap-2">🧬 Your Gen Pets</h3>
+                             <div className="grid grid-cols-2 gap-2">
+                                 {pets.map((pet: any) => (
+                                     <div key={pet.id} className="bg-gray-900 rounded-xl p-3 border border-gray-800 flex items-center gap-2">
+                                         <img src={pet.imageUrl} className="w-12 h-12 bg-black rounded-full" />
+                                         <div>
+                                             <p className="font-bold text-sm">{pet.name}</p>
+                                             <div className="flex gap-1 mt-1">
+                                                 <span className="text-[10px] bg-red-900 text-red-200 px-1 rounded">STR {pet.stats?.strength}</span>
+                                                 <span className="text-[10px] bg-blue-900 text-blue-200 px-1 rounded">INT {pet.stats?.intellect}</span>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 ))}
+                             </div>
+                        </div>
                     </div>
-                    <div className="h-3 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
-                        <div
-                            className="h-full bg-yellow-500 transition-all duration-300"
-                            style={{ width: `${energy}%` }}
-                        />
-                    </div>
-                </div>
-
-                {/* Leaderboard Teaser */}
-                <div className="mt-12 w-full max-w-sm bg-gray-900 rounded-xl p-4 border border-gray-800">
-                    <h4 className="flex items-center gap-2 font-bold mb-3 border-b border-gray-800 pb-2">
-                        <Trophy size={16} className="text-yellow-500" /> {t('game.leaderboard')}
-                    </h4>
-                    <div className="space-y-2">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="flex justify-between items-center text-sm">
-                                <div className="flex items-center gap-2">
-                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${i===1 ? 'bg-yellow-500 text-black' : 'bg-gray-800 text-gray-400'}`}>
-                                        {i}
-                                    </span>
-                                    <span>User_{9000+i}</span>
-                                </div>
-                                <span className="font-mono text-yellow-500">{10000 - i*500} Pi</span>
+                ) : (
+                    // Market View
+                    <div className="grid grid-cols-2 gap-3">
+                        {shopItems.map((item) => (
+                            <div key={item.id} className="bg-gray-800 rounded-xl p-4 flex flex-col items-center border border-gray-700">
+                                <div className="text-4xl mb-2">{item.icon}</div>
+                                <h3 className="font-bold text-sm text-center">{item.name}</h3>
+                                <p className="text-xs text-yellow-500 font-mono mb-3">{item.price} Pi</p>
+                                <button
+                                    onClick={() => handleBuy(item)}
+                                    className="w-full py-2 bg-yellow-600 hover:bg-yellow-500 text-black font-bold rounded-lg text-xs"
+                                >
+                                    Buy
+                                </button>
                             </div>
                         ))}
                     </div>
-                </div>
+                )}
             </div>
+
+            {/* New Pet Modal */}
+            <AnimatePresence>
+                {newPet && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+                    >
+                        <div className="bg-gray-900 border border-blue-500 rounded-2xl p-6 flex flex-col items-center max-w-sm w-full relative overflow-hidden">
+                            <div className="absolute inset-0 bg-blue-500/10 blur-xl"></div>
+                            <h2 className="text-2xl font-bold mb-4 z-10">Creation Successful!</h2>
+                            <img src={newPet.imageUrl} className="w-40 h-40 rounded-full border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.5)] z-10 mb-4" />
+                            <p className="text-xl font-bold text-blue-400 z-10">{newPet.name}</p>
+
+                            <div className="grid grid-cols-3 gap-2 w-full mt-4 z-10">
+                                <div className="text-center bg-gray-800 p-2 rounded">
+                                    <div className="text-xs text-gray-400">STR</div>
+                                    <div className="font-bold text-red-400">{newPet.stats.strength}</div>
+                                </div>
+                                <div className="text-center bg-gray-800 p-2 rounded">
+                                    <div className="text-xs text-gray-400">INT</div>
+                                    <div className="font-bold text-blue-400">{newPet.stats.intellect}</div>
+                                </div>
+                                <div className="text-center bg-gray-800 p-2 rounded">
+                                    <div className="text-xs text-gray-400">SPD</div>
+                                    <div className="font-bold text-green-400">{newPet.stats.speed}</div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setNewPet(null)}
+                                className="mt-6 w-full py-3 bg-blue-600 rounded-xl font-bold hover:bg-blue-500 z-10"
+                            >
+                                Collect
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
-    )
+    );
 }

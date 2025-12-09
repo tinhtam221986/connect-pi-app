@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { SmartContractService } from "@/lib/smart-contract-service";
 
 // Config Cloudinary
 cloudinary.config({
@@ -52,11 +53,27 @@ export async function POST(request: Request) {
       uploadStream.end(buffer);
     });
 
+    const resAny = result as any;
+    // Save metadata to persistent DB
+    await SmartContractService.addFeedItem({
+        id: resAny.public_id,
+        url: resAny.secure_url,
+        thumbnail: resAny.resource_type === 'video'
+            ? resAny.secure_url.replace(/\.[^/.]+$/, ".jpg")
+            : resAny.secure_url,
+        description: description || "No description",
+        username: username || "Anonymous",
+        likes: 0,
+        comments: 0,
+        resource_type: resAny.resource_type || 'image',
+        created_at: new Date().toISOString()
+    });
+
     return NextResponse.json({ 
         success: true,
-        url: (result as any).secure_url,
-        public_id: (result as any).public_id,
-        resource_type: (result as any).resource_type
+        url: resAny.secure_url,
+        public_id: resAny.public_id,
+        resource_type: resAny.resource_type
     });
 
   } catch (error: any) {

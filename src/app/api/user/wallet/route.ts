@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const balance = SmartContractService.getBalance(userId);
+    const balance = await SmartContractService.getBalance(userId);
     // Ensure we return the shape expected by the frontend
     return NextResponse.json({
       balance: balance.piBalance, // Pi Mainnet balance

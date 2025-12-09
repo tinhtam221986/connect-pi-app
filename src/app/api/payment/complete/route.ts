@@ -48,14 +48,16 @@ export async function POST(request: Request) {
     const piResult = await mockCompletePayment(paymentId, txid);
 
     // 2. If successful, execute the smart contract logic via our Service
-    if (paymentData && paymentData.type === 'marketplace_buy') {
+    const meta = paymentData?.metadata || paymentData;
+
+    if (meta && meta.type === 'marketplace_buy') {
         try {
             // Transfer ownership in the mock smart contract
             // We need userId here. Ideally passed in paymentData or verified via session.
             // For now assuming it's passed or we use a fallback for the mock.
-            const buyerId = paymentData.userId || 'user_current'; 
-            SmartContractService.purchaseListing(paymentData.itemId, buyerId);
-            console.log(`SmartContract: Transferred item ${paymentData.itemId} to ${buyerId}`);
+            const buyerId = meta.userId || 'user_current';
+            await SmartContractService.purchaseListing(meta.itemId, buyerId);
+            console.log(`SmartContract: Transferred item ${meta.itemId} to ${buyerId}`);
         } catch (scError) {
             console.error("Smart Contract execution failed:", scError);
             // In a real app, this is a critical state mismatch (Paid but not received).

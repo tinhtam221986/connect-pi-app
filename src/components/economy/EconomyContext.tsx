@@ -16,7 +16,7 @@ export interface VideoItem {
 interface EconomyState {
     balance: number;
     level: number;
-    inventory: string[];
+    inventory: any[];
     myVideos: VideoItem[];
     isLoading: boolean;
     refresh: () => Promise<void>;
@@ -39,7 +39,7 @@ export function EconomyProvider({ children }: { children: React.ReactNode }) {
     const { user } = usePi();
     const [balance, setBalance] = useState(0);
     const [level, setLevel] = useState(1);
-    const [inventory, setInventory] = useState<string[]>([]);
+    const [inventory, setInventory] = useState<any[]>([]);
     const [myVideos, setMyVideos] = useState<VideoItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 

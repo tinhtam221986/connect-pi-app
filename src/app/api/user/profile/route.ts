@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDB, User } from '@/lib/db';
 import { v2 as cloudinary } from 'cloudinary';
+import { SmartContractService } from '@/lib/smart-contract-service';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -64,6 +65,16 @@ export async function GET(request: Request) {
         } catch (e) {
             console.error("Cloudinary Profile Search Error", e);
         }
+    }
+
+    // 3. Sync with Smart Contract Service (Persistence)
+    try {
+        const scId = 'user_current'; // Using single user for demo simplicity
+        const scState = await SmartContractService.getBalance(scId);
+        user.balance = scState.tokenBalance;
+        (user as any).inventory = scState.nfts;
+    } catch (e) {
+        console.error("Smart Contract Sync Error", e);
     }
 
     return NextResponse.json({ ...user, videos });

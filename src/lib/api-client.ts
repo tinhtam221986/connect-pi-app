@@ -61,6 +61,14 @@ export const apiClient = {
         body: JSON.stringify({ userId: 'user_current', action, data }),
       });
       return res.json();
+    },
+    breed: async (userId: string, materialIds: string[]) => {
+      const res = await fetch('/api/game/breed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, materialIds }),
+      });
+      return res.json();
     }
   },
   feed: {
