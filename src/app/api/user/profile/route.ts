@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDB } from '@/lib/db';
+import { getDB, User } from '@/lib/db';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -18,14 +18,34 @@ export async function GET(request: Request) {
     // For now, we return the Mock Profile but enriched with Real Cloudinary Videos.
 
     // 1. Get Base Profile (Mock)
-    let user = await db.user.findByUid("mock_uid_12345");
-    if (username && username !== user?.username) {
-        // If requesting a different user, we might need to find them or just return a generic structure
-        user = { ...user, username: username, uid: `mock_${username}` };
+    let user: User | null = await db.user.findByUid("mock_uid_12345");
+
+    // Default fallback if user is not found or null
+    if (!user) {
+        user = {
+            uid: "mock_uid_12345",
+            username: "Chrome_Tester",
+            level: 1,
+            balance: 0,
+            inventory: []
+        };
+    }
+
+    if (username && username !== user.username) {
+        // If requesting a different user, create a full mock user structure
+        user = {
+            ...user,
+            username: username,
+            uid: `mock_${username}`,
+            // Ensure these persist or have defaults if 'user' was somehow partial (though Typescript protects that now)
+            level: user.level || 1,
+            balance: user.balance || 0,
+            inventory: user.inventory || []
+        };
     }
 
     // 2. Fetch Real Videos from Cloudinary
-    let videos = [];
+    let videos: any[] = [];
     if (process.env.CLOUDINARY_API_KEY && username) {
         try {
             const result = await cloudinary.search
