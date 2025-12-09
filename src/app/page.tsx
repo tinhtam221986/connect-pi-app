@@ -31,7 +31,8 @@ export default function Home() {
 
     try {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
+      xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/video/upload');
+      
 
       xhr.upload.onprogress = (event) => {
         const percent = Math.round((event.loaded / event.total) * 100);
