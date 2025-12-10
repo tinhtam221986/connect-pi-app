@@ -1,19 +1,18 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
+// --- CHÌA KHÓA GẮN CỨNG (ĐỂ CHẠY NGAY LẬP TỨC) ---
+const MONGODB_URI = "mongodb+srv://tinhtam221986_db_user:Hung21986pi@cluster0.k8tksvk.mongodb.net/?appName=Cluster0";
 
 if (!MONGODB_URI) {
-  throw new Error("Chưa có MONGODB_URI trong biến môi trường!");
+  throw new Error("Thiếu MONGODB_URI");
 }
 
-// Cái này để giúp Vercel không bị quá tải kết nối
 let cached = (global as any).mongoose;
 
 if (!cached) {
   cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
-// ĐÂY LÀ CÁI HÀM MÀ VERCEL ĐANG TÌM KIẾM 👇
 export async function connectDB() {
   if (cached.conn) {
     return cached.conn;
@@ -24,7 +23,8 @@ export async function connectDB() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log("Đã kết nối MongoDB thành công!");
       return mongoose;
     });
   }
