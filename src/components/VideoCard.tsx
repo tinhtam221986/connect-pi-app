@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface VideoProps {
   video: {
@@ -18,13 +18,12 @@ export default function VideoCard({ video }: VideoProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(video.likes?.length || 0);
   
-  // State xử lý bình luận
+  // State bật tắt khung comment
   const [showCommentInput, setShowCommentInput] = useState(false); 
   const [commentText, setCommentText] = useState("");
   const [commentsList, setCommentsList] = useState(video.comments || []);
   const [isSending, setIsSending] = useState(false);
 
-  // Xử lý Like
   const handleLike = async () => {
     const newIsLiked = !isLiked;
     setIsLiked(newIsLiked);
@@ -38,11 +37,9 @@ export default function VideoCard({ video }: VideoProps) {
     } catch (error) { console.error(error); }
   };
 
-  // Xử lý Gửi Bình luận
   const handleSendComment = async () => {
     if (!commentText.trim()) return;
     setIsSending(true);
-
     try {
       const res = await fetch("/api/comment", {
         method: "POST",
@@ -50,38 +47,32 @@ export default function VideoCard({ video }: VideoProps) {
         body: JSON.stringify({ videoId: video._id, text: commentText }),
       });
       const data = await res.json();
-      
       if (res.ok) {
         setCommentsList(data.comments);
-        setCommentText(""); // Xóa chữ sau khi gửi
+        setCommentText("");
       }
-    } catch (error) {
-      alert("Lỗi gửi bình luận!");
-    } finally {
-      setIsSending(false);
-    }
+    } catch (error) { alert("Lỗi gửi bình luận!"); } 
+    finally { setIsSending(false); }
   };
 
   return (
     <div style={{ marginBottom: '40px', borderBottom: '1px solid #222', paddingBottom: '20px' }}>
       
-      {/* --- MÀN HÌNH VIDEO (ĐÃ THÊM LOOP) --- */}
+      {/* --- PHẦN VIDEO (CÓ LOOP) --- */}
       <div style={{ position: 'relative', width: '100%', backgroundColor: '#000' }}>
         <video 
           src={video.videoUrl} 
           controls 
           playsInline 
-          loop  // <--- Lệnh này giúp video tự phát lại vô tận
-          autoPlay // Tự chạy luôn cho máu
-          muted // Tắt tiếng mặc định để trình duyệt không chặn
+          loop           // <--- QUAN TRỌNG: Lệnh lặp lại
+          autoPlay 
+          muted 
           style={{ width: '100%', maxHeight: '80vh', display: 'block' }} 
         />
       </div>
 
-      {/* --- THÔNG TIN & TƯƠNG TÁC --- */}
+      {/* --- PHẦN THÔNG TIN --- */}
       <div style={{ padding: '15px' }}>
-        
-        {/* Người đăng */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
           <div style={{ width: '40px', height: '40px', background: 'linear-gradient(45deg, #ff0050, #00f2ea)', borderRadius: '50%', marginRight: '10px' }}></div>
           <div>
@@ -90,72 +81,51 @@ export default function VideoCard({ video }: VideoProps) {
           </div>
         </div>
         
-        {/* Caption */}
         <p style={{ margin: '0 0 15px 0', fontSize: '15px', lineHeight: '1.5' }}>{video.caption}</p>
         
-        {/* --- THANH NÚT BẤM (ĐÃ XÓA CHỮ, CHỈ CÒN ICON) --- */}
+        {/* --- PHẦN NÚT BẤM (CHỈ CÓ SỐ VÀ ICON) --- */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-          
-          <div style={{ display: 'flex', gap: '30px' }}>
+          <div style={{ display: 'flex', gap: '25px' }}>
             
-            {/* 1. Nút TIM */}
-            <button onClick={handleLike} style={{ background: 'none', border: 'none', color: isLiked ? '#ff0050' : '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '28px' }}>{isLiked ? '❤️' : '🤍'}</span> 
-              <b style={{marginTop: '5px'}}>{likesCount}</b>
+            {/* TIM */}
+            <button onClick={handleLike} style={{ background: 'none', border: 'none', color: isLiked ? '#ff0050' : '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px' }}>
+              <span style={{ fontSize: '26px' }}>{isLiked ? '❤️' : '🤍'}</span> 
+              <b>{likesCount}</b>
             </button>
 
-            {/* 2. Nút COMMENT (Bấm là mở ô nhập) */}
-            <button onClick={() => setShowCommentInput(!showCommentInput)} style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '28px' }}>💬</span> 
-              <b style={{marginTop: '5px'}}>{commentsList.length}</b>
+            {/* COMMENT (Bấm là mở) */}
+            <button onClick={() => setShowCommentInput(!showCommentInput)} style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px' }}>
+              <span style={{ fontSize: '26px' }}>💬</span> 
+              <b>{commentsList.length}</b>
             </button>
             
-            {/* 3. Nút SHARE */}
-            <button style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '28px' }}>↗️</span>
+            {/* SHARE */}
+            <button style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px' }}>
+              <span style={{ fontSize: '26px' }}>↗️</span>
             </button>
           </div>
-
-          {/* Nút Bookmark */}
           <button style={{ background: 'none', border: 'none', color: '#fff', fontSize: '24px' }}>🔖</button>
         </div>
 
-        {/* --- KHUNG NHẬP BÌNH LUẬN (Hiện ra khi bấm nút) --- */}
+        {/* --- KHUNG NHẬP BÌNH LUẬN --- */}
         {showCommentInput && (
           <div style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
-            
-            {/* Danh sách bình luận cũ */}
-            <div style={{ maxHeight: "200px", overflowY: "auto", marginBottom: "15px", background: "#1a1a1a", padding: "10px", borderRadius: "10px" }}>
-              {commentsList.length === 0 ? <p style={{color: "#555", textAlign: "center", fontSize: "12px"}}>Chưa có bình luận nào. Mở bát đi bác!</p> : null}
-              {commentsList.map((cmt: any, index: number) => (
-                <div key={index} style={{ marginBottom: "8px", fontSize: "14px", borderBottom: "1px solid #333", paddingBottom: "5px" }}>
-                  <strong style={{ color: "#aaa" }}>{cmt.user?.username || "Ẩn danh"}: </strong>
+            <div style={{ maxHeight: "200px", overflowY: "auto", marginBottom: "10px", background: "#1a1a1a", padding: "10px", borderRadius: "10px" }}>
+              {commentsList.length === 0 ? <p style={{color: "#555", fontSize:"12px"}}>Chưa có bình luận.</p> : null}
+              {commentsList.map((cmt: any, i: number) => (
+                <div key={i} style={{ marginBottom: "8px", fontSize: "14px", borderBottom: "1px solid #333", paddingBottom: "5px" }}>
+                  <strong style={{ color: "#aaa" }}>{cmt.user?.username || "Guest"}: </strong>
                   <span style={{ color: "white" }}>{cmt.text}</span>
                 </div>
               ))}
             </div>
-
-            {/* Ô nhập + Nút Gửi */}
             <div style={{ display: "flex", gap: "10px" }}>
-              <input 
-                type="text" 
-                placeholder="Thêm bình luận..." 
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid #333", background: "#000", color: "white", outline: "none" }}
-              />
-              <button 
-                onClick={handleSendComment}
-                disabled={isSending}
-                style={{ background: "#ff0050", border: "none", color: "white", padding: "0 20px", borderRadius: "25px", fontWeight: "bold" }}
-              >
-                {isSending ? "..." : "➤"}
-              </button>
+              <input type="text" placeholder="Thêm bình luận..." value={commentText} onChange={(e) => setCommentText(e.target.value)} style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #333", background: "#000", color: "white" }} />
+              <button onClick={handleSendComment} disabled={isSending} style={{ background: "#ff0050", border: "none", color: "white", padding: "0 20px", borderRadius: "20px", fontWeight: "bold" }}>➤</button>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
-          }
+        }
