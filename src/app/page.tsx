@@ -1,9 +1,8 @@
 import React from 'react';
 import { connectDB } from '@/lib/mongodb';
 import Video from '@/models/Video';
-import VideoCard from '@/components/VideoCard'; // <-- ĐÂY LÀ LINH KIỆN XỊN
+import VideoCard from '@/components/VideoCard';
 
-// Chống lưu bộ nhớ đệm cũ, luôn tải mới
 export const dynamic = "force-dynamic"; 
 
 async function getVideos() {
@@ -12,7 +11,6 @@ async function getVideos() {
     const videos = await Video.find().sort({ createdAt: -1 });
     return JSON.parse(JSON.stringify(videos));
   } catch (error) {
-    console.error("Lỗi lấy video:", error);
     return [];
   }
 }
@@ -21,25 +19,35 @@ export default async function HomePage() {
   const videos = await getVideos();
 
   return (
-    <div style={{ backgroundColor: 'black', minHeight: '100vh', paddingBottom: '80px', color: 'white' }}>
-      {/* Header mờ ảo */}
+    // paddingBottom = 0 để video tràn xuống dưới thanh menu
+    <div style={{ backgroundColor: 'black', minHeight: '100vh', paddingBottom: '0', color: 'white' }}>
+      
+      {/* HEADER KIỂU TIKTOK (Trong suốt) */}
       <div style={{ 
         position: 'fixed', top: 0, width: '100%', zIndex: 50, 
-        background: 'rgba(0,0,0,0.3)', padding: '15px', textAlign: 'center', 
-        fontWeight: 'bold', backdropFilter: 'blur(5px)', borderBottom: '1px solid rgba(255,255,255,0.1)'
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)', 
+        padding: '15px 0', 
+        display: 'flex', justifyContent: 'center', gap: '20px',
+        fontWeight: 'bold', fontSize: '16px', textShadow: '0 1px 2px rgba(0,0,0,0.5)'
       }}>
-        🔥 Xu Hướng Pi Network
+        <span style={{ opacity: 0.7 }}>Bạn bè</span>
+        <span style={{ opacity: 0.7 }}>Đang Follow</span>
+        <div style={{ position: 'relative', color: 'white', borderBottom: '2px solid white', paddingBottom: '3px' }}>
+          Đề xuất
+          {/* Chấm đỏ thông báo */}
+          <div style={{ position: 'absolute', top: '-2px', right: '-6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' }}></div>
+        </div>
+        <span style={{ position: 'absolute', right: '15px', fontSize: '20px' }}>🔍</span>
       </div>
 
-      {/* Danh sách Video */}
-      <div style={{ marginTop: '0px' }}>
+      {/* DANH SÁCH VIDEO */}
+      <div>
         {videos.length === 0 ? (
-          <div style={{ textAlign: 'center', marginTop: '40vh', padding: '20px' }}>
+          <div style={{ textAlign: 'center', paddingTop: '40vh' }}>
             <div style={{ fontSize: '50px' }}>🎬</div>
-            <p style={{ color: '#888' }}>Chưa có video nào. Bác mở hàng đi!</p>
+            <p style={{ color: '#888' }}>Chưa có video nào.</p>
           </div>
         ) : (
-          // Dùng linh kiện VideoCard để hiển thị
           videos.map((video: any) => (
             <VideoCard key={video._id} video={video} />
           ))
