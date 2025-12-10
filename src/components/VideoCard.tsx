@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface VideoProps {
   video: {
@@ -18,7 +18,7 @@ export default function VideoCard({ video }: VideoProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(video.likes?.length || 0);
   
-  // State cho bình luận
+  // State xử lý bình luận
   const [showCommentInput, setShowCommentInput] = useState(false); 
   const [commentText, setCommentText] = useState("");
   const [commentsList, setCommentsList] = useState(video.comments || []);
@@ -53,8 +53,7 @@ export default function VideoCard({ video }: VideoProps) {
       
       if (res.ok) {
         setCommentsList(data.comments);
-        setCommentText("");
-        // Giữ nguyên khung nhập để chat tiếp cho tiện
+        setCommentText(""); // Xóa chữ sau khi gửi
       }
     } catch (error) {
       alert("Lỗi gửi bình luận!");
@@ -66,13 +65,23 @@ export default function VideoCard({ video }: VideoProps) {
   return (
     <div style={{ marginBottom: '40px', borderBottom: '1px solid #222', paddingBottom: '20px' }}>
       
-      {/* Video Player */}
+      {/* --- MÀN HÌNH VIDEO (ĐÃ THÊM LOOP) --- */}
       <div style={{ position: 'relative', width: '100%', backgroundColor: '#000' }}>
-        <video src={video.videoUrl} controls playsInline style={{ width: '100%', maxHeight: '80vh', display: 'block' }} />
+        <video 
+          src={video.videoUrl} 
+          controls 
+          playsInline 
+          loop  // <--- Lệnh này giúp video tự phát lại vô tận
+          autoPlay // Tự chạy luôn cho máu
+          muted // Tắt tiếng mặc định để trình duyệt không chặn
+          style={{ width: '100%', maxHeight: '80vh', display: 'block' }} 
+        />
       </div>
 
-      {/* Thông tin & Tương tác */}
+      {/* --- THÔNG TIN & TƯƠNG TÁC --- */}
       <div style={{ padding: '15px' }}>
+        
+        {/* Người đăng */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
           <div style={{ width: '40px', height: '40px', background: 'linear-gradient(45deg, #ff0050, #00f2ea)', borderRadius: '50%', marginRight: '10px' }}></div>
           <div>
@@ -81,41 +90,43 @@ export default function VideoCard({ video }: VideoProps) {
           </div>
         </div>
         
+        {/* Caption */}
         <p style={{ margin: '0 0 15px 0', fontSize: '15px', lineHeight: '1.5' }}>{video.caption}</p>
         
-        {/* THANH TƯƠNG TÁC (CHỈ ICON + SỐ) */}
+        {/* --- THANH NÚT BẤM (ĐÃ XÓA CHỮ, CHỈ CÒN ICON) --- */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
           
-          <div style={{ display: 'flex', gap: '25px' }}>
-            {/* Nút TIM */}
+          <div style={{ display: 'flex', gap: '30px' }}>
+            
+            {/* 1. Nút TIM */}
             <button onClick={handleLike} style={{ background: 'none', border: 'none', color: isLiked ? '#ff0050' : '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '26px' }}>{isLiked ? '❤️' : '🤍'}</span> 
-              <b>{likesCount}</b>
+              <span style={{ fontSize: '28px' }}>{isLiked ? '❤️' : '🤍'}</span> 
+              <b style={{marginTop: '5px'}}>{likesCount}</b>
             </button>
 
-            {/* Nút COMMENT (Bấm vào là hiện ô nhập ngay) */}
+            {/* 2. Nút COMMENT (Bấm là mở ô nhập) */}
             <button onClick={() => setShowCommentInput(!showCommentInput)} style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '26px' }}>💬</span> 
-              <b>{commentsList.length}</b>
+              <span style={{ fontSize: '28px' }}>💬</span> 
+              <b style={{marginTop: '5px'}}>{commentsList.length}</b>
             </button>
             
-            {/* Nút SHARE */}
+            {/* 3. Nút SHARE */}
             <button style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '18px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '26px' }}>↗️</span>
+              <span style={{ fontSize: '28px' }}>↗️</span>
             </button>
           </div>
 
-          {/* Nút Lưu/Bookmark (Thêm cho đẹp) */}
+          {/* Nút Bookmark */}
           <button style={{ background: 'none', border: 'none', color: '#fff', fontSize: '24px' }}>🔖</button>
         </div>
 
-        {/* --- KHUNG BÌNH LUẬN (Hiện ra khi bấm nút) --- */}
+        {/* --- KHUNG NHẬP BÌNH LUẬN (Hiện ra khi bấm nút) --- */}
         {showCommentInput && (
           <div style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
             
             {/* Danh sách bình luận cũ */}
-            <div style={{ maxHeight: "200px", overflowY: "auto", marginBottom: "10px", background: "#1a1a1a", padding: "10px", borderRadius: "10px" }}>
-              {commentsList.length === 0 ? <p style={{color: "#555", textAlign: "center"}}>Chưa có bình luận nào.</p> : null}
+            <div style={{ maxHeight: "200px", overflowY: "auto", marginBottom: "15px", background: "#1a1a1a", padding: "10px", borderRadius: "10px" }}>
+              {commentsList.length === 0 ? <p style={{color: "#555", textAlign: "center", fontSize: "12px"}}>Chưa có bình luận nào. Mở bát đi bác!</p> : null}
               {commentsList.map((cmt: any, index: number) => (
                 <div key={index} style={{ marginBottom: "8px", fontSize: "14px", borderBottom: "1px solid #333", paddingBottom: "5px" }}>
                   <strong style={{ color: "#aaa" }}>{cmt.user?.username || "Ẩn danh"}: </strong>
@@ -124,7 +135,7 @@ export default function VideoCard({ video }: VideoProps) {
               ))}
             </div>
 
-            {/* Ô nhập bình luận */}
+            {/* Ô nhập + Nút Gửi */}
             <div style={{ display: "flex", gap: "10px" }}>
               <input 
                 type="text" 
@@ -147,4 +158,4 @@ export default function VideoCard({ video }: VideoProps) {
       </div>
     </div>
   );
-                     }
+          }
