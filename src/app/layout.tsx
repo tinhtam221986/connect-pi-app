@@ -1,34 +1,37 @@
-import type React from "react"
-import type { Metadata } from "next"
-import Script from "next/script"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import "./globals.css"
-import { PiSDKProvider } from "@/components/pi/pi-provider"
-import { LanguageProvider } from "@/components/i18n/language-provider"
-import { Toaster } from "@/components/ui/sonner"
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import BottomNav from "@/components/BottomNav"; // Nhập cái menu vừa tạo
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CONNECT - Web3 Social",
-  description: "A Decentralized Social Platform on Pi Network",
-}
+  title: "Connect Pi App",
+  description: "Mạng xã hội Video dành cho Pi Network",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans bg-background text-foreground`}>
-        <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="beforeInteractive" />
-        <PiSDKProvider>
-          <LanguageProvider>
-            {children}
-            <Toaster />
-          </LanguageProvider>
-        </PiSDKProvider>
+    <html lang="en">
+      <head>
+        {/* --- CỰC KỲ QUAN TRỌNG: SDK CỦA PI NETWORK --- */}
+        <script src="https://sdk.minepi.com/pi-sdk.js" async />
+      </head>
+      <body className={inter.className} style={{ backgroundColor: "black", color: "white", margin: 0 }}>
+        
+        {/* Phần nội dung chính của từng trang sẽ hiện ở đây */}
+        <div style={{ paddingBottom: "70px" }}> 
+          {children}
+        </div>
+
+        {/* Thanh Menu dưới cùng (Luôn hiện thị) */}
+        <BottomNav />
+        
       </body>
     </html>
-  )
+  );
 }
