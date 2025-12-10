@@ -60,17 +60,6 @@ export default async function HomePage() {
           ))
         )}
       </div>
-
-      {/* Nút đăng bài (Dính ở góc dưới) */}
-      <a href="/upload" style={{
-        position: 'fixed', bottom: '20px', right: '20px',
-        backgroundColor: '#ff0050', color: 'white',
-        width: '60px', height: '60px', borderRadius: '50%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '30px', textDecoration: 'none', boxShadow: '0 4px 10px rgba(255,0,80,0.5)'
-      }}>
-        +
-      </a>
     </div>
   );
 }
