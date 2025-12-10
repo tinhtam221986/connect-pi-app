@@ -1,73 +1,76 @@
-"use client";
+import React from 'react';
+import { connectDB } from '@/lib/mongodb';
+import Video from '@/models/Video';
 
-import { useEffect, useState } from "react";
-import { usePi } from "@/components/pi/pi-provider";
-import LoginView from "@/components/LoginView";
-import MainAppView from "@/components/MainAppView";
-import { EconomyProvider } from "@/components/economy/EconomyContext";
-
-export default function Home() {
-  // Correctly destructure 'user' instead of the non-existent 'isAuthenticated'
-  const { user, isInitialized } = usePi();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid hydration mismatch by rendering only after mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
-      </div>
-    );
+// Hàm lấy video từ Database (Chạy trên Server nên cực nhanh và bảo mật)
+async function getVideos() {
+  try {
+    await connectDB();
+    // Lấy tất cả video, sắp xếp cái mới nhất lên đầu
+    const videos = await Video.find().sort({ createdAt: -1 });
+    // Chuyển dữ liệu sang dạng text để không bị lỗi React
+    return JSON.parse(JSON.stringify(videos));
+  } catch (error) {
+    console.error("Lỗi lấy video:", error);
+    return [];
   }
+}
 
-  // If Pi SDK is not initialized yet, show loading
-  if (!isInitialized) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
-            <p className="text-yellow-500 animate-pulse">Initializing Pi Network...</p>
-        </div>
-    );
-  }
+export default async function HomePage() {
+  const videos = await getVideos();
 
-  // If user is logged in (user object exists), show Main App
-  if (user) {
-    return (
-      <EconomyProvider>
-        <MainAppView />
-      </EconomyProvider>
-    );
-  }
-
-  // Otherwise show Login Screen
-    // --- ĐOẠN CODE MỚI THÊM NÚT TẮT ---
   return (
-    <div style={{ position: 'relative' }}>
-      <LoginView />
-      
-      {/* Nút tắt dẫn sang phòng Upload */}
-      <a href="/upload" style={{
-        position: 'fixed',
-        bottom: '30px', 
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 9999,
-        padding: '12px 25px',
-        backgroundColor: '#ff0050', // Màu đỏ giống TikTok
-        color: 'white',
-        borderRadius: '50px',
-        fontWeight: 'bold',
-        textDecoration: 'none',
-        boxShadow: '0 5px 15px rgba(0,0,0,0.5)',
-        border: '2px solid white'
+    <div style={{ backgroundColor: 'black', minHeight: '100vh', paddingBottom: '80px' }}>
+      {/* Tiêu đề */}
+      <div style={{ 
+        position: 'fixed', top: 0, width: '100%', zIndex: 50, 
+        background: 'rgba(0,0,0,0.5)', padding: '15px', textAlign: 'center', color: 'white', fontWeight: 'bold' 
       }}>
-        🎥 ĐĂNG VIDEO (TEST)
+        🔥 Xu Hướng Pi
+      </div>
+
+      {/* Danh sách Video */}
+      <div style={{ marginTop: '60px' }}>
+        {videos.length === 0 ? (
+          <p style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>
+            Chưa có video nào. Bác hãy là người đầu tiên đăng bài đi! 🎬
+          </p>
+        ) : (
+          videos.map((video: any) => (
+            <div key={video._id} style={{ marginBottom: '20px', position: 'relative' }}>
+              
+              {/* Trình phát Video */}
+              <video 
+                src={video.videoUrl} 
+                controls 
+                style={{ width: '100%', maxHeight: '80vh', objectFit: 'cover' }} 
+              />
+
+              {/* Thông tin Video */}
+              <div style={{ padding: '10px', color: 'white' }}>
+                <h4 style={{ margin: 0, color: '#facc15' }}>@{video.author?.username || 'Pi User'}</h4>
+                <p style={{ margin: '5px 0' }}>{video.caption}</p>
+                <div style={{ fontSize: '12px', color: '#aaa' }}>
+                  ❤️ {video.likes?.length || 0} tim • 💬 {video.comments?.length || 0} bình luận
+                </div>
+              </div>
+              
+              <hr style={{ borderColor: '#333' }} />
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Nút đăng bài (Dính ở góc dưới) */}
+      <a href="/upload" style={{
+        position: 'fixed', bottom: '20px', right: '20px',
+        backgroundColor: '#ff0050', color: 'white',
+        width: '60px', height: '60px', borderRadius: '50%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '30px', textDecoration: 'none', boxShadow: '0 4px 10px rgba(255,0,80,0.5)'
+      }}>
+        +
       </a>
     </div>
   );
-  
 }
