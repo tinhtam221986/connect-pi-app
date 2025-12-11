@@ -19,13 +19,10 @@ export default function VideoCard({ video }: VideoProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(video.likes?.length || 0);
   
-  // State quản lý hiển thị
   const [showCommentInput, setShowCommentInput] = useState(false); 
   const [commentText, setCommentText] = useState("");
   const [commentsList, setCommentsList] = useState(video.comments || []);
   const [isSending, setIsSending] = useState(false);
-  
-  // State quản lý mở rộng miêu tả
   const [expandDesc, setExpandDesc] = useState(false);
 
   // Tự động phát
@@ -38,7 +35,7 @@ export default function VideoCard({ video }: VideoProps) {
           if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
-            setExpandDesc(false); // Lướt đi thì tự thu nhỏ miêu tả lại
+            setExpandDesc(false);
           }
         }
       }, { threshold: 0.6 }
@@ -77,6 +74,28 @@ export default function VideoCard({ video }: VideoProps) {
     finally { setIsSending(false); }
   };
 
+  // --- 🟢 TÍNH NĂNG MỚI: CHIA SẺ THẬT ---
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Connect Pi App',
+      text: `Xem video của ${video.author?.username} trên Connect!`,
+      url: window.location.href, // Hoặc link cụ thể của video
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        // Có thể gọi API để tăng lượt chia sẻ ở đây
+      } catch (err) {
+        console.log('Hủy chia sẻ');
+      }
+    } else {
+      // Fallback cho máy tính: Copy link
+      navigator.clipboard.writeText(window.location.href);
+      alert("Đã sao chép link video!");
+    }
+  };
+
   return (
     <div style={{ height: '100vh', position: 'relative', scrollSnapAlign: 'start', backgroundColor: 'black' }}>
       
@@ -88,90 +107,81 @@ export default function VideoCard({ video }: VideoProps) {
         style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
       />
 
-      {/* --- CÁC NÚT BÊN PHẢI (ĐÃ CHỈNH LẠI VỊ TRÍ CHO CÂN ĐỐI) --- */}
-      <div style={{ position: 'absolute', right: '10px', bottom: '100px', display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', zIndex: 20 }}>
+      {/* NÚT BẤM BÊN PHẢI */}
+      <div style={{ position: 'absolute', right: '10px', bottom: '120px', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', zIndex: 20 }}>
         
         {/* Avatar */}
-        <div style={{ width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', marginBottom: '5px' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', marginBottom: '10px' }}>
            <img src="https://via.placeholder.com/50" alt="avt" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
         </div>
 
         {/* Tim */}
         <div style={{ textAlign: 'center' }}>
             <button onClick={handleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <span style={{ fontSize: '32px' }}>{isLiked ? '❤️' : '🤍'}</span>
+              <svg width="35" height="35" viewBox="0 0 24 24" fill={isLiked ? "#ff0050" : "rgba(255,255,255,0.2)"} stroke={isLiked ? "none" : "white"} strokeWidth="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
             </button>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>{likesCount}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black' }}>{likesCount}</div>
         </div>
 
         {/* Comment */}
         <div style={{ textAlign: 'center' }}>
             <button onClick={() => setShowCommentInput(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <span style={{ fontSize: '30px' }}>💬</span>
+              <svg width="33" height="33" viewBox="0 0 24 24" fill="rgba(255,255,255,0.2)" stroke="white" strokeWidth="2">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+              </svg>
             </button>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>{commentsList.length}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black' }}>{commentsList.length}</div>
         </div>
 
-        {/* Share */}
+        {/* Share (ĐÃ GẮN HÀM CHIA SẺ) */}
         <div style={{ textAlign: 'center' }}>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <span style={{ fontSize: '30px' }}>↗️</span>
+            <button onClick={handleShare} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
+              <svg width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
             </button>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>Chia sẻ</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black' }}>Chia sẻ</div>
         </div>
       </div>
 
-      {/* --- PHẦN MIÊU TẢ THÔNG MINH (Bấm vào nở ra) --- */}
+      {/* MIÊU TẢ THÔNG MINH */}
       <div 
-        onClick={() => setExpandDesc(!expandDesc)} // Bấm vào để mở/đóng
+        onClick={() => setExpandDesc(!expandDesc)} 
         style={{ 
-          position: 'absolute', 
-          bottom: '0', 
-          left: '0', 
-          width: '100%', 
-          padding: '15px 15px 80px 15px', // Padding đáy lớn để tránh menu
-          background: expandDesc ? "rgba(0, 0, 0, 0.7)" : "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
-          backdropFilter: expandDesc ? "blur(10px)" : "none", // Hiệu ứng mờ khi mở rộng
+          position: 'absolute', bottom: '0', left: '0', width: '100%', 
+          padding: '15px 15px 80px 15px', 
+          background: expandDesc ? "rgba(0, 0, 0, 0.8)" : "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
+          backdropFilter: expandDesc ? "blur(10px)" : "none",
           transition: "all 0.3s ease",
-          maxHeight: expandDesc ? "40vh" : "150px", // Mở rộng lên 40% màn hình
+          maxHeight: expandDesc ? "50vh" : "150px", 
           overflowY: expandDesc ? "auto" : "hidden",
-          borderTopRightRadius: "20px",
-          borderTopLeftRadius: "20px",
-          zIndex: 15
+          borderTopRightRadius: "20px", borderTopLeftRadius: "20px", zIndex: 15
         }}
       >
         <h4 style={{ margin: 0, fontWeight: 'bold', textShadow: '1px 1px 2px black', color: 'white', marginBottom: '5px' }}>
           @{video.author?.username || 'Pi Pioneer'}
-          <span style={{fontSize:'12px', fontWeight:'normal', color:'#ddd', marginLeft:'10px'}}>• 12/12/2025</span>
         </h4>
-        
         <p style={{ 
-          margin: '0', fontSize: '15px', lineHeight: '1.5', color: 'white',
-          textShadow: '1px 1px 2px black',
-          display: expandDesc ? 'block' : '-webkit-box', 
-          WebkitLineClamp: expandDesc ? 'unset' : 1, // Nếu đóng thì hiện 1 dòng
-          WebkitBoxOrient: 'vertical', 
-          overflow: 'hidden' 
+          margin: '0', fontSize: '15px', lineHeight: '1.5', color: 'white', textShadow: '1px 1px 2px black',
+          display: expandDesc ? 'block' : '-webkit-box', WebkitLineClamp: expandDesc ? 'unset' : 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' 
         }}>
           {video.caption}
         </p>
-        
-        {!expandDesc && <span style={{fontSize:'12px', color:'#aaa', fontWeight:'bold'}}>...Xem thêm</span>}
-        
-        {expandDesc && (
-           <div style={{marginTop: '10px', fontSize: '13px', color: '#ff0050'}}>
-              #PiNetwork #ConnectWeb3 #Trend
-           </div>
-        )}
+        {!expandDesc && <span style={{fontSize:'12px', color:'#aaa'}}>...Xem thêm</span>}
       </div>
 
-      {/* --- CỬA SỔ COMMENT (Giữ nguyên vì đã tốt) --- */}
+      {/* CỬA SỔ COMMENT (Đã có logic đóng) */}
       {showCommentInput && (
         <div style={{ 
             position: 'absolute', bottom: 0, left: 0, width: '100%', height: '60vh', 
-            background: 'rgba(0,0,0,0.9)', borderTopLeftRadius: '15px', borderTopRightRadius: '15px',
-            padding: '15px', display: 'flex', flexDirection: 'column', zIndex: 100,
-            animation: 'slideUp 0.3s ease-out'
+            background: 'rgba(0,0,0,0.95)', borderTopLeftRadius: '15px', borderTopRightRadius: '15px',
+            padding: '15px', display: 'flex', flexDirection: 'column', zIndex: 100, animation: 'slideUp 0.3s ease-out'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
              <span style={{fontWeight:'bold', color:'white'}}>Bình luận ({commentsList.length})</span>
