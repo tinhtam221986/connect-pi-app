@@ -1,39 +1,47 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import User from "@/models/User"; // Gọi sổ hộ khẩu ra
+import User from "@/models/User";
 
+// Hàm xử lý việc Nạp tiền hoặc Biến động số dư
 export async function POST(request: Request) {
   try {
     await connectDB();
-    const { username, user_uid, accessToken } = await request.json();
+    const { user_uid, amount, type, paymentId } = await request.json();
 
-    if (!user_uid) {
-      return NextResponse.json({ error: "Thiếu CMND (UID)" }, { status: 400 });
+    if (!user_uid || !amount) {
+      return NextResponse.json({ error: "Thiếu thông tin" }, { status: 400 });
     }
 
-    // 1. Kiểm tra xem ông này có trong sổ chưa?
-    let user = await User.findOne({ user_uid });
-
+    // 1. Tìm người dùng
+    const user = await User.findOne({ user_uid });
     if (!user) {
-      // 2. Nếu chưa -> Ghi tên mới vào sổ (Cấp hộ khẩu mới)
-      user = await User.create({
-        username: username || "Pi Pioneer",
-        user_uid: user_uid,
-        balance: 0, // Tặng 0 Pi khởi nghiệp (hoặc 10 tùy bác)
-        level: 1
-      });
-      console.log("Đã cấp hộ khẩu mới cho:", username);
-    } else {
-      // 3. Nếu có rồi -> Cập nhật thông tin mới nhất
-      user.username = username; // Cập nhật tên nếu đổi
-      await user.save();
-      console.log("Đã cập nhật hộ khẩu cho:", username);
+      return NextResponse.json({ error: "Không tìm thấy người dùng" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Thành công", user });
+    // 2. Xử lý cộng/trừ tiền
+    // Nếu type là 'deposit' (nạp) -> Cộng tiền
+    if (type === 'deposit') {
+      user.balance += amount;
+      console.log(`Đã nạp ${amount} Pi cho ${user.username}. Mã giao dịch: ${paymentId}`);
+    } 
+    // Nếu type là 'withdraw' (rút/mua hàng) -> Trừ tiền
+    else if (type === 'withdraw') {
+      if (user.balance < amount) {
+        return NextResponse.json({ error: "Số dư không đủ" }, { status: 400 });
+      }
+      user.balance -= amount;
+    }
+
+    // 3. Lưu vào sổ
+    await user.save();
+
+    return NextResponse.json({ 
+      message: "Giao dịch thành công", 
+      newBalance: user.balance 
+    });
 
   } catch (error) {
-    console.error("Lỗi Hộ Tịch:", error);
+    console.error("Lỗi Ví:", error);
     return NextResponse.json({ error: "Lỗi Server" }, { status: 500 });
   }
 }
