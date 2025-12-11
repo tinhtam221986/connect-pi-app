@@ -12,30 +12,29 @@ export default function BottomNav() {
 
   return (
     <div style={{
-      position: "fixed", bottom: 0, left: 0, width: "100%", height: "80px",
-      background: "linear-gradient(to top, black 0%, transparent 100%)", // Nền vô hình
+      position: "fixed", bottom: 20, left: "5%", width: "90%", height: "70px",
+      background: "rgba(255,255,255,0.1)", backdropFilter: "blur(15px)",
+      borderRadius: "35px", border: "1px solid rgba(255,255,255,0.2)",
       display: "flex", justifyContent: "space-around", alignItems: "center",
-      zIndex: 100, paddingBottom: "15px"
+      zIndex: 100, boxShadow: "0 5px 15px rgba(0,0,0,0.3)"
     }}>
       
       {/* 1. Trang Chủ */}
       <Link href="/" style={{ color: isActive("/"), textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px", filter: "drop-shadow(0 2px 3px black)" }}>🏠</span>
-        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Home</span>
+        <span style={{ fontSize: "24px" }}>🏠</span>
       </Link>
 
-      {/* 2. Game (Đã gắn Link) */}
+      {/* 2. Game */}
       <Link href="/game" style={{ color: isActive("/game"), textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px", filter: "drop-shadow(0 2px 3px black)" }}>🎮</span>
-        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Game</span>
+        <span style={{ fontSize: "24px" }}>🎮</span>
       </Link>
 
-      {/* 3. Nút Đăng (Pha lê) */}
+      {/* 3. Nút Đăng (Pha lê nổi) */}
       <Link href="/upload" style={{ textDecoration: "none" }}>
         <div style={{
-          width: "50px", height: "50px", marginBottom: "20px",
+          width: "55px", height: "55px", marginTop: "-30px",
           background: "linear-gradient(135deg, #00f2ea 0%, #ff0050 100%)",
-          borderRadius: "50%", border: "2px solid white",
+          borderRadius: "50%", border: "4px solid black",
           display: "flex", justifyContent: "center", alignItems: "center",
           boxShadow: "0 0 15px rgba(255, 0, 80, 0.6)"
         }}>
@@ -43,16 +42,14 @@ export default function BottomNav() {
         </div>
       </Link>
 
-      {/* 4. Chat/Inbox (Đã gắn Link) */}
+      {/* 4. Chat */}
       <Link href="/inbox" style={{ color: isActive("/inbox"), textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px", filter: "drop-shadow(0 2px 3px black)" }}>💬</span>
-        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Chat</span>
+        <span style={{ fontSize: "24px" }}>💬</span>
       </Link>
 
       {/* 5. Hồ sơ */}
       <Link href="/profile" style={{ color: isActive("/profile"), textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px", filter: "drop-shadow(0 2px 3px black)" }}>👤</span>
-        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Tôi</span>
+        <span style={{ fontSize: "24px" }}>👤</span>
       </Link>
     </div>
   );
