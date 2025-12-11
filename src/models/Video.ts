@@ -22,11 +22,11 @@ const VideoSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// --- 👇 ĐOẠN QUAN TRỌNG ĐỂ SỬA LỖI ĐỎ ---
+// --- 👇 ĐOẠN QUAN TRỌNG ĐỂ SỬA LỖI ĐỎ (Bác chú ý đoạn này khác cái cũ) ---
 let Video: any;
 
 try {
-  // Thử lấy model đã có
+  // Thử lấy model đã có để tránh lỗi nạp lại
   Video = mongoose.model("Video");
 } catch {
   // Nếu chưa có thì tạo mới
