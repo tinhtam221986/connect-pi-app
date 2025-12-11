@@ -8,7 +8,7 @@ const VideoSchema = new mongoose.Schema({
     user_uid: { type: String, default: "" },
     avatar: { type: String, default: "" }
   },
-  likes: { type: [String], default: [] }, // Mảng chứa UID người like
+  likes: { type: [String], default: [] }, 
   comments: [
     {
       text: String,
@@ -22,4 +22,13 @@ const VideoSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.models.Video || mongoose.model("Video", VideoSchema);
+// --- 👇 SỬA LỖI TẠI ĐÂY: Tách ra biến riêng để TypeScript dễ hiểu ---
+let Video: any;
+
+try {
+  Video = mongoose.model("Video");
+} catch {
+  Video = mongoose.model("Video", VideoSchema);
+}
+
+export default Video;
