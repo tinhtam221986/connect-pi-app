@@ -2,28 +2,37 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import Script from "next/script";
 
-// Tạo kho chứa thông tin User
 const PiContext = createContext<any>(null);
 
 export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
 
-  // Hàm này sẽ chạy khi Pi SDK tải xong
   const onPiReady = () => {
     try {
       const Pi = (window as any).Pi;
-      Pi.init({ version: "2.0", sandbox: true }); // Chạy Sandbox để test
+      // Khởi động Pi SDK
+      Pi.init({ version: "2.0", sandbox: true });
       
-      // Xin quyền lấy thông tin
+      // Xin quyền lấy thông tin Username và Ví
       const scopes = ['username', 'payments'];
       
-      // Tự động đăng nhập (Sẽ hoàn thiện ở bước sau)
-      // Pi.authenticate(scopes, onIncompletePaymentFound).then...
-      
-      console.log("Pi SDK đã sẵn sàng!");
+      // --- 🟢 LỆNH ĐĂNG NHẬP QUAN TRỌNG ---
+      Pi.authenticate(scopes, onIncompletePaymentFound).then(function(auth: any) {
+        console.log("Đăng nhập thành công!", auth);
+        // Lưu thông tin người dùng vào biến user
+        setUser(auth.user);
+      }).catch(function(error: any) {
+        console.error("Lỗi đăng nhập Pi:", error);
+      });
+
     } catch (err) {
       console.error("Lỗi khởi động Pi:", err);
     }
+  };
+
+  const onIncompletePaymentFound = (payment: any) => {
+    // Xử lý thanh toán chưa hoàn tất (Để sau)
+    console.log("Tìm thấy thanh toán dở dang:", payment);
   };
 
   return (
