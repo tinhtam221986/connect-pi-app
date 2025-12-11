@@ -25,7 +25,7 @@ export default function VideoCard({ video }: VideoProps) {
   const [isSending, setIsSending] = useState(false);
   const [expandDesc, setExpandDesc] = useState(false);
 
-  // Tự động phát
+  // Tự động phát khi lướt tới
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -34,8 +34,8 @@ export default function VideoCard({ video }: VideoProps) {
         } else {
           if (videoRef.current) {
             videoRef.current.pause();
-            videoRef.current.currentTime = 0;
-            setExpandDesc(false);
+            videoRef.current.currentTime = 0; // Tua lại đầu
+            setExpandDesc(false); // Thu gọn mô tả
           }
         }
       }, { threshold: 0.6 }
@@ -74,22 +74,35 @@ export default function VideoCard({ video }: VideoProps) {
     finally { setIsSending(false); }
   };
 
+  // --- 🟢 FIX LỖI COPY LINK ---
   const handleShare = async () => {
+    const link = `${window.location.origin}?video=${video._id}`;
+    
+    // Ưu tiên dùng tính năng Chia sẻ của điện thoại
     if (navigator.share) {
-      try { await navigator.share({ title: 'Connect Pi', url: window.location.href }); } catch (err) {}
+      try {
+        await navigator.share({
+          title: 'Connect Pi App',
+          text: video.caption,
+          url: link,
+        });
+      } catch (err) {
+        // Nếu người dùng hủy chia sẻ thì không làm gì
+      }
     } else {
-      alert("Đã sao chép link!");
+      // Nếu không có nút chia sẻ (trên PC), dùng lệnh Copy
+      try {
+        await navigator.clipboard.writeText(link);
+        alert("✅ Đã sao chép link video!");
+      } catch (err) {
+        // Nếu trình duyệt chặn, hiện ô để người dùng tự copy
+        prompt("Copy link dưới đây:", link);
+      }
     }
   };
 
-  // --- 🟢 TÍNH NĂNG DONATE (MỚI) ---
   const handleDonate = () => {
-    // Sau này sẽ gọi Pi SDK Payment tại đây
-    const amount = prompt("Nhập số Pi muốn tặng cho tác giả:", "1");
-    if (amount) {
-      alert(`🎉 Cảm ơn bác! Đã gửi lệnh tặng ${amount} Pi đến @${video.author?.username}`);
-      // Hiệu ứng pháo hoa sẽ làm sau
-    }
+    alert("🎁 Tính năng tặng quà đang được tích hợp ví Pi!");
   };
 
   return (
@@ -99,50 +112,57 @@ export default function VideoCard({ video }: VideoProps) {
         ref={videoRef}
         src={video.videoUrl} 
         loop playsInline 
+        // Bấm vào video để dừng/phát
         onClick={(e) => { const v = e.currentTarget; v.paused ? v.play() : v.pause(); }}
         style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
       />
 
-      {/* THANH CÔNG CỤ BÊN PHẢI */}
-      <div style={{ position: 'absolute', right: '10px', bottom: '100px', display: 'flex', flexDirection: 'column', gap: '18px', alignItems: 'center', zIndex: 20 }}>
+      {/* --- CÁC NÚT BÊN PHẢI (SVG RỖNG RUỘT) --- */}
+      <div style={{ position: 'absolute', right: '10px', bottom: '120px', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', zIndex: 20 }}>
         
         {/* Avatar */}
-        <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', marginBottom: '5px' }}>
+        <div style={{ width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden', marginBottom: '5px' }}>
            <img src="https://via.placeholder.com/50" alt="avt" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
         </div>
 
         {/* Tim */}
         <div style={{ textAlign: 'center' }}>
             <button onClick={handleLike} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill={isLiked ? "#ff0050" : "rgba(255,255,255,0.2)"} stroke={isLiked ? "none" : "white"} strokeWidth="2">
+              <svg width="35" height="35" viewBox="0 0 24 24" fill={isLiked ? "#ff0050" : "none"} stroke={isLiked ? "none" : "white"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
             </button>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>{likesCount}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>{likesCount}</div>
         </div>
 
         {/* Comment */}
         <div style={{ textAlign: 'center' }}>
             <button onClick={() => setShowCommentInput(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="rgba(255,255,255,0.2)" stroke="white" strokeWidth="2">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
               </svg>
             </button>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>{commentsList.length}</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>{commentsList.length}</div>
         </div>
 
-        {/* 🎁 NÚT DONATE (MỚI) */}
+        {/* Donate (Quà tặng) */}
         <div style={{ textAlign: 'center' }}>
             <button onClick={handleDonate} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <span style={{ fontSize: '30px' }}>🎁</span>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                <rect x="2" y="7" width="20" height="5"></rect>
+                <line x1="12" y1="22" x2="12" y2="7"></line>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+              </svg>
             </button>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>Tặng quà</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>Quà</div>
         </div>
 
         {/* Share */}
         <div style={{ textAlign: 'center' }}>
             <button onClick={handleShare} style={{ background: 'none', border: 'none', cursor: 'pointer', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
                 <circle cx="18" cy="19" r="3"></circle>
@@ -150,11 +170,11 @@ export default function VideoCard({ video }: VideoProps) {
                 <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
               </svg>
             </button>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>Chia sẻ</div>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', textShadow: '0 1px 2px black', color: 'white' }}>Chia sẻ</div>
         </div>
       </div>
 
-      {/* MIÊU TẢ & COMMENT (Giữ nguyên code xịn trước đó) */}
+      {/* --- MÔ TẢ & COMMENT --- */}
       <div onClick={() => setExpandDesc(!expandDesc)} style={{ position: 'absolute', bottom: '0', left: '0', width: '100%', padding: '15px 15px 80px 15px', background: expandDesc ? "rgba(0, 0, 0, 0.8)" : "linear-gradient(to top, rgba(0,0,0,0.8), transparent)", backdropFilter: expandDesc ? "blur(10px)" : "none", transition: "all 0.3s ease", maxHeight: expandDesc ? "50vh" : "150px", overflowY: expandDesc ? "auto" : "hidden", borderTopRightRadius: "20px", borderTopLeftRadius: "20px", zIndex: 15 }}>
         <h4 style={{ margin: 0, fontWeight: 'bold', textShadow: '1px 1px 2px black', color: 'white', marginBottom: '5px' }}>@{video.author?.username || 'Pi Pioneer'}</h4>
         <p style={{ margin: '0', fontSize: '15px', lineHeight: '1.5', color: 'white', textShadow: '1px 1px 2px black', display: expandDesc ? 'block' : '-webkit-box', WebkitLineClamp: expandDesc ? 'unset' : 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{video.caption}</p>
