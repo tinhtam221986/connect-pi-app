@@ -7,16 +7,11 @@ export async function POST(request: Request) {
     await connectDB();
     const { user_uid, amount, type } = await request.json();
 
-    if (!user_uid || !amount) {
-      return NextResponse.json({ error: "Thiếu thông tin" }, { status: 400 });
-    }
+    if (!user_uid || !amount) return NextResponse.json({ error: "Thiếu thông tin" }, { status: 400 });
 
     const user = await User.findOne({ user_uid });
-    if (!user) {
-      return NextResponse.json({ error: "Không tìm thấy người dùng" }, { status: 404 });
-    }
+    if (!user) return NextResponse.json({ error: "Không tìm thấy user" }, { status: 404 });
 
-    // Xử lý cộng/trừ tiền
     if (type === 'deposit') {
       user.balance += amount;
     } else if (type === 'withdraw') {
@@ -25,9 +20,7 @@ export async function POST(request: Request) {
     }
 
     await user.save();
-
     return NextResponse.json({ message: "Giao dịch thành công", newBalance: user.balance });
-
   } catch (error) {
     return NextResponse.json({ error: "Lỗi Server" }, { status: 500 });
   }

@@ -37,7 +37,7 @@ export default async function HomePage() {
           {/* Chấm đỏ thông báo */}
           <div style={{ position: 'absolute', top: '-2px', right: '-6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' }}></div>
         </div>
-        <a href="/search" style={{ position: 'absolute', right: '15px', fontSize: '24px', textDecoration:'none' }}>🔍</a>
+        <span style={{ position: 'absolute', right: '15px', fontSize: '20px' }}>🔍</span>
       </div>
 
       {/* DANH SÁCH VIDEO */}
