@@ -6,8 +6,8 @@ export default function GamePage() {
   const games = [
     { id: 1, name: "Pi Farm", icon: "🌾", players: "1.2M", color: "#4CAF50" },
     { id: 2, name: "Pi Pet", icon: "🐾", players: "850k", color: "#FF9800" },
-    { id: 3, name: "Lucky Spin", icon: "🎡", players: "2.5M", color: "#E91E63" },
-    { id: 4, name: "Chess 3D", icon: "♟️", players: "300k", color: "#3F51B5" },
+    { id: 3, name: "Vòng Quay", icon: "🎡", players: "2.5M", color: "#E91E63" },
+    { id: 4, name: "Cờ Tướng", icon: "♟️", players: "300k", color: "#3F51B5" },
   ];
 
   return (
