@@ -1,66 +1,39 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { NextResponse } from "next/server";
+import { connectDB } from "@/lib/mongodb";
+import User from "@/models/User";
 
-export default function BottomNav() {
-  const pathname = usePathname();
-  if (pathname === "/upload") return null;
+export async function POST(request: Request) {
+  try {
+    await connectDB();
+    const { username, user_uid } = await request.json();
 
-  const isActive = (path: string) => pathname === path ? "#00f2ea" : "rgba(255,255,255,0.6)";
+    if (!user_uid) {
+      return NextResponse.json({ error: "Thiếu UID" }, { status: 400 });
+    }
 
-  return (
-    <div style={{
-      position: "fixed", 
-      bottom: "20px", 
-      left: "10px", 
-      right: "10px", 
-      height: "60px",
-      // --- 🟢 GIAO DIỆN KHUNG MẢNH MAI ---
-      background: "rgba(0, 0, 0, 0.6)", // Nền đen mờ nhẹ để nổi icon
-      backdropFilter: "blur(10px)",     // Làm mờ video phía sau
-      borderRadius: "30px",             // Bo tròn 2 đầu
-      border: "1px solid rgba(255, 255, 255, 0.3)", // Viền trắng mảnh mai
-      display: "flex", 
-      justifyContent: "space-around", 
-      alignItems: "center",
-      zIndex: 100,
-      padding: "0 10px"
-    }}>
-      
-      {/* Trang chủ */}
-      <Link href="/" style={{ color: isActive("/"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "24px" }}>🏠</span>
-      </Link>
+    // Kiểm tra xem người này có trong sổ chưa
+    let user = await User.findOne({ user_uid });
 
-      {/* Game */}
-      <Link href="/game" style={{ color: isActive("/game"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "24px" }}>🎮</span>
-      </Link>
+    if (!user) {
+      // Chưa có -> Tạo mới (Cấp sổ mới)
+      user = await User.create({
+        username: username || "Pi Pioneer",
+        user_uid: user_uid,
+        balance: 0, 
+        level: 1
+      });
+    } else {
+      // Có rồi -> Cập nhật tên nếu đổi
+      if (username && user.username !== username) {
+         user.username = username;
+         await user.save();
+      }
+    }
 
-      {/* Nút Đăng (Nổi lên trên khung) */}
-      <Link href="/upload" style={{ textDecoration: "none" }}>
-        <div style={{
-          width: "45px", height: "45px", 
-          background: "linear-gradient(to right, #00f2ea, #ff0050)",
-          borderRadius: "50%", 
-          display: "flex", justifyContent: "center", alignItems: "center",
-          border: "2px solid white", // Viền trắng cho nút
-          transform: "translateY(-15px)", // Nổi lên khỏi khung
-          boxShadow: "0 0 10px rgba(0,0,0,0.5)"
-        }}>
-          <span style={{ color: "white", fontSize: "24px", fontWeight: "bold" }}>+</span>
-        </div>
-      </Link>
+    return NextResponse.json({ message: "Thành công", user });
 
-      {/* Chat */}
-      <Link href="/inbox" style={{ color: isActive("/inbox"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "24px" }}>💬</span>
-      </Link>
-
-      {/* Tôi */}
-      <Link href="/profile" style={{ color: isActive("/profile"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "24px" }}>👤</span>
-      </Link>
-    </div>
-  );
+  } catch (error) {
+    console.error("Lỗi:", error);
+    return NextResponse.json({ error: "Lỗi Server" }, { status: 500 });
+  }
 }
