@@ -36,23 +36,6 @@ export default function SearchPage() {
         ))}
       </div>
 
-      {/* Gợi ý User */}
-      <h3 style={{ marginTop: "30px", marginBottom: "15px" }}>👥 Gợi ý mọi người</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-         {[1,2,3].map(i => (
-           <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                 <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#444" }}></div>
-                 <div>
-                    <div style={{ fontWeight: "bold" }}>Pi User {i}</div>
-                    <div style={{ fontSize: "12px", color: "#888" }}>@pi_user_{i}</div>
-                 </div>
-              </div>
-              <button style={{ background: "#ff0050", border: "none", color: "white", padding: "5px 15px", borderRadius: "5px", fontWeight: "bold" }}>Follow</button>
-           </div>
-         ))}
-      </div>
-
       <BottomNav />
     </div>
   );
