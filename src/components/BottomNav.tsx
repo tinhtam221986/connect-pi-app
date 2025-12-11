@@ -5,68 +5,65 @@ import { usePathname } from "next/navigation";
 export default function BottomNav() {
   const pathname = usePathname();
   
-  // 🟢 THÔNG MINH: Nếu đang ở trang Upload thì ẨN MENU đi để dễ bấm nút Đăng
+  // Ẩn menu khi đang ở trang Upload để không vướng nút Đăng
   if (pathname === "/upload") return null;
 
-  const isActive = (path: string) => pathname === path ? "white" : "rgba(255,255,255,0.5)";
+  const isActive = (path: string) => pathname === path ? "white" : "rgba(255,255,255,0.6)";
 
   return (
     <div style={{
       position: "fixed",
-      bottom: "20px", // Cách đáy một chút cho sang
-      left: "5%",     // Căn giữa
-      width: "90%",   // Không full màn hình, tạo khối nổi
-      height: "65px",
-      // --- HIỆU ỨNG THẠCH ANH (GLASSMORPHISM) ---
-      background: "rgba(255, 255, 255, 0.1)", // Màu trắng trong suốt 10%
-      backdropFilter: "blur(15px)",           // Làm mờ nền đằng sau
-      border: "1px solid rgba(255, 255, 255, 0.2)", // Viền kính sáng
-      borderRadius: "35px",                   // Bo tròn mạnh
+      bottom: 0,
+      left: 0,
+      width: "100%",
+      height: "70px",
+      // Nền trong suốt hoàn toàn, chỉ có hiệu ứng mờ nhẹ phía dưới chân
+      background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)",
       display: "flex",
       justifyContent: "space-around",
       alignItems: "center",
       zIndex: 100,
-      boxShadow: "0 4px 30px rgba(0, 0, 0, 0.1)" // Bóng đổ nhẹ
+      paddingBottom: "10px"
     }}>
       
       {/* Trang Chủ */}
-      <Link href="/" style={{ color: isActive("/"), display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none" }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill={pathname === "/" ? "white" : "none"} stroke="currentColor" strokeWidth="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-        </svg>
+      <Link href="/" style={{ color: isActive("/"), textDecoration: "none", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <span style={{ fontSize: "24px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>🏠</span>
+        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Home</span>
       </Link>
 
-      {/* Game */}
-      <div style={{ color: "rgba(255,255,255,0.5)", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "22px" }}>🎮</span>
+      {/* Game (Nút pha lê) */}
+      <div style={{ color: "rgba(255,255,255,0.8)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <span style={{ fontSize: "24px", filter: "drop-shadow(0 0 5px rgba(255,215,0,0.5))" }}>🎮</span>
+        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Game</span>
       </div>
 
-      {/* Nút Đăng Bài (Nổi bật giữa) */}
+      {/* Nút Đăng (Nổi bật nhưng không còn viền thô) */}
       <Link href="/upload" style={{ textDecoration: "none" }}>
         <div style={{
-          width: "50px", height: "50px",
-          background: "linear-gradient(135deg, #00f2ea 0%, #ff0050 100%)", // Màu Gradient đẹp
-          borderRadius: "50%",
+          width: "45px", height: "45px",
+          background: "rgba(255, 255, 255, 0.2)", // Pha lê trắng mờ
+          border: "1px solid rgba(255, 255, 255, 0.5)",
+          backdropFilter: "blur(10px)",
+          borderRadius: "15px",
           display: "flex", justifyContent: "center", alignItems: "center",
-          boxShadow: "0 0 15px rgba(255, 0, 80, 0.6)",
-          marginTop: "-20px", // Nổi lên trên một chút
-          border: "4px solid black" // Viền đen để tách biệt với nền kính
+          boxShadow: "0 0 15px rgba(255, 0, 80, 0.4)",
+          marginBottom: "15px" // Đẩy lên cao hơn một chút
         }}>
           <span style={{ color: "white", fontWeight: "bold", fontSize: "28px" }}>+</span>
         </div>
       </Link>
 
-      {/* Chat */}
-      <div style={{ color: "rgba(255,255,255,0.5)", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "22px" }}>💬</span>
+      {/* Shop (Chức năng kiếm tiền sau này) */}
+      <div style={{ color: "rgba(255,255,255,0.8)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <span style={{ fontSize: "24px", filter: "drop-shadow(0 0 5px rgba(0,242,234,0.5))" }}>🛍️</span>
+        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Shop</span>
       </div>
 
       {/* Hồ sơ */}
-      <Link href="/profile" style={{ color: isActive("/profile"), display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none" }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill={pathname === "/profile" ? "white" : "none"} stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
+      <Link href="/profile" style={{ color: isActive("/profile"), textDecoration: "none", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <span style={{ fontSize: "24px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>👤</span>
+        <span style={{ fontSize: "10px", fontWeight: "bold", textShadow: "0 1px 2px black" }}>Tôi</span>
       </Link>
     </div>
   );
