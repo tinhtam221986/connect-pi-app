@@ -22,12 +22,14 @@ const VideoSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// --- 👇 SỬA LỖI TẠI ĐÂY: Tách ra biến riêng để TypeScript dễ hiểu ---
+// --- 👇 ĐOẠN QUAN TRỌNG ĐỂ SỬA LỖI ĐỎ ---
 let Video: any;
 
 try {
+  // Thử lấy model đã có
   Video = mongoose.model("Video");
 } catch {
+  // Nếu chưa có thì tạo mới
   Video = mongoose.model("Video", VideoSchema);
 }
 
