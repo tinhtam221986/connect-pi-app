@@ -1,32 +1,25 @@
 import mongoose from "mongoose";
 
-const VideoSchema = new mongoose.Schema(
-  {
-    videoUrl: {
-      type: String,
-      required: true,
-    },
-    caption: {
-      type: String,
-      default: "",
-    },
-    // Sửa lại phần này cho khớp với Trang chủ (Trang chủ cần Object, không phải String)
-    author: {
-      type: Object, 
-      default: { username: "Pi User", user_uid: "unknown" },
-    },
-    // Sửa lại likes thành Mảng để đếm được bao nhiêu người thả tim
-    likes: {
-      type: Array,
-      default: [],
-    },
-    comments: {
-      type: Array,
-      default: [],
-    },
+const VideoSchema = new mongoose.Schema({
+  videoUrl: { type: String, required: true },
+  caption: { type: String, required: true },
+  author: {
+    username: { type: String, default: "Pi Pioneer" },
+    user_uid: { type: String, default: "" },
+    avatar: { type: String, default: "" }
   },
-  { timestamps: true }
-);
+  likes: { type: [String], default: [] }, // Mảng chứa UID người like
+  comments: [
+    {
+      text: String,
+      user: {
+        username: String,
+        avatar: String
+      },
+      createdAt: { type: Date, default: Date.now }
+    }
+  ],
+  createdAt: { type: Date, default: Date.now },
+});
 
-// Thêm "as any" vào đoạn này để trị dứt điểm lỗi "Type too complex" màu đỏ
-export default (mongoose.models.Video as any) || mongoose.model("Video", VideoSchema);
+export default mongoose.models.Video || mongoose.model("Video", VideoSchema);
