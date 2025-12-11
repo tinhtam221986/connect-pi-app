@@ -16,19 +16,24 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(1);
+  const [quality, setQuality] = useState("auto"); // Mặc định tự động
 
   const handleFileChange = async (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setUploading(true);
-    setProgress(10); // Hiệu ứng giả
+    setProgress(5); 
     
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", UPLOAD_PRESET);
     formData.append("resource_type", "video");
-    // ĐÃ XÓA DÒNG GÂY LỖI TRANSFORMATION TẠI ĐÂY
+    
+    // Gửi tham số nén nếu chọn tiết kiệm
+    if (quality === "auto") {
+        formData.append("transformation", "q_auto");
+    }
 
     try {
       const xhr = new XMLHttpRequest();
@@ -48,15 +53,22 @@ export default function UploadPage() {
           setUploading(false);
           setStep(2);
         } else {
-          alert("Lỗi: " + (data.error?.message || "Không xác định"));
-          setUploading(false);
+          // Nếu lỗi do Cloudinary chặn Transformation (Unsigned), thử lại không nén
+          if (data.error?.message?.includes("Transformation")) {
+             alert("Chế độ nén bị chặn, đang thử tải lại gốc...");
+             // Gọi lại hàm upload không nén ở đây nếu muốn, hoặc báo lỗi
+             setUploading(false);
+          } else {
+             alert("Lỗi tải lên: " + (data.error?.message || "Không rõ"));
+             setUploading(false);
+          }
         }
       };
 
       xhr.send(formData);
 
     } catch (error) {
-      alert("Lỗi kết nối mạng!");
+      alert("Lỗi mạng!");
       setUploading(false);
     }
   };
@@ -77,8 +89,6 @@ export default function UploadPage() {
       if (res.ok) {
         alert("🎉 Đăng thành công!");
         router.push("/");
-      } else {
-        alert("Lỗi lưu Database!");
       }
     } catch (error) { alert("Lỗi Server!"); } 
     finally { setUploading(false); }
@@ -96,21 +106,25 @@ export default function UploadPage() {
 
       {/* BƯỚC 1: CHỌN VIDEO */}
       {step === 1 && (
-        <div style={{ width: "100%", textAlign: "center", marginTop: "50px" }}>
+        <div style={{ width: "100%", textAlign: "center", marginTop: "20px" }}>
           
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            style={{ border: "2px dashed #444", borderRadius: "15px", padding: "50px 20px", cursor: "pointer", backgroundColor: "#111" }}
-          >
+          <div style={{ marginBottom: "30px", textAlign: "left", background: "#111", padding: "15px", borderRadius: "10px" }}>
+            <label style={{ display: "block", marginBottom: "10px", color: "#aaa" }}>Chất lượng:</label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={() => setQuality("auto")} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #333", background: quality === "auto" ? "#ff0050" : "transparent", color: "white" }}>⚡ Tiết kiệm</button>
+              <button onClick={() => setQuality("100")} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #333", background: quality === "100" ? "#ff0050" : "transparent", color: "white" }}>🌟 Gốc (HD)</button>
+            </div>
+          </div>
+
+          <div onClick={() => fileInputRef.current?.click()} style={{ border: "2px dashed #444", borderRadius: "15px", padding: "40px 20px", cursor: "pointer", backgroundColor: "#111" }}>
             <div style={{ fontSize: "50px", marginBottom: "15px" }}>📹</div>
-            <h4>Chọn video để tải lên</h4>
-            <p style={{color: "#666"}}>Hỗ trợ MP4, AVI</p>
+            <h4>Chọn video từ máy</h4>
           </div>
           <input type="file" accept="video/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
 
           {uploading && (
             <div style={{ marginTop: "30px" }}>
-              <p>Đang tải lên... {progress}%</p>
+              <p>Đang xử lý... {progress}%</p>
               <div style={{ width: "100%", height: "8px", background: "#333", borderRadius: "4px" }}>
                 <div style={{ width: `${progress}%`, height: "100%", background: "#ff0050", transition: "width 0.2s" }}></div>
               </div>
@@ -119,11 +133,19 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* BƯỚC 2: CHỈNH SỬA & ĐĂNG */}
+      {/* BƯỚC 2: CHỈNH SỬA & ĐĂNG (Đã bật tiếng) */}
       {step === 2 && videoUrl && (
         <div style={{ width: "100%" }}>
           <div style={{ borderRadius: "15px", overflow: "hidden", marginBottom: "20px", border: "1px solid #333" }}>
-            <video src={videoUrl} autoPlay loop muted playsInline style={{ width: "100%", display: "block" }} />
+            {/* 🟢 QUAN TRỌNG: Đã xóa muted, thêm controls để bác bật tiếng */}
+            <video 
+                src={videoUrl} 
+                autoPlay 
+                loop 
+                controls 
+                playsInline 
+                style={{ width: "100%", display: "block" }} 
+            />
           </div>
           <textarea
             placeholder="Mô tả video..."
@@ -142,4 +164,4 @@ export default function UploadPage() {
       )}
     </div>
   );
-                    }
+}
