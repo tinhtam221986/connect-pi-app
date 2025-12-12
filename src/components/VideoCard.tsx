@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 
-// Định nghĩa kiểu dữ liệu rõ ràng để máy không bắt bẻ
 interface VideoProps {
   video: {
     _id: string;
@@ -26,7 +25,6 @@ export default function VideoCard({ video }: VideoProps) {
   const [isSending, setIsSending] = useState(false);
   const [expandDesc, setExpandDesc] = useState(false);
 
-  // Tự động phát
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -46,11 +44,11 @@ export default function VideoCard({ video }: VideoProps) {
   }, []);
 
   const handleLike = async () => {
-    // --- 👇 ĐÃ SỬA LỖI 'PREV' TẠI ĐÂY ---
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
-    // Báo rõ ràng cho máy biết currentCount là số (number)
-    setLikesCount((currentCount: number) => newLikedState ? currentCount + 1 : currentCount - 1);
+    
+    // 🟢 SỬA LỖI TẠI ĐÂY: Thêm chữ 'number' để máy hiểu
+    setLikesCount((prev: number) => newLikedState ? prev + 1 : prev - 1);
     
     try {
       await fetch("/api/like", {
@@ -94,7 +92,6 @@ export default function VideoCard({ video }: VideoProps) {
     <div style={{ height: '100vh', position: 'relative', scrollSnapAlign: 'start', backgroundColor: 'black' }}>
       <video ref={videoRef} src={video.videoUrl} loop playsInline onClick={(e) => { const v = e.currentTarget; v.paused ? v.play() : v.pause(); }} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       
-      {/* Nút bấm bên phải */}
       <div style={{ position: 'absolute', right: '10px', bottom: '120px', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', zIndex: 20 }}>
         <div style={{ width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', overflow: 'hidden' }}>
            <img src="https://via.placeholder.com/50" alt="avt" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
@@ -125,4 +122,4 @@ export default function VideoCard({ video }: VideoProps) {
       )}
     </div>
   );
-}
+      }
