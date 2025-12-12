@@ -25,11 +25,19 @@ export const apiClient = {
     },
   },
   video: {
-    upload: async (file: File, metadata?: { username?: string; description?: string }) => {
+    // Updated signature to accept any metadata fields including deviceSignature
+    upload: async (file: File, metadata?: { username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string }) => {
       const formData = new FormData();
       formData.append('file', file);
-      if (metadata?.username) formData.append('username', metadata.username);
-      if (metadata?.description) formData.append('description', metadata.description);
+
+      // Dynamic append for all metadata fields
+      if (metadata) {
+          Object.entries(metadata).forEach(([key, value]) => {
+              if (value !== undefined && value !== null) {
+                  formData.append(key, String(value));
+              }
+          });
+      }
 
       const res = await fetch('/api/video/upload', {
         method: 'POST',
