@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import BottomNav from "@/components/BottomNav";
 import { usePi } from "@/components/PiSDKProvider";
+import Script from "next/script"; // 🟢 THÊM CÁI NÀY ĐỂ NẠP LẠI SDK NẾU CẦN
 
 export default function ProfilePage() {
   const { user: piUser, setUser } = usePi() || {}; 
@@ -24,38 +25,52 @@ export default function ProfilePage() {
     if (piUser) fetchUserData(piUser.uid, piUser.username);
   }, [piUser]);
 
-  // --- 🟢 HÀM ĐĂNG NHẬP MỚI (MẠNH MẼ HƠN) ---
+  // --- 🟢 HÀM KÍCH HOẠT MỚI (CỰC MẠNH) ---
   const handleManualLogin = async () => {
     setLoading(true);
+    // 1. Thông báo bắt đầu
+    // alert("Đang kết nối đến Pi Network..."); 
+
     try {
-        const Pi = (window as any).Pi;
+        // 2. Tìm Pi trong máy
+        let Pi = (window as any).Pi;
         
-        // 1. Kiểm tra xem Pi SDK có ở đó không
+        // Nếu không thấy Pi, thử đợi 1 xíu
         if (!Pi) {
-            alert("🚨 Lỗi: Chưa tìm thấy Pi SDK. Hãy tải lại trang!");
+            alert("⚠️ Chưa thấy Pi SDK! Đang thử tải lại...");
+            await new Promise(r => setTimeout(r, 1000)); // Đợi 1 giây
+            Pi = (window as any).Pi;
+        }
+
+        if (!Pi) {
+            alert("🚨 Lỗi: Vui lòng mở App này bên trong Pi Browser!");
             setLoading(false);
             return;
         }
 
-        // 2. Cố gắng khởi động lại Pi (Đề phòng lúc đầu chưa chạy)
-        try { Pi.init({ version: "2.0", sandbox: true }); } catch (e) {}
+        // 3. Khởi động Pi (Quan trọng)
+        try { 
+            Pi.init({ version: "2.0", sandbox: true }); 
+        } catch (e) {
+            console.log("Pi đã init trước đó rồi, bỏ qua.");
+        }
 
-        // 3. Tiến hành đăng nhập
+        // 4. Xin quyền đăng nhập
         const scopes = ['username', 'payments'];
         const onIncompletePaymentFound = (payment: any) => { console.log("Thanh toán treo:", payment); };
 
         Pi.authenticate(scopes, onIncompletePaymentFound).then((auth: any) => {
-            alert("🎉 Đăng nhập thành công! Xin chào: " + auth.user.username);
+            alert("🎉 CHÚC MỪNG! Đã định danh thành công: " + auth.user.username);
             setUser(auth.user);
             fetchUserData(auth.user.uid, auth.user.username);
         }).catch((err: any) => {
+            // Hiện lỗi chi tiết ra màn hình
+            alert("❌ Lỗi từ Pi: " + JSON.stringify(err));
             console.error(err);
-            // Hiện lỗi rõ ràng (Không hiện {} nữa)
-            alert("❌ Lỗi Đăng Nhập: " + (err.message || err));
         });
 
     } catch (e: any) {
-        alert("❌ Lỗi hệ thống: " + (e.message || e));
+        alert("❌ Lỗi hệ thống: " + (e.message || JSON.stringify(e)));
     } finally {
         setLoading(false);
     }
@@ -66,6 +81,9 @@ export default function ProfilePage() {
 
   return (
     <div style={{ backgroundColor: "black", minHeight: "100vh", color: "white", paddingBottom: "100px" }}>
+      {/* Nạp lại SDK một lần nữa cho chắc */}
+      <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" />
+
       <div style={{ height: "150px", background: "linear-gradient(45deg, #00f2ea, #ff0050)" }}></div>
       
       <div style={{ padding: "0 20px", marginTop: "-50px", position: "relative" }}>
@@ -108,4 +126,4 @@ export default function ProfilePage() {
       <style jsx>{`@keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }`}</style>
     </div>
   );
-}
+          }
