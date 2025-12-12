@@ -18,10 +18,12 @@ export default function UploadPage() {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true); setProgress(10);
+    
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", UPLOAD_PRESET);
     formData.append("resource_type", "video");
+    // 🟢 ĐÃ XÓA DÒNG "TRANSFORMATION" GÂY LỖI TẠI ĐÂY
 
     try {
       const xhr = new XMLHttpRequest();
@@ -29,8 +31,14 @@ export default function UploadPage() {
       xhr.upload.onprogress = (event) => setProgress(Math.round((event.loaded / event.total) * 100));
       xhr.onload = () => {
         const data = JSON.parse(xhr.response);
-        if (data.secure_url) { setVideoUrl(data.secure_url); setUploading(false); setStep(2); }
-        else { alert("Lỗi tải: " + data.error?.message); setUploading(false); }
+        if (data.secure_url) { 
+            setVideoUrl(data.secure_url); 
+            setUploading(false); 
+            setStep(2); 
+        } else { 
+            alert("Lỗi tải: " + (data.error?.message || "Không xác định")); 
+            setUploading(false); 
+        }
       };
       xhr.send(formData);
     } catch { alert("Lỗi mạng!"); setUploading(false); }
@@ -42,9 +50,10 @@ export default function UploadPage() {
     try {
       const res = await fetch("/api/videos", {
         method: "POST", headers: { "Content-Type": "application/json" },
+        // Gửi thông tin tác giả giả lập nếu chưa có Pi Login, sau này sẽ thay thế
         body: JSON.stringify({ videoUrl, caption, author: { username: "Pi Pioneer", user_uid: "pi_test_uid" } })
       });
-      if (res.ok) { alert("🎉 Thành công!"); router.push("/"); }
+      if (res.ok) { alert("🎉 Đăng thành công!"); router.push("/"); }
     } catch { alert("Lỗi Server!"); } finally { setUploading(false); }
   };
 
@@ -65,6 +74,7 @@ export default function UploadPage() {
       )}
       {step === 2 && videoUrl && (
         <div style={{ width: "100%" }}>
+          {/* Đã xóa 'muted' để có tiếng, thêm 'controls' để điều khiển */}
           <video src={videoUrl} controls autoPlay loop playsInline style={{ width: "100%", borderRadius: "10px", marginBottom: "20px" }} />
           <textarea placeholder="Mô tả..." value={caption} onChange={(e) => setCaption(e.target.value)} style={{ width: "100%", padding: "15px", borderRadius: "10px", background: "#222", color: "white", border: "none" }} />
           <button onClick={handlePost} disabled={uploading} style={{ marginTop: "20px", width: "100%", padding: "15px", background: "#ff0050", color: "white", border: "none", borderRadius: "30px", fontWeight: "bold" }}>Đăng ngay 🚀</button>
