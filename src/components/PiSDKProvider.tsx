@@ -6,45 +6,21 @@ const PiContext = createContext<any>(null);
 
 export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
-
   const onPiReady = () => {
     try {
       const Pi = (window as any).Pi;
-      // Khởi động Pi SDK
       Pi.init({ version: "2.0", sandbox: true });
-      
-      // Xin quyền lấy thông tin Username và Ví
       const scopes = ['username', 'payments'];
-      
-      // --- 🟢 LỆNH ĐĂNG NHẬP QUAN TRỌNG ---
-      Pi.authenticate(scopes, onIncompletePaymentFound).then(function(auth: any) {
-        console.log("Đăng nhập thành công!", auth);
-        // Lưu thông tin người dùng vào biến user
-        setUser(auth.user);
-      }).catch(function(error: any) {
-        console.error("Lỗi đăng nhập Pi:", error);
-      });
-
-    } catch (err) {
-      console.error("Lỗi khởi động Pi:", err);
-    }
+      Pi.authenticate(scopes, (p: any) => console.log(p)).then((auth: any) => {
+        console.log("Login OK", auth); setUser(auth.user);
+      }).catch((err: any) => console.error(err));
+    } catch (err) { console.error(err); }
   };
-
-  const onIncompletePaymentFound = (payment: any) => {
-    // Xử lý thanh toán chưa hoàn tất (Để sau)
-    console.log("Tìm thấy thanh toán dở dang:", payment);
-  };
-
   return (
     <PiContext.Provider value={{ user, setUser }}>
-      <Script 
-        src="https://sdk.minepi.com/pi-sdk.js" 
-        strategy="afterInteractive" 
-        onLoad={onPiReady} 
-      />
+      <Script src="https://sdk.minepi.com/pi-sdk.js" strategy="afterInteractive" onLoad={onPiReady} />
       {children}
     </PiContext.Provider>
   );
 }
-
 export const usePi = () => useContext(PiContext);
