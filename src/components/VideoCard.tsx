@@ -46,9 +46,10 @@ export default function VideoCard({ video }: VideoProps) {
   }, []);
 
   const handleLike = async () => {
-    // --- 👇 ĐÃ SỬA LỖI PREV TẠI ĐÂY ---
+    // --- 👇 ĐÃ SỬA LỖI 'PREV' TẠI ĐÂY ---
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
+    // Báo rõ ràng cho máy biết currentCount là số (number)
     setLikesCount((currentCount: number) => newLikedState ? currentCount + 1 : currentCount - 1);
     
     try {
@@ -124,4 +125,4 @@ export default function VideoCard({ video }: VideoProps) {
       )}
     </div>
   );
-      }
+}
