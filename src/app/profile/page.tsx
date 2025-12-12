@@ -4,8 +4,8 @@ import BottomNav from "@/components/BottomNav";
 import { usePi } from "@/components/PiSDKProvider";
 
 export default function ProfilePage() {
-  const { user: piUser } = usePi() || {};
-  const [dbUser, setDbUser] = useState<any>(null);
+  const { user: piUser } = usePi() || {}; 
+  const [dbUser, setDbUser] = useState<any>(null); 
   const [activeTab, setActiveTab] = useState("video"); 
 
   useEffect(() => {
