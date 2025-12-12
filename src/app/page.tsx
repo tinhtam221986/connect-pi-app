@@ -17,40 +17,51 @@ export default function HomePage() {
   const handleLogin = async () => {
     setLoading(true);
     
-    // Đặt đồng hồ báo thức: Nếu 8 giây không xong thì hủy để tránh treo máy
+    // 🟢 TĂNG THỜI GIAN CHỜ LÊN 60 GIÂY (Thoải mái luôn)
     const timeout = setTimeout(() => {
         setLoading(false);
-        alert("⚠️ Kết nối quá lâu! Hãy kiểm tra mạng và bấm lại.");
-    }, 8000);
+        alert("⚠️ Hết giờ kết nối (60s)! Mạng của bác hơi chậm, hãy bấm lại lần nữa nhé.");
+    }, 60000);
 
     try {
-      const Pi = (window as any).Pi;
+      // 🟢 THÊM CƠ CHẾ CHỜ PI SDK (Nếu máy chậm chưa tải xong)
+      let Pi = (window as any).Pi;
+      if (!Pi) {
+          // Thử đợi 3 giây xem Pi có xuất hiện không
+          await new Promise(r => setTimeout(r, 3000));
+          Pi = (window as any).Pi;
+      }
+
       if (!Pi) { 
-          alert("🔌 Chưa thấy nguồn điện (Pi SDK)! Hãy tải lại trang (Reload)."); 
           clearTimeout(timeout);
           setLoading(false); 
+          alert("🔌 Lỗi: Chưa tìm thấy Pi SDK! Hãy tải lại trang (F5) rồi bấm lại."); 
           return; 
       }
 
       try { await Pi.init({ version: "2.0", sandbox: true }); } catch (e) {}
 
       const scopes = ['username', 'payments'];
+      // Lệnh quan trọng nhất:
       const auth = await Pi.authenticate(scopes, (payment: any) => console.log(payment));
       
-      clearTimeout(timeout); // Tắt báo thức vì đã thành công
-      alert("🎉 Kết nối thành công! Xin chào " + auth.user.username);
+      clearTimeout(timeout); // Hủy báo thức vì đã thành công
+      alert("🎉 Đăng nhập thành công! Chào " + auth.user.username);
       
       setUser(auth.user);
       
-      // Ghi danh vào sổ hộ khẩu
+      // Ghi danh vào sổ
       fetch("/api/user", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: auth.user.username, user_uid: auth.user.uid }),
       });
 
     } catch (err: any) {
-      clearTimeout(timeout);
-      alert("❌ Lỗi: " + (err.message || JSON.stringify(err)));
+      clearTimeout(timeout); // Hủy báo thức nếu lỗi
+      // Nếu người dùng tự bấm Hủy thì không báo lỗi
+      if (!JSON.stringify(err).includes("user cancelled")) {
+          alert("❌ Lỗi kết nối: " + (err.message || JSON.stringify(err)));
+      }
     } finally {
       setLoading(false);
     }
