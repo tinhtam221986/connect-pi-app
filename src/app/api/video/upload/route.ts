@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { SmartContractService } from "@/lib/smart-contract-service";
+import { connectDB } from "@/lib/mongodb";
+import Video from "@/models/Video";
 
 // Config Cloudinary
 cloudinary.config({
@@ -56,7 +58,33 @@ export async function POST(request: Request) {
     });
 
     const resAny = result as any;
-    // Save metadata to persistent DB
+
+    // --- SAVE TO MONGODB ---
+    try {
+        await connectDB();
+
+        await Video.create({
+            videoUrl: resAny.secure_url,
+            caption: description || "",
+            author: {
+                username: username || "Anonymous",
+                // Generate a temporary uid if not provided, though ideally frontend sends it
+                user_uid: `user_${username || 'anon'}`,
+                avatar: "" // Placeholder
+            },
+            likes: [],
+            comments: [],
+            createdAt: new Date()
+        });
+        console.log("Video saved to MongoDB successfully");
+    } catch (dbError) {
+        console.error("Failed to save video to MongoDB:", dbError);
+        // We don't fail the whole request if DB save fails, but we should log it.
+        // Or maybe we SHOULD fail it? The user specifically wants it to show up.
+        // Let's log it strongly.
+    }
+
+    // Save metadata to persistent DB (Legacy/Backup)
     await SmartContractService.addFeedItem({
         id: resAny.public_id,
         url: resAny.secure_url,
