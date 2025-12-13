@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const description = formData.get("description") as string;
     const hashtags = formData.get("hashtags") as string;
     const privacy = formData.get("privacy") as string;
+    const deviceSignature = formData.get("deviceSignature") as string;
 
     if (!file) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Cloudinary
+    // Upload to Cloudinary with Watermark Transformation and Metadata
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { 
@@ -47,7 +48,23 @@ export async function POST(request: Request) {
               username: username || 'Anonymous',
               caption: description || ''
           },
-          tags: ['connect_video', `user_${username || 'anon'}`]
+          tags: ['connect_video', `user_${username || 'anon'}`],
+          // Automatic Watermark Transformation
+          transformation: [
+            { width: 720, crop: "limit" }, // Resize to standard mobile width
+            {
+               overlay: {
+                 font_family: "Arial",
+                 font_size: 20,
+                 font_weight: "bold",
+                 text: `@${username || 'ConnectUser'}`
+               },
+               gravity: "south_east",
+               y: 10,
+               x: 10,
+               color: "#FFFFFF80" // Semi-transparent white
+            }
+          ]
         },
         (error, result) => {
           if (error) reject(error);
@@ -59,29 +76,35 @@ export async function POST(request: Request) {
 
     const resAny = result as any;
 
-    // --- SAVE TO MONGODB ---
+    // --- SAVE TO MONGODB WITH ENHANCED METADATA ---
     try {
         await connectDB();
 
         await Video.create({
             videoUrl: resAny.secure_url,
             caption: description || "",
+            privacy: privacy || 'public',
             author: {
                 username: username || "Anonymous",
                 // Generate a temporary uid if not provided, though ideally frontend sends it
                 user_uid: `user_${username || 'anon'}`,
                 avatar: "" // Placeholder
             },
+            metadata: {
+                duration: resAny.duration || 0,
+                width: resAny.width || 0,
+                height: resAny.height || 0,
+                fileSize: resAny.bytes || 0,
+                format: resAny.format || ""
+            },
+            deviceSignature: deviceSignature || "unknown",
             likes: [],
             comments: [],
             createdAt: new Date()
         });
-        console.log("Video saved to MongoDB successfully");
+        console.log("Video saved to MongoDB successfully with metadata");
     } catch (dbError) {
         console.error("Failed to save video to MongoDB:", dbError);
-        // We don't fail the whole request if DB save fails, but we should log it.
-        // Or maybe we SHOULD fail it? The user specifically wants it to show up.
-        // Let's log it strongly.
     }
 
     // Save metadata to persistent DB (Legacy/Backup)
