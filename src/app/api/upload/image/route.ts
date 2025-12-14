@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { Upload } from "@aws-sdk/lib-storage";
+import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "@/lib/r2";
 
 export async function POST(request: Request) {
   try {
@@ -17,26 +11,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Buffer conversion
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `avatars/${uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
 
-    // Upload to Cloudinary
-    const result = await new Promise<any>((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'connect-pi/avatars',
-          resource_type: 'image',
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
+    const upload = new Upload({
+      client: r2Client,
+      params: {
+        Bucket: R2_BUCKET_NAME,
+        Key: filename,
+        Body: file.stream(),
+        ContentType: file.type,
+      },
     });
 
-    return NextResponse.json({ secure_url: result.secure_url });
+    await upload.done();
+    const fileUrl = `${R2_PUBLIC_URL}/${filename}`;
+
+    return NextResponse.json({ secure_url: fileUrl });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });

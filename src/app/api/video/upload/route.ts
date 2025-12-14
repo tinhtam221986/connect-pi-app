@@ -1,26 +1,11 @@
 import { NextResponse } from "next/server";
-import { v2 as cloudinary } from "cloudinary";
-import { SmartContractService } from "@/lib/smart-contract-service";
+import { Upload } from "@aws-sdk/lib-storage";
+import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "@/lib/r2";
 import { connectDB } from "@/lib/mongodb";
 import Video from "@/models/Video";
-
-// Config Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { SmartContractService } from "@/lib/smart-contract-service";
 
 export async function POST(request: Request) {
-  // Check for missing Cloudinary keys
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      console.error("Server Misconfiguration: Cloudinary keys are missing.");
-      return NextResponse.json({
-          success: false,
-          error: "Cloudinary keys are missing in server environment. Please configure them in Vercel Settings."
-      }, { status: 500 });
-  }
-
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -34,91 +19,67 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `videos/${username || 'anon'}/${uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
 
-    // Upload to Cloudinary with Watermark Transformation and Metadata
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { 
-          folder: "connect-pi-app", 
-          resource_type: "auto",
-          context: {
-              username: username || 'Anonymous',
-              caption: description || ''
-          },
-          tags: ['connect_video', `user_${username || 'anon'}`],
-          // Automatic Watermark Transformation
-          transformation: [
-            { width: 720, crop: "limit" }, // Resize to standard mobile width
-            {
-               overlay: {
-                 font_family: "Arial",
-                 font_size: 20,
-                 font_weight: "bold",
-                 text: `@${username || 'ConnectUser'}`
-               },
-               gravity: "south_east",
-               y: 10,
-               x: 10,
-               color: "#FFFFFF80" // Semi-transparent white
-            }
-          ]
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
+    // Convert to buffer/stream
+    // @aws-sdk/lib-storage accepts Web ReadableStream directly
+    const upload = new Upload({
+      client: r2Client,
+      params: {
+        Bucket: R2_BUCKET_NAME,
+        Key: filename,
+        Body: file.stream(),
+        ContentType: file.type,
+      },
     });
 
-    const resAny = result as any;
+    await upload.done();
 
-    // --- SAVE TO MONGODB WITH ENHANCED METADATA ---
+    const fileUrl = `${R2_PUBLIC_URL}/${filename}`;
+
+    // --- SAVE TO MONGODB ---
     try {
         await connectDB();
 
         await Video.create({
-            videoUrl: resAny.secure_url,
+            videoUrl: fileUrl,
             caption: description || "",
             privacy: privacy || 'public',
             author: {
                 username: username || "Anonymous",
-                // Generate a temporary uid if not provided, though ideally frontend sends it
                 user_uid: `user_${username || 'anon'}`,
-                avatar: "" // Placeholder
+                avatar: ""
             },
+            // Note: R2 upload doesn't return metadata like Cloudinary (duration, etc.)
+            // We would need a Lambda or client-side extraction for that.
+            // Saving defaults for now.
             metadata: {
-                duration: resAny.duration || 0,
-                width: resAny.width || 0,
-                height: resAny.height || 0,
-                fileSize: resAny.bytes || 0,
-                format: resAny.format || ""
+                duration: 0,
+                width: 0,
+                height: 0,
+                fileSize: file.size,
+                format: file.type
             },
             deviceSignature: deviceSignature || "unknown",
             likes: [],
             comments: [],
             createdAt: new Date()
         });
-        console.log("Video saved to MongoDB successfully with metadata");
     } catch (dbError) {
         console.error("Failed to save video to MongoDB:", dbError);
     }
 
     // Save metadata to persistent DB (Legacy/Backup)
     await SmartContractService.addFeedItem({
-        id: resAny.public_id,
-        url: resAny.secure_url,
-        thumbnail: resAny.resource_type === 'video'
-            ? resAny.secure_url.replace(/\.[^/.]+$/, ".jpg")
-            : resAny.secure_url,
+        id: filename,
+        url: fileUrl,
+        thumbnail: fileUrl, // Video thumbnail generation needs processing service
         description: description || "No description",
         username: username || "Anonymous",
         likes: 0,
         comments: 0,
-        resource_type: resAny.resource_type || 'image',
+        resource_type: file.type.startsWith('video') ? 'video' : 'image',
         created_at: new Date().toISOString(),
         hashtags: hashtags ? JSON.parse(hashtags) : [],
         privacy: privacy || 'public'
@@ -126,9 +87,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
         success: true,
-        url: resAny.secure_url,
-        public_id: resAny.public_id,
-        resource_type: resAny.resource_type
+        url: fileUrl,
+        public_id: filename,
+        resource_type: file.type.startsWith('video') ? 'video' : 'image'
     });
 
   } catch (error: any) {

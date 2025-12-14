@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { apiClient } from "@/lib/api-client";
 
 // Định nghĩa kiểu dữ liệu User
 interface PiUser {
@@ -63,6 +64,18 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && (window as any).Pi) {
         const scopes = ['username', 'payments'];
         const authResult = await (window as any).Pi.authenticate(scopes, onIncompletePaymentFound);
+
+        // Verify token with backend
+        try {
+            if (authResult.accessToken) {
+                await apiClient.auth.verify(authResult.accessToken);
+            }
+        } catch (e) {
+            console.error("Backend verification failed:", e);
+            // Optionally block login if verification fails
+            // throw new Error("Verification failed");
+        }
+
         setUser({
             username: authResult.user.username,
             uid: authResult.user.uid,
