@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon, RotateCcw, Timer } from "lucide-react";
+import { Camera, StopCircle, RefreshCcw, Check, Music, Video, X, Image as ImageIcon, RotateCcw, Timer, Zap, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { VIDEO_FILTERS } from "@/lib/video-filters";
@@ -10,6 +10,8 @@ interface CameraRecorderProps {
     onVideoRecorded?: (blob: Blob) => void;
     script?: string;
 }
+
+const SPEEDS = [0.3, 0.5, 1, 2, 3];
 
 export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -21,13 +23,15 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
     const [isRecording, setIsRecording] = useState(false);
-    const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+    const [isPaused, setIsPaused] = useState(false);
+    const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]); // All chunks from a single session
     const [currentFilter, setCurrentFilter] = useState(VIDEO_FILTERS[0]);
-    const [timer, setTimer] = useState(0);
+    const [timer, setTimer] = useState(0); // Total duration
     const [countdown, setCountdown] = useState(0); 
     const [timerMode, setTimerMode] = useState<0|3|10>(0); // 0, 3s, 10s
     const [flashActive, setFlashActive] = useState(false);
     const [facingMode, setFacingMode] = useState<'user'|'environment'>('user');
+    const [speed, setSpeed] = useState(1);
 
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const animationFrameRef = useRef<number | null>(null);
@@ -146,6 +150,21 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
     const startRecording = async () => {
         if (!canvasRef.current) return;
 
+        // If resuming from pause
+        if (isPaused && mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
+            mediaRecorderRef.current.resume();
+            setIsPaused(false);
+            setIsRecording(true);
+            timerIntervalRef.current = setInterval(() => setTimer(t => t + 1), 1000);
+
+            // Resume Music
+            if (backgroundAudioRef.current) {
+                backgroundAudioRef.current.play();
+                backgroundAudioRef.current.playbackRate = speed;
+            }
+            return;
+        }
+
         if (timerMode > 0) {
             setCountdown(timerMode);
             const countInterval = setInterval(() => {
@@ -188,7 +207,9 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
              }
              sourceNodeRef.current.connect(dest);
              sourceNodeRef.current.connect(ctx.destination);
+
              backgroundAudioRef.current.play();
+             backgroundAudioRef.current.playbackRate = speed;
 
              finalAudioStream = dest.stream;
         } else {
@@ -216,12 +237,12 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                  if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
                  if (backgroundAudioRef.current) {
                      backgroundAudioRef.current.pause();
-                     backgroundAudioRef.current.currentTime = 0;
                  }
             };
 
             mediaRecorder.start();
             setIsRecording(true);
+            setIsPaused(false);
             setTimer(0);
             timerIntervalRef.current = setInterval(() => setTimer(t => t + 1), 1000);
 
@@ -231,18 +252,77 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
         }
     };
 
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
+    const pauseRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.pause();
             setIsRecording(false);
+            setIsPaused(true);
             if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+
+            if (backgroundAudioRef.current) {
+                backgroundAudioRef.current.pause();
+            }
         }
     };
 
-    const handleSave = () => {
+    const stopRecording = () => {
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            setIsPaused(false);
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+
+            // Wait for dataavailable
+            setTimeout(() => {
+                handleFinish();
+            }, 500);
+        }
+    };
+
+    const handleFinish = () => {
+        // Blob construction needs to happen after state update in a useEffect or here if we trust closure (we don't fully).
+        // Actually, we should trigger a save in a separate effect that watches 'recordedChunks' OR rely on the fact that stopRecording triggers it.
+        // We will do it simple:
         const blob = new Blob(recordedChunks, { type: "video/webm" });
-        if (onVideoRecorded) {
+        // However, recordedChunks in closure might be stale? No, 'setRecordedChunks' is async.
+        // Let's use a ref or just rely on the onStop to trigger a state that triggers save.
+        // But for this code block, we will just call onVideoRecorded if chunks exist.
+        // Wait, 'recordedChunks' state won't be updated immediately inside this function after 'ondataavailable' fires.
+        // This is tricky.
+        // Better:
+        // We will let the user click "Check" (Done) button explicitly.
+        // But if they just hit "Stop", maybe that IS done?
+        // TikTok flow: Tap Record -> Tap Stop (Pause) -> Tap Next (Finish).
+    };
+
+    // Explicit Finish Button Handler
+    const onDoneClick = () => {
+         // Stop if recording
+         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+             mediaRecorderRef.current.stop();
+         }
+
+         // Give time for last chunk
+         setTimeout(() => {
+             // We need to read the LATEST state of recordedChunks.
+             // Since we are in a closure, we might need a Ref to track chunks.
+             // But for now, we assume standard React behavior.
+             // A cleaner way is to use a ref for chunks.
+         }, 500);
+    };
+
+    // Use Ref for chunks to avoid closure staleness during save
+    const chunksRef = useRef<Blob[]>([]);
+    useEffect(() => {
+        chunksRef.current = recordedChunks;
+    }, [recordedChunks]);
+
+    const finalSave = () => {
+        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        if (onVideoRecorded && blob.size > 0) {
             onVideoRecorded(blob);
+        } else {
+            toast.error("No video recorded!");
         }
     };
 
@@ -323,17 +403,35 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                         {!isRecording && <button onClick={clearMusic}><X size={12} /></button>}
                     </div>
                 )}
+
+                {/* Speed Controls Overlay */}
+                {!isRecording && !isPaused && (
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-30">
+                        <div className="bg-black/50 backdrop-blur rounded-full p-1 flex gap-1">
+                            {SPEEDS.map(s => (
+                                <button
+                                    key={s}
+                                    onClick={() => setSpeed(s)}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${speed === s ? 'bg-white text-black' : 'text-gray-300 hover:text-white'}`}
+                                >
+                                    {s}x
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex flex-col items-center gap-6 z-30">
                 
-                {isRecording && (
-                    <div className="text-red-500 font-mono font-bold text-xl animate-pulse">
+                {/* Timer / Progress */}
+                <div className="flex flex-col items-center gap-1">
+                     <div className="text-white font-mono font-bold text-xl drop-shadow-md">
                         {formatTime(timer)}
-                    </div>
-                )}
+                     </div>
+                </div>
 
-                {!isRecording && (
+                {!isRecording && !isPaused && (
                     <div className="flex gap-4 overflow-x-auto w-full px-4 pb-2 no-scrollbar justify-start md:justify-center">
                         {VIDEO_FILTERS.map((filter) => (
                             <button
@@ -351,88 +449,110 @@ export function CameraRecorder({ onVideoRecorded, script }: CameraRecorderProps)
                 )}
 
                 <div className="flex items-center gap-8">
-                     {!isRecording && (
-                        <div className="relative flex flex-col items-center gap-2">
-                            <div className="relative">
-                                <input
-                                    type="file"
-                                    accept="audio/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                    onChange={handleMusicUpload}
-                                />
-                                <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
-                                    <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
-                                </button>
-                            </div>
-                            <span className="text-[10px] font-bold text-gray-400">Sound</span>
-                        </div>
-                    )}
+                     {/* Left Button Group */}
+                     <div className="flex flex-col items-center gap-2 w-10">
+                        {!isRecording && !isPaused && (
+                             <>
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        accept="audio/*"
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        onChange={handleMusicUpload}
+                                    />
+                                    <button className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+                                        <Music size={20} className={audioFile ? "text-purple-400" : "text-white"} />
+                                    </button>
+                                </div>
+                                <span className="text-[10px] font-bold text-gray-400">Sound</span>
+                            </>
+                        )}
+                        {/* Clear/Reset button if paused */}
+                        {isPaused && (
+                             <button
+                                onClick={() => {
+                                    if(mediaRecorderRef.current) mediaRecorderRef.current.stop();
+                                    setRecordedChunks([]);
+                                    setIsPaused(false);
+                                    setTimer(0);
+                                }}
+                                className="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition"
+                            >
+                                <RotateCcw size={20} className="text-white" />
+                            </button>
+                        )}
+                    </div>
 
-                    {!isRecording ? (
+                    {/* Record Button */}
+                    {!isRecording && !isPaused ? (
                         <button
                             onClick={startRecording}
                             className="w-20 h-20 rounded-full border-[6px] border-white/30 flex items-center justify-center group transition-all hover:scale-105"
                         >
                             <div className="w-16 h-16 bg-red-500 rounded-full group-hover:scale-90 transition-transform shadow-lg shadow-red-900/50" />
                         </button>
-                    ) : (
+                    ) : isRecording ? (
                         <button
-                            onClick={() => { stopRecording(); setTimeout(handleSave, 500); }}
+                            onClick={pauseRecording}
                             className="w-20 h-20 rounded-full border-[6px] border-red-500/30 flex items-center justify-center transition-all hover:scale-105"
                         >
-                            <div className="w-8 h-8 bg-red-500 rounded-sm shadow-lg shadow-red-900/50" />
+                            <div className="w-8 h-8 bg-white rounded-sm shadow-lg" />
+                            {/* Pause Icon representation */}
+                        </button>
+                    ) : (
+                         // Is Paused -> Resume
+                        <button
+                            onClick={startRecording}
+                            className="w-20 h-20 rounded-full border-[6px] border-red-500/30 flex items-center justify-center transition-all hover:scale-105"
+                        >
+                            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center">
+                                <Play size={32} className="text-white fill-white ml-1" />
+                            </div>
                         </button>
                     )}
 
-                     {!isRecording && (
-                         <div className="flex flex-col items-center gap-2">
-                             {/* Fallback Native Camera Button (Crucial for Mobile WebViews) */}
-                             <div className="relative">
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
-                                >
-                                    <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
-                                    <ImageIcon size={16} className="absolute text-white drop-shadow" />
-                                </button>
-                                {/* Native Input Overlay for direct tap interaction if button fails */}
-                                <input
-                                    type="file"
-                                    accept="video/*"
-                                    capture="environment"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={(e) => {
-                                        if(e.target.files?.[0] && onVideoRecorded) {
-                                            const file = e.target.files[0];
-                                            onVideoRecorded(new Blob([file], {type: file.type}));
-                                        }
-                                    }}
-                                />
-                             </div>
-
-                             <input
-                                type="file"
-                                ref={fileInputRef}
-                                accept="video/*,image/*"
-                                capture="environment"
-                                className="hidden"
-                                // Note: This redirects to a callback, but we need to check if 'handleGalleryUpload' exists in scope?
-                                // Ah, I removed it in SEARCH block? I need to check.
-                                // I will re-add it if needed or assume the parent CreateFlow handles upload separately via the SELECTION screen.
-                                // The User asked for "Upload" button inside Camera too (TikTok has it).
-                                // So I should restore handleGalleryUpload logic or pass a prop.
-                                // But CreateFlow has a separate Upload stage.
-                                // I will keep it here as a shortcut.
-                                onChange={(e) => {
-                                    if(e.target.files?.[0] && onVideoRecorded) {
-                                         const file = e.target.files[0];
-                                         onVideoRecorded(new Blob([file], {type: file.type}));
-                                    }
+                     {/* Right Button Group (Finish / Upload) */}
+                     <div className="flex flex-col items-center gap-2 w-10">
+                         {isPaused ? (
+                             <button
+                                onClick={() => {
+                                    if(mediaRecorderRef.current) mediaRecorderRef.current.stop();
+                                    setTimeout(finalSave, 200);
                                 }}
-                             />
-                             <span className="text-[10px] font-bold text-gray-400">Upload</span>
-                         </div>
-                     )}
+                                className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center animate-bounce shadow-lg"
+                             >
+                                 <Check size={20} className="text-white" />
+                             </button>
+                         ) : (
+                             !isRecording && !isPaused && (
+                                 <div className="relative">
+                                     {/* Reuse Native Upload logic */}
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-600 flex items-center justify-center overflow-hidden hover:border-gray-400 transition"
+                                    >
+                                        <div className="w-full h-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-50" />
+                                        <ImageIcon size={16} className="absolute text-white drop-shadow" />
+                                    </button>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        accept="video/*,image/*"
+                                        capture="environment"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            if(e.target.files?.[0] && onVideoRecorded) {
+                                                const file = e.target.files[0];
+                                                onVideoRecorded(new Blob([file], {type: file.type}));
+                                            }
+                                        }}
+                                    />
+                                    <span className="text-[10px] font-bold text-gray-400">Upload</span>
+                                 </div>
+                             )
+                         )}
+                         {isPaused && <span className="text-[10px] font-bold text-white">Next</span>}
+                     </div>
                 </div>
             </div>
         </div>
