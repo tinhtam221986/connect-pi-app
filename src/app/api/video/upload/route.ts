@@ -1,26 +1,11 @@
 import { NextResponse } from "next/server";
-import { v2 as cloudinary } from "cloudinary";
-import { SmartContractService } from "@/lib/smart-contract-service";
+import { Upload } from "@aws-sdk/lib-storage";
+import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "@/lib/r2";
 import { connectDB } from "@/lib/mongodb";
 import Video from "@/models/Video";
-
-// Config Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { SmartContractService } from "@/lib/smart-contract-service";
 
 export async function POST(request: Request) {
-  // Check for missing Cloudinary keys
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      console.error("Server Misconfiguration: Cloudinary keys are missing.");
-      return NextResponse.json({
-          success: false,
-          error: "Cloudinary keys are missing in server environment. Please configure them in Vercel Settings."
-      }, { status: 500 });
-  }
-
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -34,102 +19,81 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
-    // Convert file to buffer
+    // Generate unique filename
+    const timestamp = Date.now();
+    const cleanFilename = file.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.-]/g, '');
+    const key = `uploads/${username || 'anon'}/${timestamp}-${cleanFilename}`;
+
+    // Convert to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Cloudinary with Watermark Transformation and Metadata
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { 
-          folder: "connect-pi-app", 
-          resource_type: "auto",
-          context: {
-              username: username || 'Anonymous',
-              caption: description || ''
-          },
-          tags: ['connect_video', `user_${username || 'anon'}`],
-          // Automatic Watermark Transformation
-          transformation: [
-            { width: 720, crop: "limit" }, // Resize to standard mobile width
-            {
-               overlay: {
-                 font_family: "Arial",
-                 font_size: 20,
-                 font_weight: "bold",
-                 text: `@${username || 'ConnectUser'}`
-               },
-               gravity: "south_east",
-               y: 10,
-               x: 10,
-               color: "#FFFFFF80" // Semi-transparent white
-            }
-          ]
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
+    // Upload to Cloudflare R2
+    const upload = new Upload({
+      client: r2Client,
+      params: {
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+        Body: buffer,
+        ContentType: file.type,
+      },
     });
 
-    const resAny = result as any;
+    await upload.done();
 
-    // --- SAVE TO MONGODB WITH ENHANCED METADATA ---
+    // Construct Public URL
+    // Ensure R2_PUBLIC_URL is configured, otherwise fallback might be needed (though strict config preferred)
+    const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+
+    // --- SAVE TO MONGODB ---
     try {
         await connectDB();
 
-        await Video.create({
-            videoUrl: resAny.secure_url,
+        // Determine resource type based on MIME type
+        const isVideo = file.type.startsWith('video');
+        const resourceType = isVideo ? 'video' : 'image';
+
+        const newVideo = await Video.create({
+            videoUrl: publicUrl,
             caption: description || "",
             privacy: privacy || 'public',
             author: {
                 username: username || "Anonymous",
-                // Generate a temporary uid if not provided, though ideally frontend sends it
                 user_uid: `user_${username || 'anon'}`,
-                avatar: "" // Placeholder
+                avatar: "" // Placeholder, ideally fetched from User profile
             },
             metadata: {
-                duration: resAny.duration || 0,
-                width: resAny.width || 0,
-                height: resAny.height || 0,
-                fileSize: resAny.bytes || 0,
-                format: resAny.format || ""
+                // R2 doesn't return metadata like Cloudinary, so we use file props or placeholders
+                // Real duration extraction requires ffprobe on server, skipping for MVP
+                duration: 0,
+                width: 0,
+                height: 0,
+                fileSize: file.size,
+                format: file.type.split('/')[1] || ""
             },
             deviceSignature: deviceSignature || "unknown",
             likes: [],
             comments: [],
             createdAt: new Date()
         });
-        console.log("Video saved to MongoDB successfully with metadata");
+
+        // Update legacy/service layer if needed (SmartContractService now uses MongoDB,
+        // but if it had cache logic, we call it here)
+        // Note: SmartContractService.addFeedItem was refactored to do nothing or compatible logic.
+
+        console.log("Video saved to MongoDB and R2 successfully");
+
+        return NextResponse.json({
+            success: true,
+            url: publicUrl,
+            public_id: key,
+            resource_type: resourceType
+        });
+
     } catch (dbError) {
         console.error("Failed to save video to MongoDB:", dbError);
+        return NextResponse.json({ success: false, error: "Database save failed" }, { status: 500 });
     }
-
-    // Save metadata to persistent DB (Legacy/Backup)
-    await SmartContractService.addFeedItem({
-        id: resAny.public_id,
-        url: resAny.secure_url,
-        thumbnail: resAny.resource_type === 'video'
-            ? resAny.secure_url.replace(/\.[^/.]+$/, ".jpg")
-            : resAny.secure_url,
-        description: description || "No description",
-        username: username || "Anonymous",
-        likes: 0,
-        comments: 0,
-        resource_type: resAny.resource_type || 'image',
-        created_at: new Date().toISOString(),
-        hashtags: hashtags ? JSON.parse(hashtags) : [],
-        privacy: privacy || 'public'
-    });
-
-    return NextResponse.json({ 
-        success: true,
-        url: resAny.secure_url,
-        public_id: resAny.public_id,
-        resource_type: resAny.resource_type
-    });
 
   } catch (error: any) {
     console.error("Upload Error:", error);

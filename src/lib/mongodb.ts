@@ -1,11 +1,6 @@
 import mongoose from "mongoose";
 
-// --- CHÌA KHÓA GẮN CỨNG (ĐỂ CHẠY NGAY LẬP TỨC) ---
-const MONGODB_URI = "mongodb+srv://tinhtam221986_db_user:Hung21986pi@cluster0.k8tksvk.mongodb.net/?appName=Cluster0";
-
-if (!MONGODB_URI) {
-  throw new Error("Thiếu MONGODB_URI");
-}
+const MONGODB_URI = process.env.MONGODB_URI;
 
 let cached = (global as any).mongoose;
 
@@ -14,6 +9,10 @@ if (!cached) {
 }
 
 export async function connectDB() {
+  if (!MONGODB_URI) {
+    throw new Error("Please define the MONGODB_URI environment variable inside .env");
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
@@ -24,7 +23,7 @@ export async function connectDB() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("Đã kết nối MongoDB thành công!");
+      console.log("MongoDB connected successfully");
       return mongoose;
     });
   }

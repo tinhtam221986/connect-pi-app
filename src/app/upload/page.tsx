@@ -2,13 +2,14 @@
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const CLOUD_NAME = "dv1hnl0wo"; 
-const UPLOAD_PRESET = "Connect_pi_app"; 
-
 export default function UploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State for the uploaded file and preview
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -17,44 +18,66 @@ export default function UploadPage() {
   const handleFileChange = async (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
-    setUploading(true); setProgress(10);
-    
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-    formData.append("resource_type", "video");
-    // 🟢 ĐÃ XÓA DÒNG "TRANSFORMATION" GÂY LỖI TẠI ĐÂY
 
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
-      xhr.upload.onprogress = (event) => setProgress(Math.round((event.loaded / event.total) * 100));
-      xhr.onload = () => {
-        const data = JSON.parse(xhr.response);
-        if (data.secure_url) { 
-            setVideoUrl(data.secure_url); 
-            setUploading(false); 
-            setStep(2); 
-        } else { 
-            alert("Lỗi tải: " + (data.error?.message || "Không xác định")); 
-            setUploading(false); 
-        }
-      };
-      xhr.send(formData);
-    } catch { alert("Lỗi mạng!"); setUploading(false); }
+    // Persist file in state because the input will be unmounted in step 2
+    setSelectedFile(file);
+
+    // Create local preview URL
+    const localUrl = URL.createObjectURL(file);
+    setVideoUrl(localUrl);
+    setStep(2);
   };
 
   const handlePost = async () => {
     if (!caption.trim()) return alert("Viết mô tả!");
+    if (!selectedFile) return alert("Lỗi file! Vui lòng chọn lại.");
+
     setUploading(true);
+    setProgress(10);
+
     try {
-      const res = await fetch("/api/videos", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        // Gửi thông tin tác giả giả lập nếu chưa có Pi Login, sau này sẽ thay thế
-        body: JSON.stringify({ videoUrl, caption, author: { username: "Pi Pioneer", user_uid: "pi_test_uid" } })
-      });
-      if (res.ok) { alert("🎉 Đăng thành công!"); router.push("/"); }
-    } catch { alert("Lỗi Server!"); } finally { setUploading(false); }
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("description", caption);
+      // Optional: Add privacy or other fields if needed
+      formData.append("privacy", "public");
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/video/upload");
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+             setProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+            const data = JSON.parse(xhr.response);
+            if (data.success) {
+                alert("🎉 Đăng thành công!");
+                router.push("/");
+            } else {
+                alert("Lỗi tải: " + (data.error || "Unknown"));
+            }
+        } else {
+            alert("Lỗi Server: " + xhr.statusText);
+        }
+        setUploading(false);
+      };
+
+      xhr.onerror = () => {
+         alert("Lỗi kết nối mạng!");
+         setUploading(false);
+      };
+
+      xhr.send(formData);
+
+    } catch (err) {
+        console.error(err);
+        alert("Có lỗi xảy ra!");
+        setUploading(false);
+    }
   };
 
   return (
@@ -69,15 +92,16 @@ export default function UploadPage() {
             <div style={{ fontSize: "50px" }}>📹</div><h4>Chọn video</h4>
           </div>
           <input type="file" accept="video/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
-          {uploading && <p>Đang tải... {progress}%</p>}
+          {uploading && <p>Đang xử lý... {progress}%</p>}
         </div>
       )}
       {step === 2 && videoUrl && (
         <div style={{ width: "100%" }}>
-          {/* Đã xóa 'muted' để có tiếng, thêm 'controls' để điều khiển */}
           <video src={videoUrl} controls autoPlay loop playsInline style={{ width: "100%", borderRadius: "10px", marginBottom: "20px" }} />
           <textarea placeholder="Mô tả..." value={caption} onChange={(e) => setCaption(e.target.value)} style={{ width: "100%", padding: "15px", borderRadius: "10px", background: "#222", color: "white", border: "none" }} />
-          <button onClick={handlePost} disabled={uploading} style={{ marginTop: "20px", width: "100%", padding: "15px", background: "#ff0050", color: "white", border: "none", borderRadius: "30px", fontWeight: "bold" }}>Đăng ngay 🚀</button>
+          <button onClick={handlePost} disabled={uploading} style={{ marginTop: "20px", width: "100%", padding: "15px", background: "#ff0050", color: "white", border: "none", borderRadius: "30px", fontWeight: "bold" }}>
+             {uploading ? `Đang tải lên ${progress}%...` : "Đăng ngay 🚀"}
+          </button>
         </div>
       )}
     </div>
