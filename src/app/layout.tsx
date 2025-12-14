@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { PiSDKProvider } from "@/components/pi/pi-provider";
+import { LanguageProvider } from "@/components/i18n/language-provider";
 // import BottomNav from "@/components/BottomNav"; // Tạm tắt ở đây để trang con tự gọi
 
 const inter = Inter({ subsets: ["latin"] });
@@ -24,7 +26,11 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
       </head>
       <body className={inter.className} style={{ backgroundColor: "black", margin: 0, padding: 0 }}>
-        {children}
+        <LanguageProvider>
+          <PiSDKProvider>
+            {children}
+          </PiSDKProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

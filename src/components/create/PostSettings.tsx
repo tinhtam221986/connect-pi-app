@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { usePi } from "@/components/pi/pi-provider";
 import { useEconomy } from "@/components/economy/EconomyContext";
+import { getBrowserFingerprint } from "@/lib/utils";
 
 interface PostSettingsProps {
     media: CreateContextState;
@@ -39,6 +40,9 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             const fileToUpload = media.file;
             if (!fileToUpload) throw new Error("No file to upload");
 
+            // Generate Device Fingerprint
+            const deviceSignature = getBrowserFingerprint();
+
             // We append extra data as fields or pack into description/metadata
             // The current API expects 'description' and 'username'
             // We can send hashtags/privacy as separate fields if we update the backend,
@@ -52,7 +56,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                 // Checking apiClient signature: upload(file, metadata)
                 // metadata is { username, description }. We can cast or extend.
                 // We'll extend the object passed.
-                ...({ hashtags: JSON.stringify(hashtags), privacy, allowComments } as any)
+                ...({ hashtags: JSON.stringify(hashtags), privacy, allowComments, deviceSignature } as any)
             });
 
             if (res.success) {
