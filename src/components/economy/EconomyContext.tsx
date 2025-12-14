@@ -11,6 +11,7 @@ export interface VideoItem {
     thumbnail: string;
     description?: string;
     createdAt: number;
+    likes?: number;
 }
 
 interface EconomyState {

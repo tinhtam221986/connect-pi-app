@@ -2,10 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePi } from '@/components/pi/pi-provider';
-// Import chính xác VideoFeed (Named Import)
 import { VideoFeed } from '@/components/feed/VideoFeed';
-
-// Giả định các component khác đã tồn tại. Nếu lỗi import ở các dòng dưới, hãy kiểm tra lại file tương ứng.
 import { MarketplaceView } from '@/components/market/MarketplaceView';
 import { GameCenter } from '@/components/game/GameCenter';
 import { UserProfile } from '@/components/profile/UserProfile';
