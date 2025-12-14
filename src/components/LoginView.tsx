@@ -2,17 +2,20 @@
 
 import { usePi } from "@/components/pi/pi-provider";
 import { PiNetworkStatus } from "@/components/pi/PiNetworkStatus";
-import { Loader2, Zap, AlertTriangle } from "lucide-react";
+import { Loader2, Zap, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/components/i18n/language-provider";
+import Link from "next/link";
 
 export default function LoginView() {
   const { authenticate, isInitialized, error, forceMock } = usePi();
   const { t } = useLanguage();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(false);
 
   const handleLogin = async () => {
     if (!isInitialized) return;
+    if (!isAgreed) return alert("Please agree to the terms below to continue.");
     setIsLoggingIn(true);
     await authenticate();
     setIsLoggingIn(false);
@@ -82,8 +85,8 @@ export default function LoginView() {
 
           <button 
             onClick={handleLogin}
-            disabled={!isInitialized || isLoggingIn}
-            className="group relative w-full h-14 rounded-xl font-bold text-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:pointer-events-none overflow-hidden"
+            disabled={!isInitialized || isLoggingIn || !isAgreed}
+            className={`group relative w-full h-14 rounded-xl font-bold text-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale disabled:pointer-events-none overflow-hidden`}
           >
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <div className="relative flex items-center justify-center gap-2">
@@ -105,6 +108,26 @@ export default function LoginView() {
             </div>
           </button>
 
+          {/* Compliance Gate - Integrated Below Button */}
+          <div className="pt-2">
+               <label className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer transition-colors">
+                    <div className="relative flex items-center pt-1">
+                        <input
+                            type="checkbox"
+                            checked={isAgreed}
+                            onChange={(e) => setIsAgreed(e.target.checked)}
+                            className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-white/30 bg-black/40 checked:border-purple-500 checked:bg-purple-500 transition-all"
+                        />
+                         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[30%] opacity-0 peer-checked:opacity-100 text-white">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-300 leading-relaxed">
+                        By logging in, I agree to the <Link href="/privacy" className="text-purple-400 hover:underline">Privacy Policy</Link>, <Link href="/whitepaper" className="text-purple-400 hover:underline">Whitepaper</Link>, and <Link href="/terms" className="text-purple-400 hover:underline">Disclaimer</Link>. I understand this is a Web3 application on the Pi Network.
+                    </div>
+               </label>
+          </div>
+
           <div className="flex justify-between items-center mt-4">
              <p className="text-xs text-center text-gray-500 leading-relaxed flex-1">
                 {t('login.footer')}
@@ -121,10 +144,9 @@ export default function LoginView() {
       </div>
       
       <div className="absolute bottom-4 z-10 flex flex-col items-center gap-2">
-         <div className="flex gap-4 text-xs text-gray-400">
-             <a href="/whitepaper" className="hover:text-purple-400 underline transition-colors">Whitepaper</a>
-             <a href="/privacy" className="hover:text-purple-400 underline transition-colors">Privacy Policy</a>
-             <a href="/terms" className="hover:text-purple-400 underline transition-colors">Terms of Service</a>
+         <div className="flex items-center gap-2 text-xs text-gray-500">
+            <ShieldCheck size={14} />
+            <span>Secure Pi Network Connection</span>
          </div>
          <div className="text-[10px] text-gray-600">
             {t('login.version')}
