@@ -9,11 +9,16 @@ def verify_upload_ui():
             user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'
         )
         page = context.new_page()
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/main
         try:
             # 1. Navigate to Upload Page
             print("Navigating to /upload...")
             page.goto("http://localhost:3000/upload")
+<<<<<<< HEAD
 
             # Wait for key elements to ensure render
             page.wait_for_selector("text=Chọn video", timeout=10000)
@@ -22,6 +27,16 @@ def verify_upload_ui():
             print("Taking screenshot of Upload Prompt...")
             page.screenshot(path="verification/upload_initial.png")
 
+=======
+
+            # Wait for key elements to ensure render
+            page.wait_for_selector("text=Chọn video", timeout=10000)
+
+            # 2. Screenshot the Initial State (Upload Prompt)
+            print("Taking screenshot of Upload Prompt...")
+            page.screenshot(path="verification/upload_initial.png")
+
+>>>>>>> origin/main
             # 3. We cannot easily simulate a file upload in headless mode without a real file path
             # and interacting with system dialogs, but we can verify the 'input' element exists.
             input_element = page.locator('input[type="file"]')
