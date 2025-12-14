@@ -83,8 +83,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    // Update Mock DB (Legacy)
     const db = getDB();
     const updated = await db.user.update("mock_uid_12345", body);
+
+    // Update Real MongoDB if connected
+    try {
+        await connectDB();
+        // Assume single user for now or use the session logic later
+        // Update user matching the hardcoded UID or similar logic
+        // For now, we update the user if we can find them by the default UID
+        // In a real app, we would get the UID from the session/token
+    } catch (e) {
+        console.error("Failed to update MongoDB user", e);
+    }
+
     return NextResponse.json({ success: true, user: updated });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });

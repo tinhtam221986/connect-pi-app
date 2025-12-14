@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
 import { MOCK_USERS } from "@/lib/mock-data";
+import { toast } from "sonner";
 import { BadgeCheck, Settings, GripVertical, Award, Globe, Play, Lock, Heart, Gamepad2, Grid } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { ThemeCustomizer } from "@/components/ui/theme-customizer";
 import { ProfileFrame } from "./ProfileFrame";
 import { useEconomy } from "@/components/economy/EconomyContext";
+import { apiClient } from "@/lib/api-client";
 
 type ProfileTab = 'videos' | 'liked' | 'saved' | 'games';
 
@@ -150,26 +152,22 @@ export function UserProfile() {
                         onChange={async (e) => {
                             if (e.target.files?.[0]) {
                                 const file = e.target.files[0];
-                                const formData = new FormData();
-                                formData.append('file', file);
-                                formData.append('upload_preset', 'Connect_pi_app'); // Using same preset for now
 
                                 toast.loading("Updating avatar...");
                                 try {
-                                    // Direct upload to Cloudinary for speed/simplicity
-                                    const res = await fetch(`https://api.cloudinary.com/v1_1/dv1hnl0wo/image/upload`, {
-                                        method: 'POST',
-                                        body: formData
-                                    });
-                                    const data = await res.json();
+                                    // Upload via backend proxy to hide keys
+                                    const data = await apiClient.user.uploadAvatar(file);
 
                                     if (data.secure_url) {
                                         // Update profile in backend
                                         await apiClient.user.updateProfile({ avatar: data.secure_url });
                                         toast.success("Avatar updated!");
                                         window.location.reload(); // Simple reload to reflect changes
+                                    } else {
+                                        throw new Error("Upload failed");
                                     }
                                 } catch (err) {
+                                    console.error(err);
                                     toast.error("Failed to update avatar");
                                 }
                             }

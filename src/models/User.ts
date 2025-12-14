@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },   
   isVip: { type: Boolean, default: false },
   bio: { type: String, default: "Thành viên Connect 🚀" },
+  avatar: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 

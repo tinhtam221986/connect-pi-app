@@ -23,6 +23,26 @@ export const apiClient = {
       });
       return res.json();
     },
+    uploadAvatar: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      // We reuse the video upload endpoint but it might need adjustment if we want specific image handling
+      // For now, let's assume we use a dedicated or flexible endpoint.
+      // Actually, let's use the same pattern but point to a new generic upload or reuse existing if capable.
+      // To be safe and clean, let's add a `type` field to the upload endpoint or just use `updateProfile` with formData if supported?
+      // No, `updateProfile` expects JSON.
+
+      // Let's create a specific upload endpoint later, or use the video one with a flag?
+      // The video upload endpoint strictly expects video logic (thumbnails etc).
+      // We should use a new endpoint `api/upload/image` or similar.
+      // Or just client-side for now? No, we want to hide keys.
+
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
+      });
+      return res.json();
+    }
   },
   video: {
     // Updated signature to accept any metadata fields including deviceSignature

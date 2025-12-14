@@ -1,12 +1,16 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-// --- CHÌA KHÓA GẮN CỨNG (ĐỂ CHẠY NGAY LẬP TỨC) ---
-const MONGODB_URI = "mongodb+srv://tinhtam221986_db_user:Hung21986pi@cluster0.k8tksvk.mongodb.net/?appName=Cluster0";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/connect-pi";
 
 if (!MONGODB_URI) {
-  throw new Error("Thiếu MONGODB_URI");
+  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
+/**
+ * Global is used here to maintain a cached connection across hot reloads
+ * in development. This prevents connections growing exponentially
+ * during API Route usage.
+ */
 let cached = (global as any).mongoose;
 
 if (!cached) {
@@ -24,10 +28,16 @@ export async function connectDB() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("Đã kết nối MongoDB thành công!");
       return mongoose;
     });
   }
-  cached.conn = await cached.promise;
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
   return cached.conn;
 }
