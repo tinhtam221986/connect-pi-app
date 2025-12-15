@@ -22,4 +22,5 @@ export const r2Client = new S3Client({
 });
 
 export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "connect-pi-app-assets";
-export const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || "";
+// Force HTTPS for R2 public URL
+export const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || "").replace(/^http:\/\//, "https://");
