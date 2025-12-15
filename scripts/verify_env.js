@@ -8,20 +8,12 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 async function verifySetup() {
   console.log('Verifying setup...');
-<<<<<<< HEAD
 
-=======
-
->>>>>>> origin/main
   // 1. Verify MongoDB
   try {
     console.log('Connecting to MongoDB...');
     if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI missing');
-<<<<<<< HEAD
 
-=======
-
->>>>>>> origin/main
     // Test simple connection
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB connection successful!');
@@ -34,11 +26,7 @@ async function verifySetup() {
   try {
     console.log('Connecting to R2...');
     if (!process.env.R2_ACCOUNT_ID) throw new Error('R2_ACCOUNT_ID missing');
-<<<<<<< HEAD
 
-=======
-
->>>>>>> origin/main
     const client = new S3Client({
         region: "auto",
         endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -51,11 +39,7 @@ async function verifySetup() {
     const command = new ListBucketsCommand({});
     const result = await client.send(command);
     console.log('✅ R2 Connection successful. Buckets:', result.Buckets.map(b => b.Name));
-<<<<<<< HEAD
 
-=======
-
->>>>>>> origin/main
     const targetBucket = result.Buckets.find(b => b.Name === process.env.R2_BUCKET_NAME);
     if (targetBucket) {
         console.log(`✅ Target bucket '${process.env.R2_BUCKET_NAME}' found.`);
