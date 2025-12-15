@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { CreateContextState } from "./CreateFlow";
-import { Loader2, Lock, Globe, Users, Hash, MapPin, Save, Upload } from "lucide-react";
+import { Loader2, Lock, Globe, Users, Hash, MapPin, Save, Upload, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { apiClient } from "@/lib/api-client";
+import { uploadWithProgress } from "@/lib/api-client-upload";
 import { usePi } from "@/components/pi/pi-provider";
 import { useEconomy } from "@/components/economy/EconomyContext";
 import { getBrowserFingerprint } from "@/lib/utils";
@@ -22,6 +22,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     const [privacy, setPrivacy] = useState<'public' | 'friends' | 'private'>('public');
     const [allowComments, setAllowComments] = useState(true);
     const [isPosting, setIsPosting] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [highQuality, setHighQuality] = useState(true);
 
     const handlePost = async () => {
@@ -31,24 +32,35 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         }
 
         setIsPosting(true);
+        setUploadProgress(0);
 
         // Extract hashtags
         const hashtags = caption.match(/#[a-z0-9_]+/gi) || [];
 
         try {
-            // Create FormData
-            // In a real app we might compress here
             const fileToUpload = media.file;
             if (!fileToUpload) throw new Error("No file to upload");
 
             // Generate Device Fingerprint
             const deviceSignature = getBrowserFingerprint();
 
-            const res = await apiClient.video.upload(fileToUpload, {
-                username: user.username,
-                description: caption,
-                ...({ hashtags: JSON.stringify(hashtags), privacy, allowComments, deviceSignature } as any)
-            });
+            // Build metadata
+            const metadata = {
+                 username: user.username,
+                 description: caption,
+                 hashtags: JSON.stringify(hashtags),
+                 privacy,
+                 allowComments,
+                 deviceSignature
+            };
+
+            // Use XHR upload with progress
+            const res = await uploadWithProgress(
+                '/api/video/upload',
+                fileToUpload,
+                metadata,
+                (percent) => setUploadProgress(percent)
+            );
 
             if (res.success) {
                 toast.success("Posted successfully!");
@@ -62,11 +74,11 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                 });
                 onPostComplete();
             } else {
-                toast.error("Upload failed: " + res.error);
+                throw new Error(res.error || "Upload failed");
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            toast.error("An error occurred");
+            toast.error(e.message || "An error occurred during upload");
         } finally {
             setIsPosting(false);
         }
@@ -95,26 +107,56 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     };
 
     return (
-        <div className="h-full bg-background flex flex-col text-foreground overflow-y-auto">
+        <div className="h-full bg-background flex flex-col text-foreground overflow-y-auto relative">
+
+            {/* Upload Overlay */}
+            {isPosting && (
+                <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-8 animate-in fade-in">
+                    <div className="w-40 h-40 relative flex items-center justify-center mb-6">
+                        {/* Circular Progress SVG */}
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="#333" strokeWidth="8" />
+                            <circle
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="none"
+                                stroke="#8b5cf6"
+                                strokeWidth="8"
+                                strokeDasharray="283"
+                                strokeDashoffset={283 - (283 * uploadProgress) / 100}
+                                strokeLinecap="round"
+                                className="transition-all duration-300 ease-out"
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-3xl font-bold text-white">{uploadProgress}%</span>
+                            <span className="text-xs text-gray-400">Uploading</span>
+                        </div>
+                    </div>
+                    <div className="text-center">
+                        <h3 className="text-xl font-bold text-white mb-2">Posting your video...</h3>
+                        <p className="text-gray-400 text-sm">Please do not close the app.</p>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="pt-safe pb-4 px-4 bg-background/80 backdrop-blur-md border-b border-white/10 flex justify-between items-center sticky top-0 z-50">
-                <button onClick={onPostComplete} className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium w-16 text-left">Cancel</button>
+                <button onClick={onPostComplete} disabled={isPosting} className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium w-16 text-left disabled:opacity-50">Cancel</button>
                 <h2 className="font-bold text-lg neon-text flex-1 text-center truncate">Post</h2>
                 <div className="w-16"></div> {/* Spacer for balance */}
             </div>
 
             <div className="p-4 flex gap-4 bg-card border border-white/5 rounded-lg mx-4 mt-4 mb-4">
                  {/* Thumbnail */}
-                 <div className="w-24 h-32 bg-black rounded-md overflow-hidden shrink-0 relative">
+                 <div className="w-24 h-32 bg-black rounded-md overflow-hidden shrink-0 relative border border-gray-800">
                      {media.type === 'video' ? (
                          <video src={media.previewUrl || ""} className="w-full h-full object-cover" />
                      ) : (
                          // eslint-disable-next-line @next/next/no-img-element
                          <img src={media.previewUrl || ""} className="w-full h-full object-cover" alt="thumb" />
                      )}
-                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-1">
-                         Select Cover
-                     </div>
                  </div>
 
                  {/* Caption Input */}
@@ -124,17 +166,17 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                         onChange={(e) => setCaption(e.target.value)}
                         placeholder="Describe your video... #Hashtags @Friends"
                         className="w-full h-full resize-none outline-none bg-transparent text-sm p-2 text-foreground placeholder:text-muted-foreground"
+                        disabled={isPosting}
                      />
                  </div>
             </div>
 
-            {/* Settings Group - Added margin-bottom to ensure content is not hidden by fixed footer */}
+            {/* Settings Group */}
             <div className="bg-card mx-4 rounded-lg border border-white/5 p-4 space-y-6 mb-32">
-
                 <div className="flex items-center gap-3 text-sm text-muted-foreground hover:bg-white/5 p-2 rounded-lg cursor-pointer transition-colors">
                     <Hash size={20} className="text-primary" />
                     <span className="flex-1">Hashtags</span>
-                    <button onClick={() => setCaption(prev => prev + " #Trending")} className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">#Trending</button>
+                    <button onClick={() => setCaption(prev => prev + " #Trending")} disabled={isPosting} className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">#Trending</button>
                 </div>
 
                 <div className="flex items-center gap-3 text-sm text-muted-foreground hover:bg-white/5 p-2 rounded-lg cursor-pointer transition-colors">
@@ -161,6 +203,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                     <select
                         value={privacy}
                         onChange={(e) => setPrivacy(e.target.value as any)}
+                        disabled={isPosting}
                         className="bg-transparent text-sm text-muted-foreground outline-none text-right [&>option]:bg-black"
                     >
                         <option value="public">Everyone</option>
@@ -175,6 +218,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                         type="checkbox"
                         checked={allowComments}
                         onChange={(e) => setAllowComments(e.target.checked)}
+                        disabled={isPosting}
                         className="toggle accent-primary"
                     />
                 </div>
@@ -185,6 +229,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                         type="checkbox"
                         checked={highQuality}
                         onChange={(e) => setHighQuality(e.target.checked)}
+                        disabled={isPosting}
                         className="toggle accent-primary"
                     />
                 </div>
@@ -194,7 +239,8 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur border-t border-white/10 flex gap-4 items-center pb-safe">
                  <button
                     onClick={handleSaveDraft}
-                    className="flex-1 py-3 bg-muted text-muted-foreground font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                    disabled={isPosting}
+                    className="flex-1 py-3 bg-muted text-muted-foreground font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-white/10 transition-colors disabled:opacity-50"
                 >
                     <Save size={18} /> Drafts
                 </button>
