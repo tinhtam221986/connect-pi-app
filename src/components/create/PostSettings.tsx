@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api-client";
 import { usePi } from "@/components/pi/pi-provider";
 import { useEconomy } from "@/components/economy/EconomyContext";
 import { getBrowserFingerprint } from "@/lib/utils";
+import { saveDraft } from "@/lib/drafts";
 
 interface PostSettingsProps {
     media: CreateContextState;
@@ -81,17 +82,26 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         }
     };
 
-    const handleSaveDraft = () => {
-        // Save to localStorage
-        const draft = {
-            caption,
-            privacy,
-            date: Date.now()
-            // We can't easily save the File object to localStorage.
-            // Usually drafts save metadata and the file is in IDB or just kept in memory session.
-            // For MVP, we just say "Draft Saved"
-        };
-        toast.success("Draft saved to local storage");
+    const handleSaveDraft = async () => {
+        if (!media.file) return;
+        try {
+            await saveDraft({
+                id: Date.now().toString(),
+                videoFile: media.file,
+                metadata: {
+                    caption,
+                    trimStart: media.editorState?.trim.start || 0,
+                    trimEnd: media.editorState?.trim.end || 0,
+                    music: media.editorState?.music || null,
+                    effects: media.editorState?.overlays.map(o => o.content) || []
+                },
+                createdAt: Date.now()
+            });
+            toast.success("Draft saved to local storage");
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to save draft");
+        }
     };
 
     return (
