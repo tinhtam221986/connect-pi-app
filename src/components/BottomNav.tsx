@@ -1,67 +1,87 @@
 "use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ShoppingBag, MessageCircle, PlusCircle, ShoppingCart, User } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
+import { Home, ShoppingBag, Plus, Gamepad2, User, ChevronDown, ChevronUp } from "lucide-react";
 
-// Placeholder for Creation Modal (will be implemented in Step 4)
-import { CreationModal } from "@/components/create/CreationModal";
+interface BottomNavProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
 
-export default function BottomNav() {
-  const pathname = usePathname();
-  const [showCreationModal, setShowCreationModal] = useState(false);
+export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const [isVisible, setIsVisible] = useState(true);
 
-  // Hide nav on specific pages if needed (User said "transparent", so we keep it mostly visible but maybe hide on full-screen create?)
-  // Keeping logic to hide on /upload for now as legacy, though we are moving to a modal.
-  if (pathname === "/upload") return null;
+  const navItems = [
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'market', icon: ShoppingBag, label: 'Shop' },
+    { id: 'create', icon: Plus, label: 'Create', isAction: true },
+    { id: 'game', icon: Gamepad2, label: 'Game' },
+    { id: 'profile', icon: User, label: 'Me' },
+  ];
 
-  const isActive = (path: string) => pathname === path;
-
-  // Icon styling helper
-  const getIconStyle = (path: string) => {
-      const active = isActive(path);
-      return `w-8 h-8 transition-all duration-300 ${active ? "text-[#00f2ea] drop-shadow-[0_0_8px_rgba(0,242,234,0.8)] fill-current/20" : "text-white/70 hover:text-white"}`;
-  };
+  if (!isVisible) {
+      return (
+          <button
+            onClick={() => setIsVisible(true)}
+            className="fixed bottom-6 right-4 z-50 bg-black/40 backdrop-blur-md p-2 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-black/60 transition-all animate-in fade-in slide-in-from-bottom-4"
+            aria-label="Show Navigation"
+          >
+              <ChevronUp size={24} />
+          </button>
+      )
+  }
 
   return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 h-[60px] flex justify-around items-center z-50 bg-transparent pb-safe">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pb-safe pointer-events-none animate-in slide-in-from-bottom-full duration-300">
 
-        {/* SHOP (Marketplace) */}
-        <Link href="/marketplace" className="flex flex-col items-center justify-center w-12 h-12">
-          <ShoppingBag className={getIconStyle("/marketplace")} strokeWidth={1.5} />
-        </Link>
-
-        {/* INBOX (Messages) */}
-        <Link href="/inbox" className="flex flex-col items-center justify-center w-12 h-12 relative">
-          <MessageCircle className={getIconStyle("/inbox")} strokeWidth={1.5} />
-          {/* Badge Placeholder */}
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold">2</span>
-        </Link>
-
-        {/* CREATE (+) Button */}
+        {/* Toggle Button (Attached to top of nav) */}
         <button
-            onClick={() => setShowCreationModal(true)}
-            className="flex flex-col items-center justify-center w-14 h-14 active:scale-95 transition-transform"
+            onClick={() => setIsVisible(false)}
+            className="pointer-events-auto mb-1 bg-transparent p-1 rounded-full text-white/30 hover:text-white transition-colors"
+            aria-label="Hide Navigation"
         >
-             <PlusCircle className="w-12 h-12 text-white stroke-1 hover:text-[#ff0050] transition-colors drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]" />
+            <ChevronDown size={24} />
         </button>
 
-        {/* CART */}
-        <Link href="/cart" className="flex flex-col items-center justify-center w-12 h-12">
-          <ShoppingCart className={getIconStyle("/cart")} strokeWidth={1.5} />
-        </Link>
+        {/* Nav Bar */}
+        <nav className="w-full flex justify-around items-end pb-4 pt-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-auto">
+            {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                const Icon = item.icon;
 
-        {/* PROFILE */}
-        <Link href="/profile" className="flex flex-col items-center justify-center w-12 h-12">
-          <User className={getIconStyle("/profile")} strokeWidth={1.5} />
-        </Link>
-      </div>
+                if (item.isAction) {
+                    return (
+                        <button
+                            key={item.id}
+                            onClick={() => onTabChange(item.id)}
+                            className="flex flex-col items-center justify-center active:scale-95 transition-transform"
+                            aria-label="Create"
+                        >
+                             <div className="relative p-2">
+                                <Plus size={36} className="text-white stroke-[1.5px] drop-shadow-lg" />
+                                {/* Subtle glow on hover */}
+                                <div className="absolute inset-0 bg-white/10 blur-xl rounded-full opacity-0 hover:opacity-100 transition-opacity" />
+                             </div>
+                        </button>
+                    )
+                }
 
-      {/* Creation Modal */}
-      {showCreationModal && (
-          <CreationModal onClose={() => setShowCreationModal(false)} />
-      )}
-    </>
+                return (
+                    <button
+                        key={item.id}
+                        onClick={() => onTabChange(item.id)}
+                        className={`flex flex-col items-center gap-1 min-w-[60px] transition-colors duration-200 group`}
+                        aria-label={item.label}
+                    >
+                        <Icon
+                            size={28}
+                            strokeWidth={isActive ? 2.5 : 1.5}
+                            className={`${isActive ? "text-white fill-white/10 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" : "text-white/70 group-hover:text-white"}`}
+                        />
+                        {/* Dot indicator for active state (optional, keeping minimal) */}
+                    </button>
+                );
+            })}
+        </nav>
+    </div>
   );
 }
