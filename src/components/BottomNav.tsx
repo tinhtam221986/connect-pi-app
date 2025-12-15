@@ -1,67 +1,67 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ShoppingBag, MessageCircle, PlusCircle, ShoppingCart, User } from "lucide-react";
+import { useState } from "react";
+
+// Placeholder for Creation Modal (will be implemented in Step 4)
+import { CreationModal } from "@/components/create/CreationModal";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [showCreationModal, setShowCreationModal] = useState(false);
+
+  // Hide nav on specific pages if needed (User said "transparent", so we keep it mostly visible but maybe hide on full-screen create?)
+  // Keeping logic to hide on /upload for now as legacy, though we are moving to a modal.
   if (pathname === "/upload") return null;
 
-  const isActive = (path: string) => pathname === path ? "#00f2ea" : "rgba(255,255,255,0.6)";
+  const isActive = (path: string) => pathname === path;
+
+  // Icon styling helper
+  const getIconStyle = (path: string) => {
+      const active = isActive(path);
+      return `w-8 h-8 transition-all duration-300 ${active ? "text-[#00f2ea] drop-shadow-[0_0_8px_rgba(0,242,234,0.8)] fill-current/20" : "text-white/70 hover:text-white"}`;
+  };
 
   return (
-    <div style={{
-      position: "fixed", 
-      bottom: "20px", 
-      left: "15px", 
-      right: "15px", 
-      height: "70px",
-      // --- 🟢 CẤU TRÚC PHA LÊ ---
-      backgroundColor: "rgba(20, 20, 20, 0.85)", // Màu đen mờ 85%
-      backdropFilter: "blur(20px)",              // Làm mờ hậu cảnh
-      borderRadius: "40px",                      // Bo tròn mạnh
-      border: "1px solid rgba(255, 255, 255, 0.15)", // Viền kính mỏng
-      boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)", // Bóng đổ 3D
-      display: "flex", 
-      justifyContent: "space-around", 
-      alignItems: "center",
-      zIndex: 9999, // Luôn nổi lên trên cùng
-      padding: "0 10px"
-    }}>
-      
-      {/* Trang Chủ */}
-      <Link href="/" style={{ color: isActive("/"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px" }}>🏠</span>
-      </Link>
+    <>
+      <div className="fixed bottom-0 left-0 right-0 h-[60px] flex justify-around items-center z-50 bg-transparent pb-safe">
 
-      {/* Game */}
-      <Link href="/game" style={{ color: isActive("/game"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px" }}>🎮</span>
-      </Link>
+        {/* SHOP (Marketplace) */}
+        <Link href="/marketplace" className="flex flex-col items-center justify-center w-12 h-12">
+          <ShoppingBag className={getIconStyle("/marketplace")} strokeWidth={1.5} />
+        </Link>
 
-      {/* Nút Đăng (Nổi hẳn lên) */}
-      <Link href="/upload" style={{ textDecoration: "none" }}>
-        <div style={{
-          width: "55px", height: "55px", 
-          marginTop: "-40px", // Đẩy lên cao hẳn
-          background: "linear-gradient(135deg, #00f2ea, #ff0050)",
-          borderRadius: "50%", 
-          display: "flex", justifyContent: "center", alignItems: "center",
-          border: "4px solid #000", // Viền đen để tách biệt nền
-          boxShadow: "0 0 15px #ff0050"
-        }}>
-          <span style={{ color: "white", fontSize: "30px", fontWeight: "bold" }}>+</span>
-        </div>
-      </Link>
+        {/* INBOX (Messages) */}
+        <Link href="/inbox" className="flex flex-col items-center justify-center w-12 h-12 relative">
+          <MessageCircle className={getIconStyle("/inbox")} strokeWidth={1.5} />
+          {/* Badge Placeholder */}
+          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold">2</span>
+        </Link>
 
-      {/* Hộp thư */}
-      <Link href="/inbox" style={{ color: isActive("/inbox"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px" }}>💬</span>
-      </Link>
+        {/* CREATE (+) Button */}
+        <button
+            onClick={() => setShowCreationModal(true)}
+            className="flex flex-col items-center justify-center w-14 h-14 active:scale-95 transition-transform"
+        >
+             <PlusCircle className="w-12 h-12 text-white stroke-1 hover:text-[#ff0050] transition-colors drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]" />
+        </button>
 
-      {/* Tôi */}
-      <Link href="/profile" style={{ color: isActive("/profile"), textDecoration:"none", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: "26px" }}>👤</span>
-      </Link>
-    </div>
+        {/* CART */}
+        <Link href="/cart" className="flex flex-col items-center justify-center w-12 h-12">
+          <ShoppingCart className={getIconStyle("/cart")} strokeWidth={1.5} />
+        </Link>
+
+        {/* PROFILE */}
+        <Link href="/profile" className="flex flex-col items-center justify-center w-12 h-12">
+          <User className={getIconStyle("/profile")} strokeWidth={1.5} />
+        </Link>
+      </div>
+
+      {/* Creation Modal */}
+      {showCreationModal && (
+          <CreationModal onClose={() => setShowCreationModal(false)} />
+      )}
+    </>
   );
 }
