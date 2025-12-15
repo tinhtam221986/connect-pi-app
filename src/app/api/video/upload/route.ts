@@ -57,6 +57,7 @@ export async function POST(request: Request) {
             videoUrl: publicUrl,
             caption: description || "",
             privacy: privacy || 'public',
+            resourceType: resourceType, // Explicitly save resource type
             author: {
                 username: username || "Anonymous",
                 user_uid: `user_${username || 'anon'}`,

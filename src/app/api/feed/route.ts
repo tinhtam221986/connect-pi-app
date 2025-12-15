@@ -27,7 +27,7 @@ export async function GET() {
         username: v.author?.username || "Anonymous",
         likes: v.likes?.length || 0,
         comments: v.comments?.length || 0,
-        resource_type: 'video', // Simplification: assuming mostly videos for now, or check mime type if stored
+        resource_type: v.resourceType || 'video', // Use stored type or default to video
         created_at: v.createdAt
     }));
 
