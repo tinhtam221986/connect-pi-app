@@ -9,11 +9,16 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const username = formData.get("username") as string;
+    let username = formData.get("username") as string;
     const description = formData.get("description") as string;
     const hashtags = formData.get("hashtags") as string;
     const privacy = formData.get("privacy") as string;
     const deviceSignature = formData.get("deviceSignature") as string;
+
+    // Sanitize username (remove @ if present) to ensure consistency
+    if (username && username.startsWith('@')) {
+        username = username.substring(1);
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
