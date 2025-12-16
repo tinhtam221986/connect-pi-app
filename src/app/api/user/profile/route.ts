@@ -7,7 +7,12 @@ import { SmartContractService } from '@/lib/smart-contract-service';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const username = searchParams.get('username');
+    let username = searchParams.get('username');
+
+    // Sanitize username (remove @ if present) for consistency
+    if (username && username.startsWith('@')) {
+        username = username.substring(1);
+    }
 
     const db = getDB();
 
@@ -45,9 +50,12 @@ export async function GET(request: Request) {
 
             // Fetch videos where author.username matches the requested username
             // Sorted by newest first (descending createdAt)
-            const mongoVideos = await Video.find({ "author.username": username })
-                                           .sort({ createdAt: -1 })
-                                           .lean();
+            // Use case-insensitive regex to be robust
+            const mongoVideos = await Video.find({
+                "author.username": { $regex: new RegExp(`^${username}$`, 'i') }
+            })
+            .sort({ createdAt: -1 })
+            .lean();
 
             videos = mongoVideos.map((v: any) => ({
                 id: v._id.toString(), // Use Mongo ID
