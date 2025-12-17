@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { PiSDKProvider } from "@/components/pi/pi-provider";
 import { LanguageProvider } from "@/components/i18n/language-provider";
+import { Toaster } from "@/components/ui/sonner";
 // import BottomNav from "@/components/BottomNav"; // Tạm tắt ở đây để trang con tự gọi
 
 const inter = Inter({ subsets: ["latin"] });
@@ -29,6 +30,7 @@ export default function RootLayout({
         <LanguageProvider>
           <PiSDKProvider>
             {children}
+            <Toaster />
           </PiSDKProvider>
         </LanguageProvider>
       </body>
