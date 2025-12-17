@@ -1,19 +1,8 @@
 "use client";
 import React from 'react';
-import { BottomNav } from "@/components/BottomNav";
-import { useRouter } from 'next/navigation';
+import BottomNav from "@/components/BottomNav";
 
 export default function GamePage() {
-  const router = useRouter();
-
-  const handleTabChange = (tab: string) => {
-    if (tab === 'home') router.push('/');
-    else if (tab === 'market') router.push('/?tab=market');
-    else if (tab === 'create') router.push('/upload');
-    else if (tab === 'game') router.push('/game');
-    else if (tab === 'profile') router.push('/profile');
-  };
-
   const games = [
     { id: 1, name: "Pi Farm", icon: "🌾", color: "#4CAF50" },
     { id: 2, name: "Pi Pet", icon: "🐾", color: "#FF9800" },
@@ -32,7 +21,7 @@ export default function GamePage() {
           </div>
         ))}
       </div>
-      <BottomNav activeTab="game" onTabChange={handleTabChange} />
+      <BottomNav />
     </div>
   );
 }

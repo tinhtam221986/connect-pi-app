@@ -9,16 +9,11 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    let username = formData.get("username") as string;
+    const username = formData.get("username") as string;
     const description = formData.get("description") as string;
     const hashtags = formData.get("hashtags") as string;
     const privacy = formData.get("privacy") as string;
     const deviceSignature = formData.get("deviceSignature") as string;
-
-    // Sanitize username (remove @ if present) to ensure consistency
-    if (username && username.startsWith('@')) {
-        username = username.substring(1);
-    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
@@ -62,7 +57,6 @@ export async function POST(request: Request) {
             videoUrl: publicUrl,
             caption: description || "",
             privacy: privacy || 'public',
-            resourceType: resourceType, // Explicitly save resource type
             author: {
                 username: username || "Anonymous",
                 user_uid: `user_${username || 'anon'}`,

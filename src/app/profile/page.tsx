@@ -1,23 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { BottomNav } from "@/components/BottomNav";
+import BottomNav from "@/components/BottomNav";
 import { usePi } from "@/components/pi/pi-provider";
-import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   const { user, authenticate, isInitialized } = usePi();
   const [dbUser, setDbUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  const handleTabChange = (tab: string) => {
-    if (tab === 'home') router.push('/');
-    else if (tab === 'market') router.push('/?tab=market');
-    else if (tab === 'create') router.push('/upload');
-    else if (tab === 'game') router.push('/game');
-    else if (tab === 'profile') router.push('/profile');
-  };
 
   // 1. Hàm lấy thông tin từ Server (Hộ khẩu)
   const fetchUserData = (uid: string, username: string) => {
@@ -93,7 +83,7 @@ export default function ProfilePage() {
         </div>
       </div>
       
-      <BottomNav activeTab="profile" onTabChange={handleTabChange} />
+      <BottomNav />
       <style jsx>{`@keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }`}</style>
     </div>
   );
