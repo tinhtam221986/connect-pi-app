@@ -25,25 +25,96 @@ export const apiClient = {
     },
   },
   video: {
-    // Updated signature to accept any metadata fields including deviceSignature
-    upload: async (file: File, metadata?: { username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string }) => {
-      const formData = new FormData();
-      formData.append('file', file);
+    getPresignedUrl: async (filename: string, contentType: string, username?: string, timeout: number = 30000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
 
-      // Dynamic append for all metadata fields
-      if (metadata) {
-          Object.entries(metadata).forEach(([key, value]) => {
-              if (value !== undefined && value !== null) {
-                  formData.append(key, String(value));
-              }
-          });
-      }
+        try {
+            const res = await fetch('/api/video/presigned', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename, contentType, username }),
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return res.json();
+        } catch (error: any) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error('Request timed out (30s)');
+            }
+            throw error;
+        }
+    },
 
-      const res = await fetch('/api/video/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      return res.json();
+    uploadToR2: (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 30000): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', url);
+            xhr.setRequestHeader('Content-Type', file.type);
+            xhr.timeout = timeout; // Set timeout
+
+            if (onProgress) {
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        onProgress(percent);
+                    }
+                };
+            }
+
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve();
+                } else {
+                    reject(new Error(`Upload failed with status ${xhr.status}`));
+                }
+            };
+
+            xhr.onerror = () => reject(new Error('Network error during upload (CORS or Connectivity)'));
+            xhr.ontimeout = () => reject(new Error(`Upload timed out after ${timeout / 1000}s`));
+
+            xhr.send(file);
+        });
+    },
+
+    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 60000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const res = await fetch('/api/video/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return res.json();
+        } catch (error: any) {
+             clearTimeout(id);
+             if (error.name === 'AbortError') {
+                 throw new Error('Request timed out (60s)');
+             }
+             throw error;
+        }
+    },
+
+    // Legacy wrapper or refactor target
+    upload: async (file: File, metadata?: { username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string }, onProgress?: (percent: number) => void) => {
+        // 1. Get Presigned URL
+        const presignedRes = await apiClient.video.getPresignedUrl(file.name, file.type, metadata?.username);
+        if (!presignedRes.url) throw new Error(presignedRes.error || "Failed to get upload URL");
+
+        // 2. Upload to R2
+        await apiClient.video.uploadToR2(presignedRes.url, file, onProgress);
+
+        // 3. Finalize
+        return apiClient.video.finalizeUpload({
+            key: presignedRes.key,
+            ...metadata,
+            metadata: { size: file.size, type: file.type }
+        });
     },
   },
   ai: {
