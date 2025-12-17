@@ -1,14 +1,42 @@
 "use client";
 import React, { useState } from "react";
 import { Home, ShoppingBag, Plus, Gamepad2, User, ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
 
 interface BottomNavProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
+
+  // Determine effective active tab if not provided via props
+  const effectiveActiveTab = activeTab || (() => {
+      if (!pathname) return 'home';
+      if (pathname.startsWith('/game')) return 'game';
+      if (pathname.startsWith('/profile')) return 'profile';
+      if (pathname.startsWith('/upload')) return 'create';
+      return 'home';
+  })();
+
+  const handleTabClick = (tabId: string) => {
+      if (onTabChange) {
+          onTabChange(tabId);
+      } else {
+          // Fallback routing for standalone pages
+          switch(tabId) {
+              case 'home': router.push('/'); break;
+              case 'market': router.push('/'); break; // Fallback
+              case 'create': router.push('/upload'); break;
+              case 'game': router.push('/game'); break;
+              case 'profile': router.push('/profile'); break;
+              default: router.push('/');
+          }
+      }
+  };
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
@@ -45,14 +73,14 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         {/* Nav Bar */}
         <nav className="w-full flex justify-around items-end pb-4 pt-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-auto">
             {navItems.map((item) => {
-                const isActive = activeTab === item.id;
+                const isActive = effectiveActiveTab === item.id;
                 const Icon = item.icon;
 
                 if (item.isAction) {
                     return (
                         <button
                             key={item.id}
-                            onClick={() => onTabChange(item.id)}
+                            onClick={() => handleTabClick(item.id)}
                             className="flex flex-col items-center justify-center active:scale-95 transition-transform"
                             aria-label="Create"
                         >
@@ -68,7 +96,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 return (
                     <button
                         key={item.id}
-                        onClick={() => onTabChange(item.id)}
+                        onClick={() => handleTabClick(item.id)}
                         className={`flex flex-col items-center gap-1 min-w-[60px] transition-colors duration-200 group`}
                         aria-label={item.label}
                     >
@@ -85,3 +113,5 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     </div>
   );
 }
+
+export default BottomNav;
