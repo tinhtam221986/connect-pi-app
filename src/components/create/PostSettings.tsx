@@ -2,13 +2,14 @@
 
 import React, { useState } from "react";
 import { CreateContextState } from "./CreateFlow";
-import { Loader2, Lock, Globe, Users, Hash, MapPin, AlertCircle, Save, Upload } from "lucide-react";
+import { Loader2, Lock, Globe, Users, Hash, MapPin, AlertCircle, Save, Upload, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { usePi } from "@/components/pi/pi-provider";
 import { useEconomy } from "@/components/economy/EconomyContext";
 import { getBrowserFingerprint } from "@/lib/utils";
 import { saveDraft } from "@/lib/drafts";
+import { Progress } from "@/components/ui/progress";
 
 interface PostSettingsProps {
     media: CreateContextState;
@@ -21,8 +22,14 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     const [caption, setCaption] = useState("");
     const [privacy, setPrivacy] = useState<'public' | 'friends' | 'private'>('public');
     const [allowComments, setAllowComments] = useState(true);
-    const [isPosting, setIsPosting] = useState(false);
     const [highQuality, setHighQuality] = useState(true);
+
+    // Upload State
+    const [isPosting, setIsPosting] = useState(false);
+    const [uploadStep, setUploadStep] = useState<string>(""); // Description
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const handlePost = async () => {
         if (!user) {
@@ -31,37 +38,61 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         }
 
         setIsPosting(true);
+        setUploadStatus('uploading');
+        setErrorMessage(null);
+        setUploadProgress(0);
 
         // Extract hashtags
         const hashtags = caption.match(/#[a-z0-9_]+/gi) || [];
 
         try {
-            // Create FormData
-            // In a real app we might compress here
             const fileToUpload = media.file;
             if (!fileToUpload) throw new Error("No file to upload");
 
-            // Generate Device Fingerprint
             const deviceSignature = getBrowserFingerprint();
 
-            // We append extra data as fields or pack into description/metadata
-            // The current API expects 'description' and 'username'
-            // We can send hashtags/privacy as separate fields if we update the backend,
-            // OR pack them into a JSON description if we don't want to touch backend too much.
-            // But I will update the backend to be clean.
+            // STEP 1: Get Presigned URL
+            setUploadStep("Step 1/3: Requesting permission...");
+            setUploadProgress(10);
 
-            const res = await apiClient.video.upload(fileToUpload, {
+            const presignedRes = await apiClient.video.getPresignedUrl(
+                fileToUpload.name,
+                fileToUpload.type,
+                user.username
+            );
+
+            if (!presignedRes.url) {
+                throw new Error(presignedRes.error || "Failed to get upload URL");
+            }
+
+            // STEP 2: Upload to R2
+            setUploadStep("Step 2/3: Uploading video...");
+            await apiClient.video.uploadToR2(presignedRes.url, fileToUpload, (percent) => {
+                // Map 0-100 to 20-90 range for overall progress
+                setUploadProgress(20 + (percent * 0.7));
+            });
+
+            // STEP 3: Finalize
+            setUploadStep("Step 3/3: Saving metadata...");
+            setUploadProgress(95);
+
+            const res = await apiClient.video.finalizeUpload({
+                key: presignedRes.key,
                 username: user.username,
                 description: caption,
-                // We will pass these extra fields. We need to ensure apiClient supports them or we extend it.
-                // Checking apiClient signature: upload(file, metadata)
-                // metadata is { username, description }. We can cast or extend.
-                // We'll extend the object passed.
-                ...({ hashtags: JSON.stringify(hashtags), privacy, allowComments, deviceSignature } as any)
+                hashtags: JSON.stringify(hashtags),
+                privacy,
+                // allowComments, // API might not support yet, but good to have in client
+                deviceSignature,
+                metadata: { size: fileToUpload.size, type: fileToUpload.type }
             });
 
             if (res.success) {
+                setUploadStatus('success');
+                setUploadProgress(100);
+                setUploadStep("Upload Complete!");
                 toast.success("Posted successfully!");
+
                 // Update local state
                 addVideo({
                     id: res.public_id || `temp_${Date.now()}`,
@@ -70,16 +101,27 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                     description: caption,
                     createdAt: Date.now()
                 });
-                onPostComplete();
+
+                // Wait a moment before closing
+                setTimeout(() => {
+                    setIsPosting(false);
+                    onPostComplete();
+                }, 1500);
             } else {
-                toast.error("Upload failed: " + res.error);
+                throw new Error(res.error || "Finalize failed");
             }
-        } catch (e) {
+
+        } catch (e: any) {
             console.error(e);
-            toast.error("An error occurred");
-        } finally {
-            setIsPosting(false);
+            setUploadStatus('error');
+            setErrorMessage(e.message || "An unknown error occurred");
+            toast.error("Upload failed");
         }
+    };
+
+    const handleCloseError = () => {
+        setIsPosting(false);
+        setUploadStatus('idle');
     };
 
     const handleSaveDraft = async () => {
@@ -105,7 +147,59 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     };
 
     return (
-        <div className="h-full bg-gray-50 flex flex-col text-black overflow-y-auto">
+        <div className="h-full bg-gray-50 flex flex-col text-black overflow-y-auto relative">
+
+            {/* Upload Overlay */}
+            {isPosting && (
+                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+
+                        {uploadStatus === 'uploading' && (
+                            <>
+                                <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                                <div className="text-center w-full space-y-2">
+                                    <h3 className="font-bold text-lg">Uploading...</h3>
+                                    <p className="text-sm text-gray-500">{uploadStep}</p>
+                                    <Progress value={uploadProgress} className="h-2" />
+                                    <p className="text-xs text-gray-400 text-right">{Math.round(uploadProgress)}%</p>
+                                </div>
+                            </>
+                        )}
+
+                        {uploadStatus === 'success' && (
+                            <>
+                                <CheckCircle2 className="w-16 h-16 text-green-500" />
+                                <div className="text-center">
+                                    <h3 className="font-bold text-lg text-green-600">Success!</h3>
+                                    <p className="text-sm text-gray-500">Your video is live.</p>
+                                </div>
+                            </>
+                        )}
+
+                        {uploadStatus === 'error' && (
+                            <>
+                                <XCircle className="w-16 h-16 text-red-500" />
+                                <div className="text-center w-full">
+                                    <h3 className="font-bold text-lg text-red-600">Upload Failed</h3>
+                                    <p className="text-sm text-red-500 bg-red-50 p-2 rounded my-2 break-words">
+                                        {errorMessage}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        Note: If using Pi Browser, this may be a CORS issue.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleCloseError}
+                                    className="w-full py-2 bg-gray-200 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Close
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="p-4 bg-white border-b border-gray-200 flex justify-between items-center sticky top-0 z-10">
                 <button onClick={onPostComplete} className="text-gray-500 hover:text-black">Cancel</button>
@@ -213,8 +307,9 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                     disabled={isPosting}
                     className="flex-[2] py-3 bg-red-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
                 >
-                    {isPosting ? <Loader2 className="animate-spin" /> : <Upload size={18} />}
-                    Post
+                    {isPosting ? <span className="text-sm">Processing...</span> :
+                        <span className="flex items-center justify-center gap-2"><Upload size={18} /> Post</span>
+                    }
                 </button>
             </div>
         </div>
