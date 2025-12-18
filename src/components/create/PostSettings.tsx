@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CreateContextState } from "./CreateFlow";
-import { Loader2, Lock, Globe, Users, Hash, MapPin, AlertCircle, Save, Upload, CheckCircle2, XCircle } from "lucide-react";
+import { Lock, Globe, Users, Hash, MapPin, Save, Upload, CheckCircle2, XCircle, AlertCircle, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { usePi } from "@/components/pi/pi-provider";
@@ -16,6 +16,17 @@ interface PostSettingsProps {
     onPostComplete: () => void;
 }
 
+type StepStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface Step {
+    id: number;
+    label: string;
+    status: StepStatus;
+    progress: number; // 0-100
+    error?: string;
+    details?: string;
+}
+
 export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     const { user } = usePi();
     const { addVideo } = useEconomy();
@@ -26,102 +37,69 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
 
     // Upload State
     const [isPosting, setIsPosting] = useState(false);
-    const [uploadStep, setUploadStep] = useState<string>(""); // Description
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [steps, setSteps] = useState<Step[]>([
+        { id: 1, label: "1. Getting Permission", status: 'idle', progress: 0 },
+        { id: 2, label: "2. Uploading Video", status: 'idle', progress: 0 },
+        { id: 3, label: "3. Finalizing", status: 'idle', progress: 0 },
+    ]);
+    const [canClose, setCanClose] = useState(true);
 
-    const handlePost = async () => {
-        if (!user) {
-            toast.error("Please login to post");
-            return;
-        }
-
-        setIsPosting(true);
-        setUploadStatus('uploading');
-        setErrorMessage(null);
-        setUploadProgress(0);
-
-        // Extract hashtags
-        const hashtags = caption.match(/#[a-z0-9_]+/gi) || [];
-
-        try {
-            const fileToUpload = media.file;
-            if (!fileToUpload) throw new Error("No file to upload");
-
-            const deviceSignature = getBrowserFingerprint();
-
-            // STEP 1: Get Presigned URL
-            setUploadStep("Step 1/3: Requesting permission...");
-            setUploadProgress(10);
-
-            const presignedRes = await apiClient.video.getPresignedUrl(
-                fileToUpload.name,
-                fileToUpload.type,
-                user.username
-            );
-
-            if (!presignedRes.url) {
-                throw new Error(presignedRes.error || "Failed to get upload URL");
-            }
-
-            // STEP 2: Upload to R2
-            setUploadStep("Step 2/3: Uploading video...");
-            await apiClient.video.uploadToR2(presignedRes.url, fileToUpload, (percent) => {
-                // Map 0-100 to 20-90 range for overall progress
-                setUploadProgress(20 + (percent * 0.7));
-            });
-
-            // STEP 3: Finalize
-            setUploadStep("Step 3/3: Saving metadata...");
-            setUploadProgress(95);
-
-            const res = await apiClient.video.finalizeUpload({
-                key: presignedRes.key,
-                username: user.username,
-                description: caption,
-                hashtags: JSON.stringify(hashtags),
-                privacy,
-                // allowComments, // API might not support yet, but good to have in client
-                deviceSignature,
-                metadata: { size: fileToUpload.size, type: fileToUpload.type }
-            });
-
-            if (res.success) {
-                setUploadStatus('success');
-                setUploadProgress(100);
-                setUploadStep("Upload Complete!");
-                toast.success("Posted successfully!");
-
-                // Update local state
-                addVideo({
-                    id: res.public_id || `temp_${Date.now()}`,
-                    url: res.url,
-                    thumbnail: res.thumbnail || res.url,
-                    description: caption,
-                    createdAt: Date.now()
-                });
-
-                // Wait a moment before closing
-                setTimeout(() => {
-                    setIsPosting(false);
-                    onPostComplete();
-                }, 1500);
-            } else {
-                throw new Error(res.error || "Finalize failed");
-            }
-
-        } catch (e: any) {
-            console.error(e);
-            setUploadStatus('error');
-            setErrorMessage(e.message || "An unknown error occurred");
-            toast.error("Upload failed");
-        }
+    const updateStep = (id: number, updates: Partial<Step>) => {
+        setSteps(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     };
 
-    const handleCloseError = () => {
-        setIsPosting(false);
-        setUploadStatus('idle');
+    const runStepWithMinDuration = async (
+        stepId: number,
+        minDurationMs: number,
+        task: () => Promise<any>,
+        onProgress?: (progress: number) => void
+    ) => {
+        updateStep(stepId, { status: 'loading', progress: 0, error: undefined });
+
+        // Timer Promise
+        const timerPromise = new Promise<void>((resolve) => {
+            const interval = 100; // Update progress frequently
+            const steps = minDurationMs / interval;
+            let currentStep = 0;
+
+            const timerId = setInterval(() => {
+                currentStep++;
+                const progress = Math.min((currentStep / steps) * 90, 90); // Cap at 90% until task is actually done
+
+                // Only update progress if the task isn't controlling it via onProgress (e.g. upload)
+                if (!onProgress) {
+                    updateStep(stepId, { progress });
+                }
+
+                if (currentStep >= steps) {
+                    clearInterval(timerId);
+                    resolve();
+                }
+            }, interval);
+        });
+
+        // Task Promise
+        let taskResult: any = null;
+        let taskError: any = null;
+
+        const taskPromise = task()
+            .then(res => {
+                taskResult = res;
+            })
+            .catch(err => {
+                taskError = err;
+            });
+
+        // Wait for both
+        await Promise.all([timerPromise, taskPromise]);
+
+        if (taskError) {
+            updateStep(stepId, { status: 'error', error: taskError.message || "Unknown error" });
+            throw taskError;
+        }
+
+        updateStep(stepId, { status: 'success', progress: 100 });
+        return taskResult;
     };
 
     const handleSaveDraft = async () => {
@@ -146,55 +124,171 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         }
     };
 
+    const handlePost = async () => {
+        if (!user) {
+            toast.error("Please login to post");
+            return;
+        }
+
+        setIsPosting(true);
+        setCanClose(false);
+
+        // Reset steps
+        setSteps([
+            { id: 1, label: "1. Getting Permission", status: 'idle', progress: 0 },
+            { id: 2, label: "2. Uploading Video", status: 'idle', progress: 0 },
+            { id: 3, label: "3. Finalizing", status: 'idle', progress: 0 },
+        ]);
+
+        const hashtags = caption.match(/#[a-z0-9_]+/gi) || [];
+
+        try {
+            const fileToUpload = media.file;
+            if (!fileToUpload) throw new Error("No file to upload");
+            const deviceSignature = getBrowserFingerprint();
+
+            // --- STEP 1: Get Presigned URL ---
+            // Min duration 5s, Timeout 30s
+            const presignedRes = await runStepWithMinDuration(1, 5000, async () => {
+                const res = await apiClient.video.getPresignedUrl(
+                    fileToUpload.name,
+                    fileToUpload.type,
+                    user.username,
+                    30000 // 30s timeout
+                );
+                if (!res.url) throw new Error(res.error || "Failed to get upload URL");
+                return res;
+            });
+
+            // --- STEP 2: Upload to R2 ---
+            // Min duration 5s, Timeout 30s
+            // Note: We use a custom progress updater here that respects the timer visually but uses actual upload for values
+            await runStepWithMinDuration(2, 5000, async () => {
+                await apiClient.video.uploadToR2(
+                    presignedRes.url,
+                    fileToUpload,
+                    (percent) => {
+                        updateStep(2, { progress: percent });
+                    },
+                    30000 // 30s timeout
+                );
+            });
+
+            // --- STEP 3: Finalize ---
+            // Min duration 10s, Timeout 60s
+            const finalizeRes = await runStepWithMinDuration(3, 10000, async () => {
+                const res = await apiClient.video.finalizeUpload({
+                    key: presignedRes.key,
+                    username: user.username,
+                    description: caption,
+                    hashtags: JSON.stringify(hashtags),
+                    privacy,
+                    deviceSignature,
+                    metadata: { size: fileToUpload.size, type: fileToUpload.type }
+                }, 60000); // 60s timeout
+
+                if (!res.success) throw new Error(res.error || "Finalize failed");
+                return res;
+            });
+
+            // Success!
+            toast.success("Posted successfully!");
+            addVideo({
+                id: finalizeRes.public_id || `temp_${Date.now()}`,
+                url: finalizeRes.url,
+                thumbnail: finalizeRes.thumbnail || finalizeRes.url,
+                description: caption,
+                createdAt: Date.now()
+            });
+
+            setTimeout(() => {
+                setIsPosting(false);
+                setCanClose(true);
+                onPostComplete();
+            }, 1500);
+
+        } catch (e: any) {
+            console.error(e);
+            setCanClose(true);
+            // Error is already set in the specific step by runStepWithMinDuration
+            // We just ensure the loop stops here
+        }
+    };
+
+    const handleClose = () => {
+        if (canClose) setIsPosting(false);
+    };
+
     return (
         <div className="h-full bg-gray-50 flex flex-col text-black overflow-y-auto relative">
 
-            {/* Upload Overlay */}
+            {/* Detailed Upload Modal */}
             {isPosting && (
                 <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm flex flex-col gap-6 animate-in fade-in zoom-in duration-300 shadow-2xl">
 
-                        {uploadStatus === 'uploading' && (
-                            <>
-                                <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-                                <div className="text-center w-full space-y-2">
-                                    <h3 className="font-bold text-lg">Uploading...</h3>
-                                    <p className="text-sm text-gray-500">{uploadStep}</p>
-                                    <Progress value={uploadProgress} className="h-2" />
-                                    <p className="text-xs text-gray-400 text-right">{Math.round(uploadProgress)}%</p>
+                        <div className="text-center border-b pb-4">
+                            <h3 className="font-bold text-xl text-gray-900">Uploading Video</h3>
+                            <p className="text-sm text-gray-500">Please keep this screen open</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            {steps.map((step) => (
+                                <div key={step.id} className="relative">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-3">
+                                            {step.status === 'idle' && <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
+                                            {step.status === 'loading' && <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />}
+                                            {step.status === 'success' && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                                            {step.status === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+
+                                            <span className={`font-medium ${step.status === 'idle' ? 'text-gray-400' : 'text-gray-900'}`}>
+                                                {step.label}
+                                            </span>
+                                        </div>
+                                        {step.status !== 'idle' && (
+                                            <span className="text-xs font-mono text-gray-500">{Math.round(step.progress)}%</span>
+                                        )}
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-300 ease-out ${
+                                                step.status === 'error' ? 'bg-red-500' :
+                                                step.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                                            }`}
+                                            style={{ width: `${step.progress}%` }}
+                                        />
+                                    </div>
+
+                                    {/* Error Message */}
+                                    {step.status === 'error' && (
+                                        <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded flex items-start gap-2">
+                                            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                                            <span>{step.error}</span>
+                                        </div>
+                                    )}
                                 </div>
-                            </>
+                            ))}
+                        </div>
+
+                        {/* Footer / Close Button */}
+                        {canClose && (
+                            <button
+                                onClick={handleSaveDraft}
+                                className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
+                            >
+                                Close
+                            </button>
                         )}
-
-                        {uploadStatus === 'success' && (
-                            <>
-                                <CheckCircle2 className="w-16 h-16 text-green-500" />
-                                <div className="text-center">
-                                    <h3 className="font-bold text-lg text-green-600">Success!</h3>
-                                    <p className="text-sm text-gray-500">Your video is live.</p>
-                                </div>
-                            </>
-                        )}
-
-                        {uploadStatus === 'error' && (
-                            <>
-                                <XCircle className="w-16 h-16 text-red-500" />
-                                <div className="text-center w-full">
-                                    <h3 className="font-bold text-lg text-red-600">Upload Failed</h3>
-                                    <p className="text-sm text-red-500 bg-red-50 p-2 rounded my-2 break-words">
-                                        {errorMessage}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                        Note: If using Pi Browser, this may be a CORS issue.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={handleCloseError}
-                                    className="w-full py-2 bg-gray-200 rounded-lg font-medium hover:bg-gray-300"
-                                >
-                                    Close
-                                </button>
-                            </>
+                        {canClose && (
+                            <button
+                                onClick={handleClose}
+                                className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
+                            >
+                                Close
+                            </button>
                         )}
                     </div>
                 </div>
@@ -232,7 +326,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                  </div>
             </div>
 
-            {/* Settings Group - Added margin-bottom to ensure content is not hidden by fixed footer */}
+            {/* Settings Group */}
             <div className="bg-white p-4 space-y-6 mb-32">
 
                 <div className="flex items-center gap-3 text-sm text-gray-700 hover:bg-gray-50 p-2 rounded-lg cursor-pointer">
