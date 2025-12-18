@@ -25,20 +25,34 @@ export const apiClient = {
     },
   },
   video: {
-    getPresignedUrl: async (filename: string, contentType: string, username?: string) => {
-        const res = await fetch('/api/video/presigned', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename, contentType, username })
-        });
-        return res.json();
+    getPresignedUrl: async (filename: string, contentType: string, username?: string, timeout: number = 30000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const res = await fetch('/api/video/presigned', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename, contentType, username }),
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return res.json();
+        } catch (error: any) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error('Request timed out (30s)');
+            }
+            throw error;
+        }
     },
 
-    uploadToR2: (url: string, file: File, onProgress?: (percent: number) => void): Promise<void> => {
+    uploadToR2: (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 30000): Promise<void> => {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', url);
             xhr.setRequestHeader('Content-Type', file.type);
+            xhr.timeout = timeout; // Set timeout
 
             if (onProgress) {
                 xhr.upload.onprogress = (e) => {
@@ -57,18 +71,33 @@ export const apiClient = {
                 }
             };
 
-            xhr.onerror = () => reject(new Error('Network error during upload'));
+            xhr.onerror = () => reject(new Error('Network error during upload (CORS or Connectivity)'));
+            xhr.ontimeout = () => reject(new Error(`Upload timed out after ${timeout / 1000}s`));
+
             xhr.send(file);
         });
     },
 
-    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }) => {
-        const res = await fetch('/api/video/finalize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return res.json();
+    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 60000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const res = await fetch('/api/video/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return res.json();
+        } catch (error: any) {
+             clearTimeout(id);
+             if (error.name === 'AbortError') {
+                 throw new Error('Request timed out (60s)');
+             }
+             throw error;
+        }
     },
 
     // Legacy wrapper or refactor target

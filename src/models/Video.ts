@@ -15,12 +15,6 @@ const VideoSchema = new mongoose.Schema({
     avatar: { type: String, default: "" }
   },
   // PRD: Metadata storage (duration, resolution, etc.)
-  // PRD: Resource Type (video/image)
-  resourceType: {
-    type: String,
-    enum: ['video', 'image'],
-    default: 'video'
-  },
   metadata: {
     duration: { type: Number, default: 0 }, // in seconds
     width: { type: Number, default: 0 },
