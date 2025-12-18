@@ -1,0 +1,14 @@
+
+> connect-pi-app@1.0.0 dev
+> next dev
+
+  ▲ Next.js 14.2.16
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 4.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 13.1s (1273 modules)
+ GET / 200 in 14318ms
+ ✓ Compiled in 1133ms (627 modules)
+[?25h
