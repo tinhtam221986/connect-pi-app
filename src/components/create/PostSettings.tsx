@@ -48,35 +48,44 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         setSteps(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     };
 
+    /**
+     * Runs a task with a visual progress bar.
+     *
+     * @param stepId The ID of the step to update
+     * @param minDurationMs Minimum duration for the visual progress (only if progress isn't manually controlled)
+     * @param task The async task to run
+     * @param onProgressUpdate If provided, this function is responsible for updating progress. The internal timer will be disabled.
+     */
     const runStepWithMinDuration = async (
         stepId: number,
         minDurationMs: number,
         task: () => Promise<any>,
-        onProgress?: (progress: number) => void
+        onProgressUpdate?: boolean // If true, disable the fake timer because the task will report real progress
     ) => {
         updateStep(stepId, { status: 'loading', progress: 0, error: undefined });
 
-        // Timer Promise
-        const timerPromise = new Promise<void>((resolve) => {
-            const interval = 100; // Update progress frequently
-            const steps = minDurationMs / interval;
-            let currentStep = 0;
+        // Timer Promise (only if we need fake progress)
+        let timerPromise = Promise.resolve();
 
-            const timerId = setInterval(() => {
-                currentStep++;
-                const progress = Math.min((currentStep / steps) * 90, 90); // Cap at 90% until task is actually done
+        if (!onProgressUpdate) {
+            timerPromise = new Promise<void>((resolve) => {
+                const interval = 100; // Update progress frequently
+                const steps = minDurationMs / interval;
+                let currentStep = 0;
 
-                // Only update progress if the task isn't controlling it via onProgress (e.g. upload)
-                if (!onProgress) {
+                const timerId = setInterval(() => {
+                    currentStep++;
+                    const progress = Math.min((currentStep / steps) * 90, 90); // Cap at 90% until task is actually done
+
                     updateStep(stepId, { progress });
-                }
 
-                if (currentStep >= steps) {
-                    clearInterval(timerId);
-                    resolve();
-                }
-            }, interval);
-        });
+                    if (currentStep >= steps) {
+                        clearInterval(timerId);
+                        resolve();
+                    }
+                }, interval);
+            });
+        }
 
         // Task Promise
         let taskResult: any = null;
@@ -90,7 +99,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                 taskError = err;
             });
 
-        // Wait for both
+        // Wait for both (if timer is active)
         await Promise.all([timerPromise, taskPromise]);
 
         if (taskError) {
@@ -148,8 +157,8 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             const deviceSignature = getBrowserFingerprint();
 
             // --- STEP 1: Get Presigned URL ---
-            // Min duration 5s, Timeout 30s
-            const presignedRes = await runStepWithMinDuration(1, 5000, async () => {
+            // Min duration 2s (fake progress)
+            const presignedRes = await runStepWithMinDuration(1, 2000, async () => {
                 const res = await apiClient.video.getPresignedUrl(
                     fileToUpload.name,
                     fileToUpload.type,
@@ -161,22 +170,21 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             });
 
             // --- STEP 2: Upload to R2 ---
-            // Min duration 5s, Timeout 30s
-            // Note: We use a custom progress updater here that respects the timer visually but uses actual upload for values
-            await runStepWithMinDuration(2, 5000, async () => {
+            // REAL progress, so we disable the fake timer by passing true
+            await runStepWithMinDuration(2, 0, async () => {
                 await apiClient.video.uploadToR2(
                     presignedRes.url,
                     fileToUpload,
                     (percent) => {
                         updateStep(2, { progress: percent });
                     },
-                    30000 // 30s timeout
+                    60000 // 60s timeout for upload
                 );
-            });
+            }, true); // true = manual progress updates
 
             // --- STEP 3: Finalize ---
-            // Min duration 10s, Timeout 60s
-            const finalizeRes = await runStepWithMinDuration(3, 10000, async () => {
+            // Min duration 2s (fake progress)
+            const finalizeRes = await runStepWithMinDuration(3, 2000, async () => {
                 const res = await apiClient.video.finalizeUpload({
                     key: presignedRes.key,
                     username: user.username,
@@ -282,7 +290,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                                 Close
                             </button>
                         )}
-                        {canClose && (
+                         {canClose && (
                             <button
                                 onClick={handleClose}
                                 className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
