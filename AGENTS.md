@@ -9,6 +9,8 @@ This is a Web3 Social application called "CONNECT", built with Next.js 14, Tailw
 - **UI Components:** Shadcn UI (Radix Primitives)
 - **Icons:** Lucide React
 - **Pi Network:** Pi SDK Integration (`src/components/pi`)
+- **Database:** MongoDB (via Mongoose)
+- **Storage:** Cloudflare R2 (AWS SDK v3)
 
 ## Setup Instructions
 

@@ -6,7 +6,7 @@ CONNECT is a decentralized social platform (similar to TikTok) built on the Pi N
 ## 🛠 Tech Stack
 - **Framework:** Next.js 14 (App Router)
 - **Styling:** Tailwind CSS + Shadcn UI
-- **Integration:** Pi Network SDK + Cloudinary
+- **Integration:** Pi Network SDK + MongoDB + Cloudflare R2
 
 ## 📦 Installation & Setup
 
@@ -25,7 +25,7 @@ Key steps:
 1. Deploy to Vercel.
 2. Register App in Pi Developer Portal (Mainnet).
 3. Set `NEXT_PUBLIC_PI_SANDBOX=false` in Vercel Environment Variables.
-4. Set up Cloudinary keys for video storage.
+4. Set up MongoDB and Cloudflare R2 keys for storage.
 
 ## 📂 Project Structure
 - `src/app`: Application routes.

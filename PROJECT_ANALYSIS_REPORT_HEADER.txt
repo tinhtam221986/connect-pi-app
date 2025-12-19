@@ -1,0 +1,1 @@
+**⚠️ UPDATE (Current Status):** The project has migrated to **MongoDB** (Database) and **Cloudflare R2** (Storage) as of the latest version. References to Cloudinary or MockDB in this report are historical.
