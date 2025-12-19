@@ -1,3 +1,5 @@
+> **⚠️ CẬP NHẬT:** Dự án hiện đã chuyển sang sử dụng **MongoDB** và **Cloudflare R2**. Báo cáo này là tài liệu lịch sử.
+
 # Đánh Giá Dự Án & Báo Cáo Kỹ Thuật (Project Review)
 
 **Dự án:** CONNECT - Web3 Social Application

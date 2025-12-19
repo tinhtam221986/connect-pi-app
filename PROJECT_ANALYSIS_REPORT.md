@@ -1,3 +1,5 @@
+> **⚠️ CẬP NHẬT:** Dự án hiện đã chuyển sang sử dụng **MongoDB** và **Cloudflare R2**. Báo cáo này là tài liệu lịch sử.
+
 # BÁO CÁO PHÂN TÍCH DỰ ÁN "CONNECT" - WEB3 SOCIAL SUPER APP
 
 **Ngày báo cáo:** 24/05/2024
