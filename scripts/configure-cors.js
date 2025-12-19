@@ -35,14 +35,15 @@ const client = new S3Client({
     },
 });
 
+// User provided CORS configuration
 const corsRules = [
-    {
-        AllowedHeaders: ['*'],
-        AllowedMethods: ['PUT', 'POST', 'GET', 'HEAD', 'DELETE'],
-        AllowedOrigins: ['*'], // Allow all origins for Pi Browser compatibility
-        ExposeHeaders: ['ETag'],
-        MaxAgeSeconds: 3000,
-    },
+  {
+    "AllowedOrigins": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
 ];
 
 async function configureCors() {
