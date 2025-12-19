@@ -284,14 +284,6 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                         {/* Footer / Close Button */}
                         {canClose && (
                             <button
-                                onClick={handleSaveDraft}
-                                className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
-                            >
-                                Close
-                            </button>
-                        )}
-                         {canClose && (
-                            <button
                                 onClick={handleClose}
                                 className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
                             >
