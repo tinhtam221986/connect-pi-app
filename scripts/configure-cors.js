@@ -40,7 +40,7 @@ const corsRules = [
   {
     "AllowedOrigins": ["*"],
     "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
-    "AllowedHeaders": ["*"],
+    "AllowedHeaders": ["*", "Content-Type"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3000
   }

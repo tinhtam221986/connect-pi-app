@@ -26,6 +26,7 @@ if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
 export const r2Client = new S3Client({
   region: "auto",
   endpoint: R2_ENDPOINT || "https://undefined.r2.cloudflarestorage.com",
+  forcePathStyle: true, // Critical for R2 to avoid SSL errors with bucket subdomains
   credentials: {
     accessKeyId: R2_ACCESS_KEY_ID || "mock-access-key",
     secretAccessKey: R2_SECRET_ACCESS_KEY || "mock-secret-key",
