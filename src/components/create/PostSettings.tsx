@@ -170,15 +170,15 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             });
 
             // --- STEP 2: Upload to R2 ---
-            // SIMULATED progress because standard Fetch API doesn't support upload progress
+            // Real progress from XHR
             await runStepWithMinDuration(2, 5000, async () => {
                 await apiClient.video.uploadToR2(
                     presignedRes.url,
                     fileToUpload,
-                    undefined, // No progress callback needed
+                    (percent) => updateStep(2, { progress: percent }), // Real progress callback
                     120000 // 120s timeout for upload
                 );
-            }, false); // false = enable fake timer
+            }, true); // true = disable fake timer, use real progress
 
             // --- STEP 3: Finalize ---
             // Min duration 2s (fake progress)
