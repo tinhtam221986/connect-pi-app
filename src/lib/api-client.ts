@@ -47,21 +47,22 @@ export const apiClient = {
         }
     },
 
-    uploadToR2: (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 30000): Promise<void> => {
+    uploadToR2: async (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 120000): Promise<void> => {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', url);
-            xhr.setRequestHeader('Content-Type', file.type);
-            xhr.timeout = timeout; // Set timeout
+            xhr.timeout = timeout;
 
-            if (onProgress) {
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        onProgress(percent);
-                    }
-                };
-            }
+            // Important: Set Content-Type. Android might give empty string for file.type
+            const contentType = file.type || 'video/mp4';
+            xhr.setRequestHeader('Content-Type', contentType);
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable && onProgress) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    onProgress(percentComplete);
+                }
+            };
 
             xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
@@ -71,8 +72,13 @@ export const apiClient = {
                 }
             };
 
-            xhr.onerror = () => reject(new Error('Network error during upload (CORS or Connectivity)'));
-            xhr.ontimeout = () => reject(new Error(`Upload timed out after ${timeout / 1000}s`));
+            xhr.onerror = () => {
+                reject(new Error('Network error during upload (CORS or Connectivity)'));
+            };
+
+            xhr.ontimeout = () => {
+                reject(new Error(`Upload timed out after ${timeout / 1000}s`));
+            };
 
             xhr.send(file);
         });
