@@ -5,6 +5,23 @@ import { r2Client, R2_BUCKET_NAME } from "@/lib/r2";
 
 export async function POST(request: Request) {
   try {
+    // 1. Validate Environment Configuration
+    if (!process.env.R2_ACCOUNT_ID && !process.env.R2_ENDPOINT) {
+        console.error("Critical: Missing R2_ACCOUNT_ID or R2_ENDPOINT");
+        return NextResponse.json(
+            { error: "Server Configuration Error: Missing R2_ACCOUNT_ID. Please check Vercel Settings." },
+            { status: 500 }
+        );
+    }
+
+    if (!process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
+        console.error("Critical: Missing R2 Credentials");
+        return NextResponse.json(
+            { error: "Server Configuration Error: Missing R2 Access Keys. Please check Vercel Settings." },
+            { status: 500 }
+        );
+    }
+
     const { filename, contentType, username } = await request.json();
 
     if (!filename || !contentType) {
