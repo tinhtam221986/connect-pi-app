@@ -68,12 +68,15 @@ export const apiClient = {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     resolve();
                 } else {
-                    reject(new Error(`Upload failed with status ${xhr.status}`));
+                    reject(new Error(`Upload failed with status ${xhr.status}. Response: ${xhr.responseText}`));
                 }
             };
 
             xhr.onerror = () => {
-                reject(new Error(`Network error during upload (CORS or Connectivity). Status: ${xhr.status}. Check R2 CORS config and Vercel Credentials.`));
+                // Try to get more info if possible (though usually empty on Status 0)
+                const errorDetails = `Status: ${xhr.status}`;
+                // We include the URL to help debug if it's hitting a wrong endpoint or localhost
+                reject(new Error(`Network error during upload (CORS or Connectivity). ${errorDetails}. Target URL: ${url}. Check R2 CORS config and Vercel Credentials.`));
             };
 
             xhr.ontimeout = () => {
