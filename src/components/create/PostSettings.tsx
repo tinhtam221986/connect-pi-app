@@ -91,19 +91,22 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         let taskResult: any = null;
         let taskError: any = null;
 
-        const taskPromise = task()
-            .then(res => {
-                taskResult = res;
-            })
-            .catch(err => {
-                taskError = err;
-            });
+        try {
+            taskResult = await task();
+        } catch (err) {
+            taskError = err;
+        }
 
         // Wait for both (if timer is active)
-        await Promise.all([timerPromise, taskPromise]);
+        await Promise.all([timerPromise]);
 
         if (taskError) {
-            updateStep(stepId, { status: 'error', error: taskError.message || "Unknown error" });
+             let errorMessage = taskError.message || "Unknown error";
+             if (errorMessage.includes("Network")) errorMessage = "Network Error: Check internet";
+             if (errorMessage.includes("Signature")) errorMessage = "Security Error: Auth failed";
+             if (errorMessage.includes("timeout")) errorMessage = "Connection timed out (Slow Network)";
+
+            updateStep(stepId, { status: 'error', error: errorMessage });
             throw taskError;
         }
 
@@ -157,7 +160,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             const deviceSignature = getBrowserFingerprint();
 
             // --- STEP 1: Get Presigned URL ---
-            // Min duration 2s (fake progress)
+            // Increased min duration for better visibility
             const presignedRes = await runStepWithMinDuration(1, 2000, async () => {
                 // IMPORTANT: Android often returns empty string for file.type.
                 // We must match the fallback logic used in uploadToR2 (video/mp4)
@@ -167,7 +170,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                     fileToUpload.name,
                     contentType,
                     user.username,
-                    30000 // 30s timeout
+                    60000 // INCREASED: 60s timeout for Permission Step
                 );
                 if (!res.url) throw new Error(res.error || "Failed to get upload URL");
                 return res;
@@ -180,7 +183,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                     presignedRes.url,
                     fileToUpload,
                     (percent) => updateStep(2, { progress: percent }), // Real progress callback
-                    120000 // 120s timeout for upload
+                    600000 // INCREASED: 10 minutes timeout for slow 3G upload
                 );
             }, true); // true = disable fake timer, use real progress
 
@@ -195,7 +198,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                     privacy,
                     deviceSignature,
                     metadata: { size: fileToUpload.size, type: fileToUpload.type }
-                }, 60000); // 60s timeout
+                }, 120000); // INCREASED: 120s timeout for Finalize
 
                 if (!res.success) throw new Error(res.error || "Finalize failed");
                 return res;
@@ -283,22 +286,29 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                             ))}
                         </div>
 
+                        {/* Working Indicator */}
+                        {!canClose && (
+                            <div className="flex justify-center py-2">
+                                <span className="text-xs text-gray-400 animate-pulse">Processing request...</span>
+                            </div>
+                        )}
+
                         {/* Footer / Close Button */}
                         {canClose && (
-                            <button
-                                onClick={handleSaveDraft}
-                                className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
-                            >
-                                Close
-                            </button>
-                        )}
-                         {canClose && (
-                            <button
-                                onClick={handleClose}
-                                className="w-full py-3 bg-gray-200 rounded-lg font-bold hover:bg-gray-300 transition-colors mt-2"
-                            >
-                                Close
-                            </button>
+                            <div className="flex flex-col gap-2 mt-2">
+                                <button
+                                    onClick={handleSaveDraft}
+                                    className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                    Save to Drafts
+                                </button>
+                                <button
+                                    onClick={handleClose}
+                                    className="w-full py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-gray-800 transition-colors"
+                                >
+                                    Close Window
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -426,4 +436,4 @@ function ArrowIcon() {
             <path d="M9 18L15 12L9 6" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
     )
-                }
+}

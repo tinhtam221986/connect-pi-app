@@ -23,9 +23,20 @@ export const apiClient = {
       });
       return res.json();
     },
+    uploadAvatar: async (file: File) => {
+       const contentType = file.type || 'image/jpeg';
+       const presignedRes = await apiClient.video.getPresignedUrl(file.name, contentType, undefined, 30000);
+
+       if (!presignedRes.url) throw new Error("Failed to get upload URL");
+
+       await apiClient.video.uploadToR2(presignedRes.url, file, undefined, 60000);
+
+       return { url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-8e3265763a96bdc4211f48b8aee1e135.r2.dev'}/${presignedRes.key}` };
+    }
   },
   video: {
-    getPresignedUrl: async (filename: string, contentType: string, username?: string, timeout: number = 30000) => {
+    getPresignedUrl: async (filename: string, contentType: string, username?: string, timeout: number = 60000) => {
+        // Increased default timeout to 60s
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
 
@@ -41,13 +52,14 @@ export const apiClient = {
         } catch (error: any) {
             clearTimeout(id);
             if (error.name === 'AbortError') {
-                throw new Error('Request timed out (30s)');
+                throw new Error('Request timed out (60s)');
             }
             throw error;
         }
     },
 
-    uploadToR2: async (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 120000): Promise<void> => {
+    uploadToR2: async (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 600000): Promise<void> => {
+        // Increased default timeout to 600s (10 minutes)
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', url);
@@ -73,9 +85,7 @@ export const apiClient = {
             };
 
             xhr.onerror = () => {
-                // Try to get more info if possible (though usually empty on Status 0)
                 const errorDetails = `Status: ${xhr.status}`;
-                // We include the URL to help debug if it's hitting a wrong endpoint or localhost
                 reject(new Error(`Network error during upload (CORS or Connectivity). ${errorDetails}. Target URL: ${url}. Check R2 CORS config and Vercel Credentials.`));
             };
 
@@ -87,7 +97,8 @@ export const apiClient = {
         });
     },
 
-    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 60000) => {
+    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 120000) => {
+        // Increased default timeout to 120s
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
 
@@ -103,7 +114,7 @@ export const apiClient = {
         } catch (error: any) {
              clearTimeout(id);
              if (error.name === 'AbortError') {
-                 throw new Error('Request timed out (60s)');
+                 throw new Error('Request timed out (120s)');
              }
              throw error;
         }

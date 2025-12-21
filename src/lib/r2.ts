@@ -33,18 +33,20 @@ if (!R2_ENDPOINT && R2_ACCOUNT_ID) {
     R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 }
 
-// Warn instead of throw during initialization to allow build to proceed
-if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
-  console.warn("Missing R2 credentials (ACCESS_KEY_ID or SECRET_ACCESS_KEY). Uploads will fail.");
+// Warn clearly if configuration is missing
+if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT) {
+  console.warn("⚠️ CRITICAL: Missing R2 credentials (ACCESS_KEY_ID, SECRET_ACCESS_KEY, or ACCOUNT_ID). Uploads will fail.");
 }
 
 export const r2Client = new S3Client({
   region: "auto",
-  endpoint: R2_ENDPOINT || "https://undefined.r2.cloudflarestorage.com",
+  // REMOVED Fallback to "https://undefined..." to ensure fail-fast behavior
+  endpoint: R2_ENDPOINT,
   forcePathStyle: true, // Critical for R2 to avoid SSL errors with bucket subdomains
   credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID || "mock-access-key",
-    secretAccessKey: R2_SECRET_ACCESS_KEY || "mock-secret-key",
+    // REMOVED Fallback to "mock-access-key"
+    accessKeyId: R2_ACCESS_KEY_ID || "",
+    secretAccessKey: R2_SECRET_ACCESS_KEY || "",
   },
 });
 
