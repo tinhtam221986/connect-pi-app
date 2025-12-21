@@ -53,12 +53,7 @@ const client = new S3Client({
 // Expanded CORS rules to include specific origins and methods
 const corsRules = [
   {
-    "AllowedOrigins": [
-        "*",
-        "https://i-app-9v46.vercel.app",
-        "https://i-app-9v46.vercel.app/",
-        "http://localhost:3000"
-    ],
+    "AllowedOrigins": ["*"],
     "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
     "AllowedHeaders": ["*", "Content-Type", "Authorization", "x-amz-date", "x-amz-content-sha256", "x-amz-user-agent"],
     "ExposeHeaders": ["ETag", "x-amz-request-id"],
