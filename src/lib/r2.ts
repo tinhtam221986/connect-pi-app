@@ -52,3 +52,7 @@ export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "connect-pi-app-asse
 
 // Support both naming conventions
 export const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || process.env.R2_PUBLIC_DOMAIN || "";
+
+if (!R2_PUBLIC_URL) {
+  console.warn("⚠️ WARNING: R2_PUBLIC_URL (or R2_PUBLIC_DOMAIN) is missing. Uploaded videos will likely fail to play.");
+}
