@@ -75,7 +75,8 @@ export const apiClient = {
             xhr.onerror = () => {
                 // Try to get more info if possible (though usually empty on Status 0)
                 const errorDetails = `Status: ${xhr.status}`;
-                reject(new Error(`Network error during upload (CORS or Connectivity). ${errorDetails}. Check R2 CORS config and Vercel Credentials.`));
+                // We include the URL to help debug if it's hitting a wrong endpoint or localhost
+                reject(new Error(`Network error during upload (CORS or Connectivity). ${errorDetails}. Target URL: ${url}. Check R2 CORS config and Vercel Credentials.`));
             };
 
             xhr.ontimeout = () => {
