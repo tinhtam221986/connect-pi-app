@@ -159,9 +159,13 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             // --- STEP 1: Get Presigned URL ---
             // Min duration 2s (fake progress)
             const presignedRes = await runStepWithMinDuration(1, 2000, async () => {
+                // IMPORTANT: Android often returns empty string for file.type.
+                // We must match the fallback logic used in uploadToR2 (video/mp4)
+                const contentType = fileToUpload.type || 'video/mp4';
+
                 const res = await apiClient.video.getPresignedUrl(
                     fileToUpload.name,
-                    fileToUpload.type,
+                    contentType,
                     user.username,
                     30000 // 30s timeout
                 );

@@ -109,7 +109,8 @@ export const apiClient = {
     // Legacy wrapper or refactor target
     upload: async (file: File, metadata?: { username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string }, onProgress?: (percent: number) => void) => {
         // 1. Get Presigned URL
-        const presignedRes = await apiClient.video.getPresignedUrl(file.name, file.type, metadata?.username);
+        const contentType = file.type || 'video/mp4';
+        const presignedRes = await apiClient.video.getPresignedUrl(file.name, contentType, metadata?.username);
         if (!presignedRes.url) throw new Error(presignedRes.error || "Failed to get upload URL");
 
         // 2. Upload to R2
