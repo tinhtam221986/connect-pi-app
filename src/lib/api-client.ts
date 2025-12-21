@@ -47,35 +47,32 @@ export const apiClient = {
         }
     },
 
-    uploadToR2: (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 30000): Promise<void> => {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open('PUT', url);
-            xhr.setRequestHeader('Content-Type', file.type);
-            xhr.timeout = timeout; // Set timeout
+    uploadToR2: async (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 120000): Promise<void> => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
 
-            if (onProgress) {
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        onProgress(percent);
-                    }
-                };
+        try {
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type || 'video/mp4',
+                },
+                body: file,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+
+            if (!res.ok) {
+                throw new Error(`Upload failed with status ${res.status}`);
             }
-
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    resolve();
-                } else {
-                    reject(new Error(`Upload failed with status ${xhr.status}`));
-                }
-            };
-
-            xhr.onerror = () => reject(new Error('Network error during upload (CORS or Connectivity)'));
-            xhr.ontimeout = () => reject(new Error(`Upload timed out after ${timeout / 1000}s`));
-
-            xhr.send(file);
-        });
+        } catch (error: any) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error(`Upload timed out after ${timeout / 1000}s`);
+            }
+            // Preserve the specific error message for Pi Browser debugging
+            throw new Error('Network error during upload (CORS or Connectivity)');
+        }
     },
 
     finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 60000) => {

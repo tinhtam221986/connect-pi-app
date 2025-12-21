@@ -170,17 +170,15 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             });
 
             // --- STEP 2: Upload to R2 ---
-            // REAL progress, so we disable the fake timer by passing true
-            await runStepWithMinDuration(2, 0, async () => {
+            // SIMULATED progress because standard Fetch API doesn't support upload progress
+            await runStepWithMinDuration(2, 5000, async () => {
                 await apiClient.video.uploadToR2(
                     presignedRes.url,
                     fileToUpload,
-                    (percent) => {
-                        updateStep(2, { progress: percent });
-                    },
-                    60000 // 60s timeout for upload
+                    undefined, // No progress callback needed
+                    120000 // 120s timeout for upload
                 );
-            }, true); // true = manual progress updates
+            }, false); // false = enable fake timer
 
             // --- STEP 3: Finalize ---
             // Min duration 2s (fake progress)
