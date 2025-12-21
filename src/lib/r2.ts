@@ -7,13 +7,28 @@ const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 // User might provide R2_ENDPOINT directly (e.g. from Vercel blob or specific setup)
 let R2_ENDPOINT = process.env.R2_ENDPOINT;
 
-// Clean endpoint if it contains bucket name (common mistake or Vercel specific)
-if (R2_ENDPOINT && R2_ENDPOINT.endsWith(process.env.R2_BUCKET_NAME || 'connect-pi-app-assets')) {
-    // Remove the bucket suffix to get the base service endpoint
-    R2_ENDPOINT = R2_ENDPOINT.replace(`/${process.env.R2_BUCKET_NAME || 'connect-pi-app-assets'}`, '');
+// Robust Sanitization:
+// The S3Client expects the *base* service endpoint (e.g., https://<account>.r2.cloudflarestorage.com).
+// Vercel or users often copy the full bucket URL (e.g., .../bucket-name).
+// We aggressively strip any path to prevent signature mismatches.
+if (R2_ENDPOINT) {
+    try {
+        // If it lacks protocol, add https:// to make it parsable
+        if (!R2_ENDPOINT.startsWith('http')) {
+            R2_ENDPOINT = `https://${R2_ENDPOINT}`;
+        }
+
+        const url = new URL(R2_ENDPOINT);
+        // .origin gives us just 'https://hostname.com' without the path
+        R2_ENDPOINT = url.origin;
+
+        console.log(`[R2 Config] Sanitized Endpoint: ${R2_ENDPOINT}`);
+    } catch (e) {
+        console.warn("[R2 Config] Failed to sanitize R2_ENDPOINT, using as-is:", e);
+    }
 }
 
-// If no endpoint provided, construct from Account ID
+// Fallback: Construct from Account ID if Endpoint is missing
 if (!R2_ENDPOINT && R2_ACCOUNT_ID) {
     R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 }
