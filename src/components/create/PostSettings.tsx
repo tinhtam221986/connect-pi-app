@@ -179,9 +179,14 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             // --- STEP 2: Upload to R2 ---
             // Real progress from XHR
             await runStepWithMinDuration(2, 5000, async () => {
+                // Fix: Recalculate or reuse the SAME contentType used in Step 1 to prevent signature mismatch
+                // (Though Step 1 contentType isn't in scope here, we re-derive it identically)
+                const contentType = fileToUpload.type || 'video/mp4';
+
                 await apiClient.video.uploadToR2(
                     presignedRes.url,
                     fileToUpload,
+                    contentType, // Pass explicit Content-Type
                     (percent) => updateStep(2, { progress: percent }), // Real progress callback
                     600000 // INCREASED: 10 minutes timeout for slow 3G upload
                 );
