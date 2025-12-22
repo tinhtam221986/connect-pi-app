@@ -6,4 +6,20 @@
   - Local:        http://localhost:3000
 
  ✓ Starting...
- ✓ Ready in 4.3s
+ ✓ Ready in 1901ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 12.8s (484 modules)
+ GET /profile/testuser 404 in 13756ms
+ ✓ Compiled in 1080ms (248 modules)
+ GET /profile/testuser 404 in 31ms
+ ✓ Compiled in 596ms (246 modules)
+ ✓ Compiled in 482ms (246 modules)
+ ✓ Compiled in 6.4s (246 modules)
+ ✓ Compiled in 803ms (246 modules)
+ ✓ Compiled in 911ms (246 modules)
+ ✓ Compiled in 827ms (246 modules)
+ ✓ Compiled in 694ms (246 modules)
+ ✓ Compiled in 470ms (246 modules)
+ ✓ Compiled in 623ms (246 modules)
+ ✓ Compiled in 430ms (246 modules)
+ ✓ Compiled in 1648ms (246 modules)
