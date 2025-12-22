@@ -24,12 +24,14 @@ export const apiClient = {
       return res.json();
     },
     uploadAvatar: async (file: File) => {
+       // Fix: Ensure fallback type is consistent for both signature and upload
        const contentType = file.type || 'image/jpeg';
        const presignedRes = await apiClient.video.getPresignedUrl(file.name, contentType, undefined, 30000);
 
        if (!presignedRes.url) throw new Error("Failed to get upload URL");
 
-       await apiClient.video.uploadToR2(presignedRes.url, file, undefined, 60000);
+       // Fix: Pass explicit contentType to uploadToR2
+       await apiClient.video.uploadToR2(presignedRes.url, file, contentType, undefined, 60000);
 
        return { url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-8e3265763a96bdc4211f48b8aee1e135.r2.dev'}/${presignedRes.key}` };
     }
@@ -58,16 +60,21 @@ export const apiClient = {
         }
     },
 
-    uploadToR2: async (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 600000): Promise<void> => {
+    uploadToR2: async (url: string, file: File, contentType?: string, onProgress?: (percent: number) => void, timeout: number = 600000): Promise<void> => {
         // Increased default timeout to 600s (10 minutes)
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', url);
             xhr.timeout = timeout;
 
-            // Important: Set Content-Type. Android might give empty string for file.type
-            const contentType = file.type || 'video/mp4';
-            xhr.setRequestHeader('Content-Type', contentType);
+            // Important: Set Content-Type. Android might give empty string for file.type.
+            // We prioritize the explicit contentType passed from the caller (which was used for signing).
+            const finalContentType = contentType || file.type || 'video/mp4';
+
+            // Debug log to help users verify the header match
+            console.log(`[Upload] Setting Content-Type: ${finalContentType}`);
+
+            xhr.setRequestHeader('Content-Type', finalContentType);
 
             xhr.upload.onprogress = (event) => {
                 if (event.lengthComputable && onProgress) {
@@ -128,7 +135,8 @@ export const apiClient = {
         if (!presignedRes.url) throw new Error(presignedRes.error || "Failed to get upload URL");
 
         // 2. Upload to R2
-        await apiClient.video.uploadToR2(presignedRes.url, file, onProgress);
+        // Fix: Pass contentType explicitly
+        await apiClient.video.uploadToR2(presignedRes.url, file, contentType, onProgress);
 
         // 3. Finalize
         return apiClient.video.finalizeUpload({
