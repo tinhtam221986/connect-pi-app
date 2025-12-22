@@ -13,8 +13,17 @@ const OrderSchema = new mongoose.Schema({
     productType: { type: String, enum: ['physical', 'digital'] }
   }],
 
+  // Money Flow Fields (Transparency)
+  // Total Payment = (items price * quantity) + shippingFee
   totalAmount: { type: Number, required: true },
   currency: { type: String, default: 'PI' },
+
+  shippingFee: { type: Number, default: 0 },
+  platformFee: { type: Number, default: 0 },
+  affiliateCommission: { type: Number, default: 0 },
+  netSellerEarnings: { type: Number, default: 0 },
+
+  affiliateId: { type: String }, // user_uid of referrer
 
   status: {
     type: String,

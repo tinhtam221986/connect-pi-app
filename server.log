@@ -14,3 +14,12 @@
  GET /profile/testuser 404 in 31ms
  ✓ Compiled in 596ms (246 modules)
  ✓ Compiled in 482ms (246 modules)
+ ✓ Compiled in 6.4s (246 modules)
+ ✓ Compiled in 803ms (246 modules)
+ ✓ Compiled in 911ms (246 modules)
+ ✓ Compiled in 827ms (246 modules)
+ ✓ Compiled in 694ms (246 modules)
+ ✓ Compiled in 470ms (246 modules)
+ ✓ Compiled in 623ms (246 modules)
+ ✓ Compiled in 430ms (246 modules)
+ ✓ Compiled in 1648ms (246 modules)

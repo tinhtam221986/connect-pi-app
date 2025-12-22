@@ -25,7 +25,8 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
         digitalContent: '',
         shippingName: 'Standard Shipping',
         shippingPrice: '0',
-        shippingDays: '3-5'
+        shippingDays: '3-5',
+        affiliateRate: '0'
     });
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +95,8 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
                 productType,
                 stock: parseInt(formData.stock),
                 digitalContent: productType === 'digital' ? formData.digitalContent : undefined,
+                shippingFee: productType === 'physical' ? parseFloat(formData.shippingPrice) : 0,
+                affiliateRate: parseFloat(formData.affiliateRate) / 100, // Convert % to decimal
                 shippingOptions: productType === 'physical' ? [{
                     name: formData.shippingName,
                     price: parseFloat(formData.shippingPrice),
@@ -229,6 +232,21 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
                     </div>
                 </div>
 
+                {/* Commission Setting */}
+                <div className="bg-gray-800/30 rounded-xl p-3">
+                    <label className="text-xs text-gray-400 block mb-1">Affiliate Commission (%)</label>
+                    <input
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        max="100"
+                        value={formData.affiliateRate}
+                        onChange={e => setFormData({...formData, affiliateRate: e.target.value})}
+                        className="w-full bg-black border border-gray-700 rounded-xl p-2 text-sm text-white"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">Percent of product price paid to promoters.</p>
+                </div>
+
                 {/* Conditional Fields */}
                 {productType === 'digital' ? (
                      <div className="bg-purple-900/10 border border-purple-500/30 rounded-xl p-3">
@@ -244,29 +262,20 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
                      </div>
                 ) : (
                     <div className="bg-gray-800/50 rounded-xl p-3 space-y-3">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase">Shipping Config</h4>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                placeholder="Method Name (e.g. Standard)"
-                                value={formData.shippingName}
-                                onChange={e => setFormData({...formData, shippingName: e.target.value})}
-                                className="flex-1 bg-black border border-gray-700 rounded-lg p-2 text-xs text-white"
-                            />
-                             <input
-                                type="number"
-                                placeholder="Cost"
-                                value={formData.shippingPrice}
-                                onChange={e => setFormData({...formData, shippingPrice: e.target.value})}
-                                className="w-20 bg-black border border-gray-700 rounded-lg p-2 text-xs text-white"
-                            />
-                        </div>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase">Domestic Shipping Fee (Pi)</h4>
+                         <input
+                            type="number"
+                            placeholder="Shipping Cost (e.g. 2.5)"
+                            value={formData.shippingPrice}
+                            onChange={e => setFormData({...formData, shippingPrice: e.target.value})}
+                            className="w-full bg-black border border-gray-700 rounded-lg p-2 text-sm text-white"
+                        />
                          <input
                             type="text"
-                            placeholder="Est. Days (e.g. 3-5 days)"
+                            placeholder="Est. Delivery (e.g. 3-5 days)"
                             value={formData.shippingDays}
                             onChange={e => setFormData({...formData, shippingDays: e.target.value})}
-                            className="w-full bg-black border border-gray-700 rounded-lg p-2 text-xs text-white"
+                            className="w-full bg-black border border-gray-700 rounded-lg p-2 text-xs text-white mt-2"
                         />
                     </div>
                 )}

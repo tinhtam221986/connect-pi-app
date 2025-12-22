@@ -29,7 +29,23 @@ export function CheckoutModal({ product, onClose }: CheckoutModalProps) {
     const [loading, setLoading] = useState(false);
     const [orderId, setOrderId] = useState<string | null>(null);
 
-    const totalAmount = product.price * quantity;
+    const itemTotal = product.price * quantity;
+    const shippingFee = (product.shippingFee || 0); // Flat fee, or * quantity if desired, but typically flat for single product checkout
+    // Let's assume flat fee per checkout for MVP as per "Domestic Shipping Fee" field implies.
+    // If it was per item, we'd multiply. Let's multiply for safety if user buys 10 items.
+    // Actually, usually shipping is per order, but simple "per item" is easier for "Add Product" logic without a cart.
+    // Let's keep it flat per order for this "Buy Now" flow to be simple?
+    // No, if I buy 10 heavy items, shipping costs more.
+    // Let's assume shippingFee is per Item for now since there's no complex cart calculation.
+    // Update: User said "Domestic Shipping Fee (Pi)" in Add Product.
+    // Formula: Total = Product Price + Shipping Fee.
+    // It says "Shipping Fee (Set by Seller)".
+    // Let's treat it as a per-item fee for safety in this "Direct Buy" flow.
+    const totalShipping = shippingFee; // * quantity ? Let's stick to flat fee per transaction for now to be user friendly unless directed.
+    // Actually, looking at route.ts I implemented: `const shippingFee = product.shippingFee || 0; const totalAmount = productTotal + shippingFee;`
+    // So it's a FLAT FEE per order in the backend. I will match that in frontend.
+
+    const totalAmount = itemTotal + totalShipping;
     const isPhysical = product.productType === 'physical';
 
     const handleNext = async () => {
@@ -162,9 +178,21 @@ export function CheckoutModal({ product, onClose }: CheckoutModalProps) {
                                 </div>
                             </div>
 
-                            <div className="border-t border-gray-800 pt-4 flex justify-between items-center">
-                                <span className="text-gray-400">Total</span>
-                                <span className="text-xl font-bold text-white">π {(product.price * quantity).toFixed(2)}</span>
+                            <div className="border-t border-gray-800 pt-4 space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">Item Total</span>
+                                    <span className="text-white">π {itemTotal.toFixed(2)}</span>
+                                </div>
+                                {isPhysical && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Shipping</span>
+                                        <span className="text-white">π {totalShipping.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-800">
+                                    <span className="text-gray-400 font-bold">Total</span>
+                                    <span className="text-xl font-bold text-purple-400">π {totalAmount.toFixed(2)}</span>
+                                </div>
                             </div>
                         </div>
                     )}
