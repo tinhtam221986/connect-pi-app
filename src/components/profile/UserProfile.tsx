@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
 import { MOCK_USERS } from "@/lib/mock-data";
-import { BadgeCheck, Settings, GripVertical, Award, Globe, Play, Lock, Heart, Gamepad2, Grid } from "lucide-react";
+import { BadgeCheck, Settings, GripVertical, Award, Globe, Play, Lock, Heart, Gamepad2, Grid, ShoppingBag } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { ThemeCustomizer } from "@/components/ui/theme-customizer";
 import { ProfileFrame } from "./ProfileFrame";
 import { useEconomy } from "@/components/economy/EconomyContext";
+import { ShopTab } from "@/components/shop/ShopTab";
 
-type ProfileTab = 'videos' | 'liked' | 'saved' | 'games';
+type ProfileTab = 'videos' | 'liked' | 'saved' | 'games' | 'shop';
 
 export function UserProfile() {
     const { user } = usePi();
@@ -80,6 +81,8 @@ export function UserProfile() {
                         </div>
                     </div>
                 );
+            case 'shop':
+                return <ShopTab username={username} />;
         }
     };
 
@@ -176,11 +179,11 @@ export function UserProfile() {
                  <button onClick={() => setActiveTab('videos')} className={`flex-1 py-3 flex justify-center ${activeTab === 'videos' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>
                     <Grid size={20} />
                  </button>
+                 <button onClick={() => setActiveTab('shop')} className={`flex-1 py-3 flex justify-center ${activeTab === 'shop' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>
+                    <ShoppingBag size={20} />
+                 </button>
                  <button onClick={() => setActiveTab('liked')} className={`flex-1 py-3 flex justify-center ${activeTab === 'liked' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>
                     <Heart size={20} />
-                 </button>
-                  <button onClick={() => setActiveTab('saved')} className={`flex-1 py-3 flex justify-center ${activeTab === 'saved' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>
-                    <Lock size={20} />
                  </button>
                   <button onClick={() => setActiveTab('games')} className={`flex-1 py-3 flex justify-center ${activeTab === 'games' ? 'border-b-2 border-white text-white' : 'text-gray-500'}`}>
                     <Gamepad2 size={20} />
