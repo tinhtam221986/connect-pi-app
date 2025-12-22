@@ -5,17 +5,22 @@ import { r2Client, R2_BUCKET_NAME } from "@/lib/r2";
 
 export async function POST(request: Request) {
   try {
-    // 1. Validate Environment Configuration
+    // 1. Validate Environment Configuration (Build-Safe)
+    const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? '';
+    const R2_ENDPOINT = process.env.R2_ENDPOINT ?? '';
+    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? '';
+    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? '';
+
     // We need at least one of these to construct the endpoint
-    if (!process.env.R2_ACCOUNT_ID && !process.env.R2_ENDPOINT) {
-        console.error("Critical: Missing R2 Configuration. Both R2_ACCOUNT_ID and R2_ENDPOINT are undefined in process.env.");
+    if (!R2_ACCOUNT_ID && !R2_ENDPOINT) {
+        console.error("Critical: Missing R2 Configuration. Both R2_ACCOUNT_ID and R2_ENDPOINT are undefined.");
         return NextResponse.json(
             { error: "Server Configuration Error: Missing R2_ACCOUNT_ID and R2_ENDPOINT. Please check Vercel Settings -> Environment Variables." },
             { status: 500 }
         );
     }
 
-    if (!process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
+    if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
         console.error("Critical: Missing R2 Credentials (R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY).");
         return NextResponse.json(
             { error: "Server Configuration Error: Missing R2 Access Keys. Please check Vercel Settings." },
