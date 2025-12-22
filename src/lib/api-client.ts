@@ -23,9 +23,20 @@ export const apiClient = {
       });
       return res.json();
     },
+    uploadAvatar: async (file: File) => {
+       const contentType = file.type || 'image/jpeg';
+       const presignedRes = await apiClient.video.getPresignedUrl(file.name, contentType, undefined, 30000);
+
+       if (!presignedRes.url) throw new Error("Failed to get upload URL");
+
+       await apiClient.video.uploadToR2(presignedRes.url, file, undefined, 60000);
+
+       return { url: `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-8e3265763a96bdc4211f48b8aee1e135.r2.dev'}/${presignedRes.key}` };
+    }
   },
   video: {
-    getPresignedUrl: async (filename: string, contentType: string, username?: string, timeout: number = 30000) => {
+    getPresignedUrl: async (filename: string, contentType: string, username?: string, timeout: number = 60000) => {
+        // Increased default timeout to 60s
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
 
@@ -41,44 +52,53 @@ export const apiClient = {
         } catch (error: any) {
             clearTimeout(id);
             if (error.name === 'AbortError') {
-                throw new Error('Request timed out (30s)');
+                throw new Error('Request timed out (60s)');
             }
             throw error;
         }
     },
 
-    uploadToR2: (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 30000): Promise<void> => {
+    uploadToR2: async (url: string, file: File, onProgress?: (percent: number) => void, timeout: number = 600000): Promise<void> => {
+        // Increased default timeout to 600s (10 minutes)
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', url);
-            xhr.setRequestHeader('Content-Type', file.type);
-            xhr.timeout = timeout; // Set timeout
+            xhr.timeout = timeout;
 
-            if (onProgress) {
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        onProgress(percent);
-                    }
-                };
-            }
+            // Important: Set Content-Type. Android might give empty string for file.type
+            const contentType = file.type || 'video/mp4';
+            xhr.setRequestHeader('Content-Type', contentType);
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable && onProgress) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    onProgress(percentComplete);
+                }
+            };
 
             xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     resolve();
                 } else {
-                    reject(new Error(`Upload failed with status ${xhr.status}`));
+                    reject(new Error(`Upload failed with status ${xhr.status}. Response: ${xhr.responseText}`));
                 }
             };
 
-            xhr.onerror = () => reject(new Error('Network error during upload (CORS or Connectivity)'));
-            xhr.ontimeout = () => reject(new Error(`Upload timed out after ${timeout / 1000}s`));
+            xhr.onerror = () => {
+                const errorDetails = `Status: ${xhr.status}`;
+                reject(new Error(`Network error during upload (CORS or Connectivity). ${errorDetails}. Target URL: ${url}. Check R2 CORS config and Vercel Credentials.`));
+            };
+
+            xhr.ontimeout = () => {
+                reject(new Error(`Upload timed out after ${timeout / 1000}s`));
+            };
 
             xhr.send(file);
         });
     },
 
-    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 60000) => {
+    finalizeUpload: async (data: { key: string; username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string, metadata?: any }, timeout: number = 120000) => {
+        // Increased default timeout to 120s
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
 
@@ -94,7 +114,7 @@ export const apiClient = {
         } catch (error: any) {
              clearTimeout(id);
              if (error.name === 'AbortError') {
-                 throw new Error('Request timed out (60s)');
+                 throw new Error('Request timed out (120s)');
              }
              throw error;
         }
@@ -103,7 +123,8 @@ export const apiClient = {
     // Legacy wrapper or refactor target
     upload: async (file: File, metadata?: { username?: string; description?: string; deviceSignature?: string; hashtags?: string; privacy?: string }, onProgress?: (percent: number) => void) => {
         // 1. Get Presigned URL
-        const presignedRes = await apiClient.video.getPresignedUrl(file.name, file.type, metadata?.username);
+        const contentType = file.type || 'video/mp4';
+        const presignedRes = await apiClient.video.getPresignedUrl(file.name, contentType, metadata?.username);
         if (!presignedRes.url) throw new Error(presignedRes.error || "Failed to get upload URL");
 
         // 2. Upload to R2

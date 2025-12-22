@@ -7,6 +7,16 @@ const UserSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },   
   isVip: { type: Boolean, default: false },
   bio: { type: String, default: "Thành viên Connect 🚀" },
+
+  // New field for Shop feature
+  savedAddresses: [{
+    name: String,
+    phone: String,
+    street: String,
+    city: String,
+    isDefault: { type: Boolean, default: false }
+  }],
+
   createdAt: { type: Date, default: Date.now },
 });
 

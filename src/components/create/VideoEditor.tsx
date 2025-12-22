@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { CreateContextState } from "./CreateFlow";
 import { Play, Type, Music, Sticker as StickerIcon, ArrowRight, X, Maximize2, Move, Scissors, Save, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +44,13 @@ export function VideoEditor({ media, onNext, onSaveDraft, initialState }: VideoE
     // Tools State
     const [activeTool, setActiveTool] = useState<'none' | 'text' | 'sticker' | 'music' | 'trim'>('none');
     const [textInput, setTextInput] = useState("");
+
+    // Autoplay on mount
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.play().catch(e => console.log("Autoplay prevented:", e));
+        }
+    }, []);
 
     // Load duration
     const handleLoadedMetadata = () => {
@@ -169,6 +176,7 @@ export function VideoEditor({ media, onNext, onSaveDraft, initialState }: VideoE
                         className="w-full h-full object-contain"
                         loop={false}
                         autoPlay
+                        muted
                         playsInline
                         onLoadedMetadata={handleLoadedMetadata}
                         onTimeUpdate={handleTimeUpdate}
