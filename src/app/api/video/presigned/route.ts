@@ -6,16 +6,17 @@ import { r2Client, R2_BUCKET_NAME } from "@/lib/r2";
 export async function POST(request: Request) {
   try {
     // 1. Validate Environment Configuration
+    // We need at least one of these to construct the endpoint
     if (!process.env.R2_ACCOUNT_ID && !process.env.R2_ENDPOINT) {
-        console.error("Critical: Missing R2_ACCOUNT_ID or R2_ENDPOINT");
+        console.error("Critical: Missing R2 Configuration. Both R2_ACCOUNT_ID and R2_ENDPOINT are undefined in process.env.");
         return NextResponse.json(
-            { error: "Server Configuration Error: Missing R2_ACCOUNT_ID. Please check Vercel Settings." },
+            { error: "Server Configuration Error: Missing R2_ACCOUNT_ID and R2_ENDPOINT. Please check Vercel Settings -> Environment Variables." },
             { status: 500 }
         );
     }
 
     if (!process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
-        console.error("Critical: Missing R2 Credentials");
+        console.error("Critical: Missing R2 Credentials (R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY).");
         return NextResponse.json(
             { error: "Server Configuration Error: Missing R2 Access Keys. Please check Vercel Settings." },
             { status: 500 }
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
     }
 
     const timestamp = Date.now();
+    // Sanitize filename
     const cleanFilename = filename.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.-]/g, '');
     const key = `uploads/${username || 'anon'}/${timestamp}-${cleanFilename}`;
 

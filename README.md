@@ -38,4 +38,3 @@ Contributions are welcome! Please create a Pull Request.
 
 ---
 *Built with ❤️ for the Pi Community*
-Kich hoat lai Vercel
