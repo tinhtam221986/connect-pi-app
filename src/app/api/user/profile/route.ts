@@ -15,8 +15,10 @@ export async function GET(request: Request) {
     try {
         await connectDB();
 
-        // 1. Fetch User Profile
-        let user = await User.findOne({ username }).lean();
+        // 1. Fetch User Profile (Case-insensitive)
+        let user = await User.findOne({
+            username: { $regex: new RegExp(`^${username}$`, 'i') }
+        }).lean();
 
         if (!user) {
             user = {
@@ -33,10 +35,12 @@ export async function GET(request: Request) {
             };
         }
 
-        // 2. Fetch User's Videos
-        const mongoVideos = await Video.find({ "author.username": username })
-                                    .sort({ createdAt: -1 })
-                                    .lean();
+        // 2. Fetch User's Videos (Case-insensitive)
+        const mongoVideos = await Video.find({
+            "author.username": { $regex: new RegExp(`^${username}$`, 'i') }
+        })
+        .sort({ createdAt: -1 })
+        .lean();
 
         const videos = mongoVideos.map((v: any) => ({
             id: v._id.toString(),
