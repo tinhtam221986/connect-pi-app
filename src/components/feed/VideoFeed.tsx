@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api-client';
-import { Heart, MessageCircle, Share2, Bookmark, Plus, ShoppingCart, Send, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Plus, ShoppingCart, Send, Volume2, VolumeX, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,11 @@ import { ReactionPicker } from './ReactionPicker';
 import { TopNav } from './TopNav';
 import { useRouter } from 'next/navigation';
 
-export function VideoFeed() {
+interface VideoFeedProps {
+    onNavigate?: (tab: string) => void;
+}
+
+export function VideoFeed({ onNavigate }: VideoFeedProps) {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -83,8 +87,8 @@ export function VideoFeed() {
   return (
     // Fixed: h-[100dvh] ensures full viewport height without gap
     <div className="relative w-full h-[100dvh] bg-black overflow-hidden">
-        {/* Absolute Top Navigation */}
-        <TopNav />
+        {/* Absolute Top Navigation - Avatar goes to Profile */}
+        <TopNav onProfileClick={() => onNavigate?.('profile')} />
 
         {/* Draggable AI Widget */}
         <DraggableAI />
@@ -100,6 +104,7 @@ export function VideoFeed() {
                     video={video}
                     isActive={i === currentVideoIndex}
                     index={i}
+                    onNavigate={onNavigate}
                 />
             ))}
         </div>
@@ -107,7 +112,7 @@ export function VideoFeed() {
   );
 }
 
-function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, index: number }) {
+function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActive: boolean, index: number, onNavigate?: (tab: string) => void }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const router = useRouter();
     const { user } = usePi();
@@ -115,7 +120,11 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
     // Safety check for array type
     const likesArray = Array.isArray(video.likes) ? video.likes : [];
 
-    const [isMuted, setIsMuted] = useState(true);
+    // Default to unmuted per immersive requests, or strict muted for autoplay policy?
+    // Policy: Mobile requires mute for autoplay.
+    // Interaction: Tap to Play/Pause.
+    const [isMuted, setIsMuted] = useState(true); // Start muted for autoplay success
+    const [isPlaying, setIsPlaying] = useState(false);
     const [likes, setLikes] = useState(likesArray.length);
     const [hasLiked, setHasLiked] = useState(false);
 
@@ -143,36 +152,47 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
         if (!videoRef.current) return;
 
         if (isActive) {
-            // Mobile browsers require mute for autoplay usually, but we start muted
-            videoRef.current.muted = isMuted;
+            // Mobile browsers require mute for autoplay usually
+            videoRef.current.muted = isMuted; // Use current muted state
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
-                    // Playing
+                    setIsPlaying(true);
                 }).catch((error) => {
                     console.log("Autoplay blocked:", error);
+                    setIsPlaying(false);
                 });
             }
         } else {
             videoRef.current.pause();
             videoRef.current.currentTime = 0; // Reset
+            setIsPlaying(false);
         }
-    }, [isActive, isMuted]);
+    }, [isActive]);
 
+    // Single Tap: Toggle Play/Pause
     const handleVideoClick = () => {
         if (isImage) return;
         if (!videoRef.current) return;
 
-        const newMutedState = !isMuted;
-        videoRef.current.muted = newMutedState;
-        setIsMuted(newMutedState);
+        if (videoRef.current.paused) {
+            videoRef.current.play();
+            setIsPlaying(true);
+            toast("Playing", { position: 'bottom-center', duration: 500 }); // Optional feedback
+        } else {
+            videoRef.current.pause();
+            setIsPlaying(false);
+             toast("Paused", { position: 'bottom-center', duration: 500 });
+        }
+    };
 
-        // Visual feedback could be added here (big mute icon fade in/out)
-        toast(newMutedState ? "Muted" : "Unmuted", {
-            duration: 1000,
-            position: 'top-center',
-            icon: newMutedState ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />
-        });
+    // Double Tap: Like
+    const handleDoubleTap = (e: React.MouseEvent | React.TouchEvent) => {
+        // Prevent click default propagation if needed
+        e.stopPropagation();
+        handleLike('like');
+        // Show big heart animation logic can go here (using Framer Motion or overlay)
+        toast("❤️ Liked!", { position: 'top-center', duration: 800 });
     };
 
     const handleLike = async (reactionType: string = 'like') => {
@@ -234,17 +254,24 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
     };
 
     const handleShopClick = () => {
-        const products = video.products || [];
-        if (products.length > 0) {
-            toast.success(`Found ${products.length} tagged products!`);
-            // Future: Open Product Drawer
+        if (onNavigate) {
+            onNavigate('market');
         } else {
-            toast.info("No products tagged in this video.");
+            const products = video.products || [];
+            if (products.length > 0) {
+                 toast.success(`Found ${products.length} tagged products!`);
+            } else {
+                toast.info("No products tagged in this video.");
+            }
         }
     };
 
     const handleCreatePost = () => {
-        router.push('/create');
+        if (onNavigate) {
+            onNavigate('create');
+        } else {
+            router.push('/create');
+        }
     };
 
     const onCommentAdded = (newComment: any) => {
@@ -256,6 +283,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
         <div
             className="video-item-container w-full h-[100dvh] snap-start relative flex items-center justify-center bg-black shrink-0"
             data-index={index}
+            onDoubleClick={handleDoubleTap}
         >
             {/* Media Player */}
             {isImage ? (
@@ -263,6 +291,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                     src={video.url}
                     className="w-full h-full object-contain bg-black"
                     alt={video.description}
+                    onDoubleClick={handleDoubleTap}
                 />
             ) : (
                 <video
@@ -272,19 +301,29 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                     playsInline
                     muted={isMuted} // Initial state
                     onClick={handleVideoClick}
+                    onDoubleClick={handleDoubleTap}
                     className="w-full h-full object-cover"
                     poster={video.thumbnail}
                 />
             )}
 
+            {/* Play/Pause Indicator (Optional) */}
+            {!isPlaying && !isImage && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <Play className="w-8 h-8 text-white/80 ml-1" fill="currentColor" />
+                    </div>
+                </div>
+            )}
+
             {/* Overlay Gradient */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
 
-            {/* Left Action: Shop */}
+            {/* Left Action: Shop (Bottom Left) */}
             <div className="absolute left-4 bottom-40 z-20 pb-safe">
                 <button
                     onClick={handleShopClick}
-                    className="flex flex-col items-center gap-1 group"
+                    className="flex flex-col items-center gap-1 group active:scale-90 transition-transform"
                 >
                     <div className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full border border-yellow-500/50 flex items-center justify-center animate-pulse">
                          <ShoppingCart className="w-5 h-5 text-yellow-400" />
@@ -295,12 +334,12 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
 
             {/* Right Action Bar (Vertical) */}
             <div className="absolute right-2 bottom-32 flex flex-col items-center gap-5 z-20 pb-safe">
-                {/* 1. Avatar */}
+                {/* 1. Author Avatar (Follow) */}
                 <div className="flex flex-col items-center relative">
                      <div className="w-12 h-12 rounded-full border-2 border-white p-[1px]">
                         <img src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full rounded-full bg-black object-cover" alt="avatar" />
                     </div>
-                    {/* Follow Plus (moved to Avatar as standard, but user asked for Create Button at bottom. Usually Follow is here) */}
+                    {/* Follow Plus */}
                     <div className="w-5 h-5 bg-red-500 rounded-full -mt-3 flex items-center justify-center text-white font-bold text-xs border border-black">+</div>
                 </div>
 
@@ -347,21 +386,13 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                     <span className="text-[11px] font-bold text-white drop-shadow-md">Save</span>
                 </button>
 
-                {/* 6. Create Post Button (Requested Location) */}
+                {/* 6. Create Post Button (Floating Bottom Right) - Replaces Rotating Disc */}
                 <button
                     onClick={handleCreatePost}
-                    className="mt-2 w-10 h-10 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white/20 active:scale-90 transition-transform"
+                    className="mt-4 w-12 h-12 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white/20 active:scale-90 transition-transform animate-pulse"
                 >
-                    <Plus className="w-6 h-6 text-white" />
+                    <Plus className="w-7 h-7 text-white" />
                 </button>
-
-                {/* Disc Animation (Bottom of stack) */}
-                <div className="mt-2 w-10 h-10 bg-black rounded-full border-[3px] border-zinc-800 flex items-center justify-center animate-spin-slow overflow-hidden">
-                     <img
-                        src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`}
-                        className="w-full h-full object-cover opacity-80"
-                     />
-                </div>
             </div>
 
             {/* Bottom Info Area */}

@@ -6,7 +6,7 @@ import { VideoFeed } from '@/components/feed/VideoFeed';
 import { MarketplaceView } from '@/components/market/MarketplaceView';
 import { GameCenter } from '@/components/game/GameCenter';
 import { UserProfile } from '@/components/profile/UserProfile';
-import { BottomNav } from '@/components/BottomNav';
+// BottomNav removed for Immersive Mode
 import { useRouter } from 'next/navigation';
 
 export default function MainAppView() {
@@ -24,31 +24,34 @@ export default function MainAppView() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'home': return <VideoFeed />;
+      // Pass onNavigate to VideoFeed so it can handle internal navigation (Profile, Shop, Create)
+      case 'home': return <VideoFeed onNavigate={handleTabChange} />;
       case 'market': return <MarketplaceView />;
       case 'game': return <GameCenter />;
-      case 'profile': return <UserProfile />;
-      default: return <VideoFeed />;
+      // Pass onBack to UserProfile so user can return to Home
+      case 'profile': return <UserProfile onBack={() => setActiveTab('home')} />;
+      default: return <VideoFeed onNavigate={handleTabChange} />;
     }
   };
 
   return (
     <div className="flex flex-col h-[100dvh] bg-black text-white relative overflow-hidden">
-      {/* Pi Status - Overlay (Top Left) */}
-      <div className="absolute top-safe left-0 right-0 z-40 p-2 flex justify-between items-start pointer-events-none">
-           <div className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/5 flex items-center gap-2">
-               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-               <span className="text-[10px] font-medium text-white/80 tracking-wide">@{user?.username || 'Guest'}</span>
-           </div>
-      </div>
+      {/* Pi Status - Overlay (Top Left) - Only show on Home/Game to avoid cluttering Profile */}
+      {activeTab === 'home' && (
+        <div className="absolute top-safe left-0 right-0 z-40 p-2 flex justify-between items-start pointer-events-none">
+             <div className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/5 flex items-center gap-2">
+                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                 <span className="text-[10px] font-medium text-white/80 tracking-wide">@{user?.username || 'Guest'}</span>
+             </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 w-full h-full relative">
         {renderContent()}
       </main>
 
-      {/* Transparent Bottom Navigation */}
-      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      {/* BottomNav removed per "Urgent Revision" for Pure Immersive Feed */}
     </div>
   );
 }
