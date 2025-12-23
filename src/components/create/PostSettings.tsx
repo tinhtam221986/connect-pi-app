@@ -10,6 +10,7 @@ import { useEconomy } from "@/components/economy/EconomyContext";
 import { getBrowserFingerprint } from "@/lib/utils";
 import { saveDraft } from "@/lib/drafts";
 import { Progress } from "@/components/ui/progress";
+import { useRouter } from "next/navigation";
 
 interface PostSettingsProps {
     media: CreateContextState;
@@ -30,6 +31,7 @@ interface Step {
 export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     const { user } = usePi();
     const { addVideo } = useEconomy();
+    const router = useRouter(); // Initialize router for redirection
     const [caption, setCaption] = useState("");
     const [privacy, setPrivacy] = useState<'public' | 'friends' | 'private'>('public');
     const [allowComments, setAllowComments] = useState(true);
@@ -219,10 +221,12 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                 createdAt: Date.now()
             });
 
+            // Wait briefly then close and redirect
             setTimeout(() => {
                 setIsPosting(false);
                 setCanClose(true);
-                onPostComplete();
+                onPostComplete(); // Closes the modal/overlay
+                router.push("/profile"); // REDIRECT to profile as requested
             }, 1500);
 
         } catch (e: any) {
@@ -234,7 +238,11 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
     };
 
     const handleClose = () => {
-        if (canClose) setIsPosting(false);
+        if (canClose) {
+            setIsPosting(false);
+            // If we closed after a success, also redirect? User just said "auto-close", logic above handles auto-redirect.
+            // This button is mainly for manual abort/close on error.
+        }
     };
 
     return (
