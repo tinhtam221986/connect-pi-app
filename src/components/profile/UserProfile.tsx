@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePi } from "@/components/pi/pi-provider";
 import { MOCK_USERS } from "@/lib/mock-data";
-import { BadgeCheck, Settings, GripVertical, Award, Globe, Play, Lock, Heart, Gamepad2, Grid, ShoppingBag } from "lucide-react";
+import { BadgeCheck, Settings, GripVertical, Award, Globe, Play, Lock, Heart, Gamepad2, Grid, ShoppingBag, ChevronLeft } from "lucide-react";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { ThemeCustomizer } from "@/components/ui/theme-customizer";
 import { ProfileFrame } from "./ProfileFrame";
@@ -12,7 +12,11 @@ import { ShopTab } from "@/components/shop/ShopTab";
 
 type ProfileTab = 'videos' | 'liked' | 'saved' | 'games' | 'shop';
 
-export function UserProfile() {
+interface UserProfileProps {
+    onBack?: () => void;
+}
+
+export function UserProfile({ onBack }: UserProfileProps) {
     const { user } = usePi();
     const { myVideos } = useEconomy();
     const { t, language, setLanguage } = useLanguage();
@@ -114,8 +118,15 @@ export function UserProfile() {
              )}
 
              {/* Header */}
-             <div className="flex justify-between items-center p-4 sticky top-0 bg-black/80 backdrop-blur-md z-10 border-b border-gray-800/50">
-                <span className="font-bold text-lg">{username}</span>
+             <div className="flex justify-between items-center p-4 sticky top-0 bg-black/80 backdrop-blur-md z-10 border-b border-gray-800/50 pt-safe-top">
+                <div className="flex items-center gap-3">
+                    {onBack && (
+                        <button onClick={onBack} className="p-1 -ml-1 hover:bg-white/10 rounded-full">
+                            <ChevronLeft size={24} />
+                        </button>
+                    )}
+                    <span className="font-bold text-lg">{username}</span>
+                </div>
                 <div className="flex gap-4 items-center">
                     <button 
                         onClick={toggleLanguage} 
