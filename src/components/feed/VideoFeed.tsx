@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Share2, Gift } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
 import { cn } from '@/lib/utils';
+import { CommentsDrawer } from './CommentsDrawer';
 
 export function VideoFeed() {
   const [videos, setVideos] = useState<any[]>([]);
@@ -95,12 +96,29 @@ export function VideoFeed() {
 
 function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, index: number }) {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [likes, setLikes] = useState(video.likes || 0);
-    const [hasLiked, setHasLiked] = useState(false);
     const { user } = usePi();
 
+    // Safety check for array type (video.likes comes from API as array now, but might be number from legacy/mock)
+    const likesArray = Array.isArray(video.likes) ? video.likes : [];
+
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [likes, setLikes] = useState(likesArray.length);
+    const [hasLiked, setHasLiked] = useState(false);
+
+    // Comments state
+    const [commentsOpen, setCommentsOpen] = useState(false);
+    const commentsArray = Array.isArray(video.comments) ? video.comments : [];
+    const [commentCount, setCommentCount] = useState(commentsArray.length);
+    const [commentsList, setCommentsList] = useState<any[]>(commentsArray);
+
     const isImage = video.resource_type === 'image';
+
+    // Initialize Like State on mount or when user changes
+    useEffect(() => {
+        if (user && user.uid && Array.isArray(video.likes)) {
+            setHasLiked(video.likes.includes(user.uid));
+        }
+    }, [user, video.likes]);
 
     // Auto Play/Pause based on active state
     useEffect(() => {
@@ -149,13 +167,18 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
         } else {
             setLikes((prev: number) => prev + 1);
             setHasLiked(true);
+        }
 
-            try {
-                // Call MongoDB API
-                await apiClient.video.like(video.id || video._id, user.username);
-            } catch (error) {
-                console.error("Like failed", error);
-                // Revert if failed
+        try {
+            // Call MongoDB API
+            await apiClient.video.like(video.id || video._id, user.uid);
+        } catch (error) {
+            console.error("Like failed", error);
+            // Revert if failed
+            if (hasLiked) {
+                setLikes((prev: number) => prev + 1);
+                setHasLiked(true);
+            } else {
                 setLikes((prev: number) => prev - 1);
                 setHasLiked(false);
             }
@@ -163,9 +186,12 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
     };
 
     const handleComment = () => {
-         // Placeholder for full comment drawer
-         // Calling API just to show connection as requested, but ideally needs UI
-         toast.info("Opening comments...", { description: "Comment section coming soon!" });
+         setCommentsOpen(true);
+    };
+
+    const onCommentAdded = (newComment: any) => {
+        setCommentCount((prev: number) => prev + 1);
+        setCommentsList(prev => [...prev, newComment]);
     };
 
     return (
@@ -186,9 +212,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                     src={video.url}
                     loop
                     playsInline
-                    // muted // Ideally removed for "sound on", but browser might block autoplay without it if no interaction.
-                    // Leaving unmuted as per user request to manage audio.
-                    // User interaction (scroll/click) usually unlocks audio context on mobile.
+                    muted // Default muted for mobile autoplay compliance
                     onClick={togglePlay}
                     className="w-full h-full object-cover"
                     poster={video.thumbnail}
@@ -231,7 +255,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                 {/* COMMENT */}
                 <button onClick={handleComment} className="flex flex-col items-center gap-1 group">
                     <MessageCircle className="w-8 h-8 text-white stroke-[1.5px] group-active:text-blue-400 transition-colors drop-shadow-md" />
-                    <span className="text-[10px] font-bold text-white drop-shadow-md">{video.comments || 0}</span>
+                    <span className="text-[10px] font-bold text-white drop-shadow-md">{commentCount}</span>
                 </button>
 
                  {/* GIFT */}
@@ -264,6 +288,15 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                      </div>
                 </div>
             </div>
+
+            <CommentsDrawer
+                isOpen={commentsOpen}
+                onClose={() => setCommentsOpen(false)}
+                videoId={video.id || video._id}
+                comments={commentsList} // Note: This list is currently empty initially, ideally should be fetched.
+                currentUser={user}
+                onCommentAdded={onCommentAdded}
+            />
         </div>
     );
 }
