@@ -21,8 +21,8 @@ export async function GET() {
             thumbnail: v.thumbnailUrl || v.videoUrl,
             description: v.caption || "No description",
             username: v.author?.username || "Anonymous",
-            likes: v.likes?.length || 0,
-            comments: v.comments?.length || 0,
+            likes: v.likes || [],
+            comments: v.comments || [],
             resource_type: 'video',
             created_at: v.createdAt
         }));

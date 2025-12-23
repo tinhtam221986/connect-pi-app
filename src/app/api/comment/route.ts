@@ -5,21 +5,19 @@ import Video from "@/models/Video";
 export async function POST(request: Request) {
   try {
     await connectDB();
-    const { videoId, text } = await request.json();
+    const { videoId, text, user_uid, username, avatar } = await request.json();
 
-    if (!videoId || !text) {
-      return NextResponse.json({ error: "Thiếu thông tin" }, { status: 400 });
+    if (!videoId || !text || !user_uid || !username) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-
-    // Giả lập người dùng (Vì chưa có giấy khai sinh Pi)
-    const fakeUser = {
-      username: "Pi Pioneer " + Math.floor(Math.random() * 99),
-      avatar: "https://via.placeholder.com/150"
-    };
 
     const newComment = {
       text: text,
-      user: fakeUser,
+      user: {
+        username: username,
+        user_uid: user_uid,
+        avatar: avatar || ""
+      },
       createdAt: new Date()
     };
 

@@ -1,59 +1,145 @@
 "use client";
 
-import { X, Send, Heart } from "lucide-react";
-import { useState } from "react";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import React, { useState, useEffect } from "react";
+import { X, Send, User } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
-export function CommentsDrawer({ isOpen, onClose, commentsCount }: { isOpen: boolean, onClose: () => void, commentsCount: number }) {
-    const [comments, setComments] = useState([
-        { id: 1, user: "pi_fan_99", text: "Amazing content! 🔥", likes: 12 },
-        { id: 2, user: "crypto_king", text: "To the moon! 🚀", likes: 8 },
-        { id: 3, user: "web3_dev", text: "Great quality.", likes: 2 },
-    ]);
-    const [input, setInput] = useState("");
+interface Comment {
+    text: string;
+    user: {
+        username: string;
+        avatar?: string;
+    };
+    createdAt: string;
+}
 
-    const handleSend = () => {
-        if (!input.trim()) return;
-        setComments(prev => [...prev, { id: Date.now(), user: "you", text: input, likes: 0 }]);
-        setInput("");
+interface CommentsDrawerProps {
+    isOpen: boolean;
+    onClose: () => void;
+    videoId: string;
+    comments: Comment[];
+    currentUser: any;
+    onCommentAdded: (newComment: Comment) => void;
+}
+
+export function CommentsDrawer({ isOpen, onClose, videoId, comments, currentUser, onCommentAdded }: CommentsDrawerProps) {
+    const [commentText, setCommentText] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [localComments, setLocalComments] = useState<Comment[]>(comments);
+
+    useEffect(() => {
+        setLocalComments(comments);
+    }, [comments]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!commentText.trim() || !currentUser) return;
+
+        setIsSubmitting(true);
+        try {
+            await apiClient.video.comment(
+                videoId,
+                commentText,
+                currentUser.uid,
+                currentUser.username,
+                currentUser.avatar
+            );
+
+            const newComment: Comment = {
+                text: commentText,
+                user: {
+                    username: currentUser.username,
+                    avatar: currentUser.avatar
+                },
+                createdAt: new Date().toISOString()
+            };
+
+            onCommentAdded(newComment);
+            setLocalComments(prev => [...prev, newComment]);
+            setCommentText("");
+        } catch (error) {
+            console.error("Failed to post comment:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    return (
-        <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DrawerContent className="bg-gray-900 border-t border-gray-800 text-white max-h-[70vh] flex flex-col">
-                <div className="p-4 h-full flex flex-col">
-                    <h3 className="text-center font-bold mb-4 border-b border-gray-800 pb-2">{commentsCount} Comments</h3>
+    if (!isOpen) return null;
 
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                        {comments.map(c => (
-                            <div key={c.id} className="flex gap-3 animate-in slide-in-from-bottom-2">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 shrink-0" />
-                                <div className="flex-1">
-                                    <p className="text-xs font-bold text-gray-400">@{c.user}</p>
-                                    <p className="text-sm">{c.text}</p>
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/50 backdrop-blur-sm animate-in fade-in">
+            {/* Click outside to close */}
+            <div className="absolute inset-0" onClick={onClose} />
+
+            <div className="relative w-full max-w-md bg-zinc-900 border-t border-white/10 sm:rounded-xl sm:border flex flex-col h-[70vh] sm:h-[600px] shadow-2xl animate-in slide-in-from-bottom duration-300">
+
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <h3 className="font-bold text-white text-lg">Comments ({localComments.length})</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Comments List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {localComments.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-2">
+                            <User size={48} strokeWidth={1} />
+                            <p>No comments yet. Be the first!</p>
+                        </div>
+                    ) : (
+                        localComments.map((comment, index) => (
+                            <div key={index} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden shrink-0 border border-white/10">
+                                    {comment.user.avatar ? (
+                                        <img src={comment.user.avatar} alt={comment.user.username} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-purple-500 to-pink-500">
+                                            {comment.user.username[0].toUpperCase()}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex flex-col items-center text-gray-500 hover:text-red-500 cursor-pointer transition-colors">
-                                    <Heart size={14} />
-                                    <span className="text-[10px]">{c.likes}</span>
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-sm font-semibold text-gray-200">@{comment.user.username}</span>
+                                        <span className="text-xs text-gray-500">
+                                            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 break-words leading-relaxed">{comment.text}</p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        ))
+                    )}
+                </div>
 
-                    <div className="mt-4 flex gap-2 pt-2 border-t border-gray-800">
+                {/* Input Area */}
+                <form onSubmit={handleSubmit} className="p-3 border-t border-white/10 bg-zinc-900 pb-safe">
+                    <div className="flex gap-2 items-center bg-zinc-800/50 rounded-full px-4 py-2 border border-white/5 focus-within:border-purple-500/50 transition-colors">
                         <input
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSend()}
-                            className="flex-1 bg-gray-800 rounded-full px-4 py-2 text-sm focus:outline-none border border-gray-700 focus:border-blue-500 transition-colors"
+                            type="text"
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
                             placeholder="Add a comment..."
+                            className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-gray-500"
+                            disabled={!currentUser}
                         />
-                        <button onClick={handleSend} disabled={!input.trim()} className="p-2 bg-blue-600 rounded-full text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">
-                            <Send size={16} />
+                        <button
+                            type="submit"
+                            disabled={!commentText.trim() || isSubmitting || !currentUser}
+                            className={cn(
+                                "p-2 rounded-full text-purple-500 transition-all",
+                                commentText.trim() && !isSubmitting ? "hover:bg-purple-500/20 opacity-100 scale-110" : "opacity-50"
+                            )}
+                        >
+                            <Send size={18} />
                         </button>
                     </div>
-                </div>
-            </DrawerContent>
-        </Drawer>
+                </form>
+            </div>
+        </div>
     );
 }

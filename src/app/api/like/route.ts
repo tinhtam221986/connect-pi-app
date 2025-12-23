@@ -5,34 +5,31 @@ import Video from "@/models/Video";
 export async function POST(request: Request) {
   try {
     await connectDB();
-    const { videoId, action } = await request.json();
+    const { videoId, user_uid } = await request.json();
 
-    if (!videoId) {
-      return NextResponse.json({ error: "Thiếu ID video" }, { status: 400 });
+    if (!videoId || !user_uid) {
+      return NextResponse.json({ error: "Missing videoId or user_uid" }, { status: 400 });
     }
 
     const video = await Video.findById(videoId);
     if (!video) {
-      return NextResponse.json({ error: "Không tìm thấy video" }, { status: 404 });
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    // Tạm thời dùng một ID giả để test tính năng.
-    // Sau này khi có Pi SDK, sẽ thay bằng UID thật của người dùng Pi.
-    const tempUserId = "temp_user_" + Math.floor(Math.random() * 1000);
-
+    // Toggle logic: If user already liked, remove them. If not, add them.
+    const hasLiked = video.likes.includes(user_uid);
     let updatedVideo;
-    if (action === 'like') {
-      // Nếu là like, thêm user vào mảng likes (dùng $addToSet để tránh trùng)
+
+    if (hasLiked) {
       updatedVideo = await Video.findByIdAndUpdate(
         videoId,
-        { $addToSet: { likes: tempUserId } },
+        { $pull: { likes: user_uid } },
         { new: true }
       );
     } else {
-      // Nếu là unlike, rút user khỏi mảng likes
       updatedVideo = await Video.findByIdAndUpdate(
         videoId,
-        { $pull: { likes: tempUserId } },
+        { $addToSet: { likes: user_uid } },
         { new: true }
       );
     }

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const VideoSchema = new mongoose.Schema({
   videoUrl: { type: String, required: true },
-  caption: { type: String, required: true },
+  caption: { type: String, required: false },
   // PRD: Privacy setting (Public/Friends/Private)
   privacy: {
     type: String,
