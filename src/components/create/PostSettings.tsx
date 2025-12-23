@@ -144,6 +144,9 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             return;
         }
 
+        // REMOVED: Caption validation to make it optional
+        // if (!caption) { ... }
+
         setIsPosting(true);
         setCanClose(false);
 
@@ -162,50 +165,43 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
             const deviceSignature = getBrowserFingerprint();
 
             // --- STEP 1: Get Presigned URL ---
-            // Increased min duration for better visibility
             const presignedRes = await runStepWithMinDuration(1, 2000, async () => {
-                // IMPORTANT: Android often returns empty string for file.type.
-                // We must match the fallback logic used in uploadToR2 (video/mp4)
                 const contentType = fileToUpload.type || 'video/mp4';
 
                 const res = await apiClient.video.getPresignedUrl(
                     fileToUpload.name,
                     contentType,
                     user.username,
-                    60000 // INCREASED: 60s timeout for Permission Step
+                    60000
                 );
                 if (!res.url) throw new Error(res.error || "Failed to get upload URL");
                 return res;
             });
 
             // --- STEP 2: Upload to R2 ---
-            // Real progress from XHR
             await runStepWithMinDuration(2, 5000, async () => {
-                // Fix: Recalculate or reuse the SAME contentType used in Step 1 to prevent signature mismatch
-                // (Though Step 1 contentType isn't in scope here, we re-derive it identically)
                 const contentType = fileToUpload.type || 'video/mp4';
 
                 await apiClient.video.uploadToR2(
                     presignedRes.url,
                     fileToUpload,
-                    contentType, // Pass explicit Content-Type
-                    (percent) => updateStep(2, { progress: percent }), // Real progress callback
-                    600000 // INCREASED: 10 minutes timeout for slow 3G upload
+                    contentType,
+                    (percent) => updateStep(2, { progress: percent }),
+                    600000
                 );
-            }, true); // true = disable fake timer, use real progress
+            }, true);
 
             // --- STEP 3: Finalize ---
-            // Min duration 2s (fake progress)
             const finalizeRes = await runStepWithMinDuration(3, 2000, async () => {
                 const res = await apiClient.video.finalizeUpload({
                     key: presignedRes.key,
                     username: user.username,
-                    description: caption,
+                    description: caption, // Optional now
                     hashtags: JSON.stringify(hashtags),
                     privacy,
                     deviceSignature,
                     metadata: { size: fileToUpload.size, type: fileToUpload.type }
-                }, 120000); // INCREASED: 120s timeout for Finalize
+                }, 120000);
 
                 if (!res.success) throw new Error(res.error || "Finalize failed");
                 return res;
@@ -226,22 +222,18 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                 setIsPosting(false);
                 setCanClose(true);
                 onPostComplete(); // Closes the modal/overlay
-                router.push("/profile"); // REDIRECT to profile as requested
+                router.push("/"); // CHANGED: Redirect to Home Feed ("/") instead of "/profile"
             }, 1500);
 
         } catch (e: any) {
             console.error(e);
             setCanClose(true);
-            // Error is already set in the specific step by runStepWithMinDuration
-            // We just ensure the loop stops here
         }
     };
 
     const handleClose = () => {
         if (canClose) {
             setIsPosting(false);
-            // If we closed after a success, also redirect? User just said "auto-close", logic above handles auto-redirect.
-            // This button is mainly for manual abort/close on error.
         }
     };
 
@@ -353,7 +345,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                      <textarea
                         value={caption}
                         onChange={(e) => setCaption(e.target.value)}
-                        placeholder="Describe your video... #Hashtags @Friends"
+                        placeholder="Describe your video... #Hashtags @Friends (Optional)"
                         className="w-full h-full resize-none outline-none text-sm p-2"
                      />
                  </div>
@@ -361,7 +353,7 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
 
             {/* Settings Group */}
             <div className="bg-white p-4 space-y-6 mb-32">
-
+                {/* ... (Existing settings) ... */}
                 <div className="flex items-center gap-3 text-sm text-gray-700 hover:bg-gray-50 p-2 rounded-lg cursor-pointer">
                     <Hash size={20} />
                     <span className="flex-1">Hashtags</span>

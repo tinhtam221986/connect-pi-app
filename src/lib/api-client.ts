@@ -145,6 +145,24 @@ export const apiClient = {
             metadata: { size: file.size, type: file.type }
         });
     },
+
+    like: async (videoId: string, username: string) => {
+        const res = await fetch('/api/like', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId, username })
+        });
+        return res.json();
+    },
+
+    comment: async (videoId: string, username: string, text: string, avatar?: string) => {
+        const res = await fetch('/api/comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId, username, text, avatar })
+        });
+        return res.json();
+    }
   },
   ai: {
     generate: async (prompt: string, type: 'script' | 'image') => {
