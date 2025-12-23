@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api-client';
-import { Heart, MessageCircle, Share2, Gift } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Plus, ShoppingCart, Send, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
 import { cn } from '@/lib/utils';
 import { CommentsDrawer } from './CommentsDrawer';
+import { DraggableAI } from './DraggableAI';
+import { ReactionPicker } from './ReactionPicker';
+import { TopNav } from './TopNav';
+import { useRouter } from 'next/navigation';
 
 export function VideoFeed() {
   const [videos, setVideos] = useState<any[]>([]);
@@ -78,30 +82,40 @@ export function VideoFeed() {
 
   return (
     // Fixed: h-[100dvh] ensures full viewport height without gap
-    <div
-        ref={feedRef}
-        className="w-full h-[100dvh] bg-black flex flex-col items-center relative overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
-    >
-      {videos.map((video, i) => (
-        <VideoItem
-            key={video.id || i}
-            video={video}
-            isActive={i === currentVideoIndex}
-            index={i}
-        />
-      ))}
+    <div className="relative w-full h-[100dvh] bg-black overflow-hidden">
+        {/* Absolute Top Navigation */}
+        <TopNav />
+
+        {/* Draggable AI Widget */}
+        <DraggableAI />
+
+        {/* Scrollable Feed */}
+        <div
+            ref={feedRef}
+            className="w-full h-full flex flex-col items-center overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
+        >
+            {videos.map((video, i) => (
+                <VideoItem
+                    key={video.id || i}
+                    video={video}
+                    isActive={i === currentVideoIndex}
+                    index={i}
+                />
+            ))}
+        </div>
     </div>
   );
 }
 
 function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, index: number }) {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const router = useRouter();
     const { user } = usePi();
 
-    // Safety check for array type (video.likes comes from API as array now, but might be number from legacy/mock)
+    // Safety check for array type
     const likesArray = Array.isArray(video.likes) ? video.likes : [];
 
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
     const [likes, setLikes] = useState(likesArray.length);
     const [hasLiked, setHasLiked] = useState(false);
 
@@ -110,6 +124,10 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
     const commentsArray = Array.isArray(video.comments) ? video.comments : [];
     const [commentCount, setCommentCount] = useState(commentsArray.length);
     const [commentsList, setCommentsList] = useState<any[]>(commentsArray);
+
+    // Reaction Picker State
+    const [showReactions, setShowReactions] = useState(false);
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
     const isImage = video.resource_type === 'image';
 
@@ -125,68 +143,108 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
         if (!videoRef.current) return;
 
         if (isActive) {
+            // Mobile browsers require mute for autoplay usually, but we start muted
+            videoRef.current.muted = isMuted;
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
-                    setIsPlaying(true);
+                    // Playing
                 }).catch((error) => {
                     console.log("Autoplay blocked:", error);
-                    setIsPlaying(false);
                 });
             }
         } else {
             videoRef.current.pause();
-            // Optional: reset time? user requested "stop", pause is sufficient.
-            setIsPlaying(false);
+            videoRef.current.currentTime = 0; // Reset
         }
-    }, [isActive]);
+    }, [isActive, isMuted]);
 
-    const togglePlay = () => {
+    const handleVideoClick = () => {
         if (isImage) return;
         if (!videoRef.current) return;
 
-        if (isPlaying) {
-            videoRef.current.pause();
-            setIsPlaying(false);
-        } else {
-            videoRef.current.play();
-            setIsPlaying(true);
-        }
+        const newMutedState = !isMuted;
+        videoRef.current.muted = newMutedState;
+        setIsMuted(newMutedState);
+
+        // Visual feedback could be added here (big mute icon fade in/out)
+        toast(newMutedState ? "Muted" : "Unmuted", {
+            duration: 1000,
+            position: 'top-center',
+            icon: newMutedState ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />
+        });
     };
 
-    const handleLike = async () => {
+    const handleLike = async (reactionType: string = 'like') => {
         if (!user) {
             toast.error("Please login to like");
             return;
         }
 
-        // Optimistic UI update
-        if (hasLiked) {
-            setLikes((prev: number) => prev - 1);
-            setHasLiked(false);
-        } else {
-            setLikes((prev: number) => prev + 1);
-            setHasLiked(true);
-        }
-
-        try {
-            // Call MongoDB API
-            await apiClient.video.like(video.id || video._id, user.uid);
-        } catch (error) {
-            console.error("Like failed", error);
-            // Revert if failed
+        // If simple toggle (standard like)
+        if (reactionType === 'like' && !showReactions) {
+             // Optimistic UI update
             if (hasLiked) {
-                setLikes((prev: number) => prev + 1);
-                setHasLiked(true);
-            } else {
                 setLikes((prev: number) => prev - 1);
                 setHasLiked(false);
+            } else {
+                setLikes((prev: number) => prev + 1);
+                setHasLiked(true);
             }
+
+            try {
+                await apiClient.video.like(video.id || video._id, user.uid);
+            } catch (error) {
+                console.error("Like failed", error);
+                // Revert
+                if (hasLiked) {
+                    setLikes((prev: number) => prev + 1);
+                    setHasLiked(true);
+                } else {
+                    setLikes((prev: number) => prev - 1);
+                    setHasLiked(false);
+                }
+            }
+        } else {
+            // Reaction picked
+            setHasLiked(true); // Always set to liked if reaction picked
+            setLikes(prev => hasLiked ? prev : prev + 1); // Increment only if not already liked
+            setShowReactions(false);
+            try {
+                 await apiClient.video.like(video.id || video._id, user.uid);
+            } catch (e) { console.error(e) }
+        }
+    };
+
+    // Long Press Handlers
+    const handleLikePressStart = () => {
+        longPressTimer.current = setTimeout(() => {
+            setShowReactions(true);
+        }, 500); // 500ms for long press
+    };
+
+    const handleLikePressEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
         }
     };
 
     const handleComment = () => {
          setCommentsOpen(true);
+    };
+
+    const handleShopClick = () => {
+        const products = video.products || [];
+        if (products.length > 0) {
+            toast.success(`Found ${products.length} tagged products!`);
+            // Future: Open Product Drawer
+        } else {
+            toast.info("No products tagged in this video.");
+        }
+    };
+
+    const handleCreatePost = () => {
+        router.push('/create');
     };
 
     const onCommentAdded = (newComment: any) => {
@@ -212,80 +270,132 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                     src={video.url}
                     loop
                     playsInline
-                    muted // Default muted for mobile autoplay compliance
-                    onClick={togglePlay}
+                    muted={isMuted} // Initial state
+                    onClick={handleVideoClick}
                     className="w-full h-full object-cover"
                     poster={video.thumbnail}
                 />
             )}
 
             {/* Overlay Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
 
-            {/* Play Indicator */}
-            {!isImage && !isPlaying && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                     <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20">
-                        <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[20px] border-l-white border-b-[10px] border-b-transparent ml-1" />
+            {/* Left Action: Shop */}
+            <div className="absolute left-4 bottom-40 z-20 pb-safe">
+                <button
+                    onClick={handleShopClick}
+                    className="flex flex-col items-center gap-1 group"
+                >
+                    <div className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full border border-yellow-500/50 flex items-center justify-center animate-pulse">
+                         <ShoppingCart className="w-5 h-5 text-yellow-400" />
                     </div>
-                </div>
-            )}
+                    <span className="text-[10px] font-bold text-white drop-shadow-md bg-black/30 px-2 rounded-full">Shop</span>
+                </button>
+            </div>
 
-            {/* Right Action Bar */}
-            <div className="absolute right-2 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
-                <div className="flex flex-col items-center mb-4">
-                     <div className="w-10 h-10 rounded-full border border-white p-[1px]">
-                        <img src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full rounded-full bg-black" alt="avatar" />
+            {/* Right Action Bar (Vertical) */}
+            <div className="absolute right-2 bottom-32 flex flex-col items-center gap-5 z-20 pb-safe">
+                {/* 1. Avatar */}
+                <div className="flex flex-col items-center relative">
+                     <div className="w-12 h-12 rounded-full border-2 border-white p-[1px]">
+                        <img src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full rounded-full bg-black object-cover" alt="avatar" />
                     </div>
-                    {/* Plus Icon small */}
-                    <div className="w-4 h-4 bg-pink-500 rounded-full -mt-2 flex items-center justify-center text-[10px] text-white font-bold">+</div>
+                    {/* Follow Plus (moved to Avatar as standard, but user asked for Create Button at bottom. Usually Follow is here) */}
+                    <div className="w-5 h-5 bg-red-500 rounded-full -mt-3 flex items-center justify-center text-white font-bold text-xs border border-black">+</div>
                 </div>
 
-                {/* HEART */}
-                <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
-                    <Heart
-                        className={cn(
-                            "w-8 h-8 text-white stroke-[1.5px] transition-all drop-shadow-md",
-                            hasLiked && "fill-red-500 text-red-500 scale-110"
-                        )}
+                {/* 2. Like (with Reaction Picker) */}
+                <div className="relative flex flex-col items-center gap-1">
+                    <ReactionPicker
+                        isVisible={showReactions}
+                        onSelect={(id) => handleLike(id)}
+                        onClose={() => setShowReactions(false)}
                     />
-                    <span className="text-[10px] font-bold text-white drop-shadow-md">{likes}</span>
+                    <button
+                        onMouseDown={handleLikePressStart}
+                        onMouseUp={handleLikePressEnd}
+                        onTouchStart={handleLikePressStart}
+                        onTouchEnd={handleLikePressEnd}
+                        onClick={() => handleLike('like')}
+                        className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+                    >
+                        <Heart
+                            className={cn(
+                                "w-8 h-8 text-white stroke-[2px] drop-shadow-lg filter",
+                                hasLiked && "fill-red-500 text-red-500"
+                            )}
+                        />
+                        <span className="text-[11px] font-bold text-white drop-shadow-md">{likes}</span>
+                    </button>
+                </div>
+
+                {/* 3. Comment */}
+                <button onClick={handleComment} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                    <MessageCircle className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
+                    <span className="text-[11px] font-bold text-white drop-shadow-md">{commentCount}</span>
                 </button>
 
-                {/* COMMENT */}
-                <button onClick={handleComment} className="flex flex-col items-center gap-1 group">
-                    <MessageCircle className="w-8 h-8 text-white stroke-[1.5px] group-active:text-blue-400 transition-colors drop-shadow-md" />
-                    <span className="text-[10px] font-bold text-white drop-shadow-md">{commentCount}</span>
+                {/* 4. Share */}
+                <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                    <Share2 className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
+                    <span className="text-[11px] font-bold text-white drop-shadow-md">Share</span>
                 </button>
 
-                 {/* GIFT */}
-                 <button className="flex flex-col items-center gap-1 group">
-                    <Gift className="w-8 h-8 text-white stroke-[1.5px] group-active:text-yellow-400 transition-colors drop-shadow-md" />
-                    <span className="text-[10px] font-bold text-white drop-shadow-md">Gift</span>
+                {/* 5. Save */}
+                <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                    <Bookmark className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
+                    <span className="text-[11px] font-bold text-white drop-shadow-md">Save</span>
                 </button>
 
-                {/* SHARE */}
-                <button className="flex flex-col items-center gap-1 group">
-                    <Share2 className="w-8 h-8 text-white stroke-[1.5px] group-active:text-green-400 transition-colors drop-shadow-md" />
-                    <span className="text-[10px] font-bold text-white drop-shadow-md">Share</span>
+                {/* 6. Create Post Button (Requested Location) */}
+                <button
+                    onClick={handleCreatePost}
+                    className="mt-2 w-10 h-10 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white/20 active:scale-90 transition-transform"
+                >
+                    <Plus className="w-6 h-6 text-white" />
                 </button>
 
-                {/* Disc Animation */}
-                <div className="mt-4 w-10 h-10 bg-black rounded-full border-4 border-[#111] flex items-center justify-center animate-spin-slow">
-                     <div className="w-5 h-5 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-full" />
+                {/* Disc Animation (Bottom of stack) */}
+                <div className="mt-2 w-10 h-10 bg-black rounded-full border-[3px] border-zinc-800 flex items-center justify-center animate-spin-slow overflow-hidden">
+                     <img
+                        src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`}
+                        className="w-full h-full object-cover opacity-80"
+                     />
                 </div>
             </div>
 
-            {/* Bottom Info */}
-            <div className="absolute left-4 bottom-24 right-16 z-10 text-left pointer-events-none pb-safe">
+            {/* Bottom Info Area */}
+            <div className="absolute left-4 bottom-24 right-20 z-10 text-left pointer-events-none pb-safe">
                 <h3 className="font-bold text-white text-base drop-shadow-md mb-1">@{video.username || 'User'}</h3>
-                <p className="text-sm text-white/90 line-clamp-2 drop-shadow-md mb-2">{video.description}</p>
+                <p className="text-sm text-white/90 line-clamp-2 drop-shadow-md mb-2">{video.description || video.caption}</p>
 
                 {/* Music Scroller */}
                 <div className="flex items-center gap-2">
-                     <div className="text-xs text-white/80 flex items-center gap-2 bg-white/10 px-2 py-1 rounded-full backdrop-blur-sm">
-                        <span>🎵 Original Sound - {video.username}</span>
+                     <div className="text-xs text-white/80 flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                        <Volume2 className="w-3 h-3" />
+                        <span>Original Sound - {video.username}</span>
                      </div>
+                </div>
+            </div>
+
+            {/* Persistent Bottom Comment Bar */}
+            <div
+                className="absolute bottom-0 left-0 right-0 z-30 p-4 bg-gradient-to-t from-black via-black/80 to-transparent pb-[calc(env(safe-area-inset-bottom)+4rem)]" // Padding bottom to clear Nav
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center gap-3 w-full max-w-md mx-auto">
+                    <button
+                        onClick={handleComment}
+                        className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full h-10 px-4 flex items-center text-white/60 text-sm transition-colors border border-white/10"
+                    >
+                        Bình luận...
+                    </button>
+                    <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
+                        @
+                    </button>
+                    <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
+                        🙂
+                    </button>
                 </div>
             </div>
 
@@ -293,7 +403,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
                 isOpen={commentsOpen}
                 onClose={() => setCommentsOpen(false)}
                 videoId={video.id || video._id}
-                comments={commentsList} // Note: This list is currently empty initially, ideally should be fetched.
+                comments={commentsList}
                 currentUser={user}
                 onCommentAdded={onCommentAdded}
             />

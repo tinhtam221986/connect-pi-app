@@ -25,6 +25,16 @@ const VideoSchema = new mongoose.Schema({
   // PRD: Anti-cheat Device Fingerprint
   deviceSignature: { type: String, default: "" },
 
+  // Phase 3: Tagged Products for Shop Feature
+  products: [
+    {
+      name: String,
+      price: Number,
+      image: String,
+      link: String
+    }
+  ],
+
   likes: { type: [String], default: [] }, 
   comments: [
     {
