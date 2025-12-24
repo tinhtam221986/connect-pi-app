@@ -3,13 +3,20 @@ import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 import Video from '@/models/Video';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const username = searchParams.get('username');
+    let username = searchParams.get('username');
 
     if (!username) {
         return NextResponse.json({ error: "Username required" }, { status: 400 });
+    }
+
+    // Normalize: Remove '@' prefix
+    if (username.startsWith('@')) {
+        username = username.substring(1);
     }
 
     try {

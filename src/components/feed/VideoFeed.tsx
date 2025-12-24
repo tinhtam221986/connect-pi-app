@@ -188,6 +188,11 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         }
     };
 
+    const handleDiscClick = () => {
+        // Simple mock Action Sheet or Toast for now
+        toast("💿 Save Sound / Use this Sound - Coming Soon!", { position: 'bottom-center' });
+    };
+
     // Mute Toggle (New Button)
     const toggleMute = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -335,6 +340,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
                 <video
                     ref={videoRef}
                     src={video.url}
+                    autoPlay
                     loop
                     playsInline
                     muted={isMuted}
@@ -355,7 +361,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
             )}
 
             {/* --- RIGHT SIDEBAR STACK (Vertical) --- */}
-            <div className="absolute right-2 bottom-28 flex flex-col items-center gap-4 z-30 pb-safe">
+            <div className="absolute right-2 bottom-28 flex flex-col items-center gap-6 z-30 pb-safe">
                  {/* 1. Like */}
                  <div className="relative flex flex-col items-center gap-1">
                     <ReactionPicker
@@ -373,7 +379,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
                     >
                         <Heart
                             className={cn(
-                                "w-8 h-8 text-white stroke-[2px] drop-shadow-lg filter",
+                                "w-6 h-6 text-white stroke-[2px] drop-shadow-lg filter",
                                 hasLiked && "fill-red-500 text-red-500"
                             )}
                         />
@@ -383,19 +389,19 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
 
                 {/* 2. Comment */}
                 <button onClick={handleComment} className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform">
-                    <MessageCircle className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
+                    <MessageCircle className="w-6 h-6 text-white stroke-[2px] drop-shadow-lg" />
                     <span className="text-[12px] font-bold text-white drop-shadow-md">{commentCount}</span>
                 </button>
 
                 {/* 3. Share */}
                 <button className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform">
-                    <Share2 className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
+                    <Share2 className="w-6 h-6 text-white stroke-[2px] drop-shadow-lg" />
                     <span className="text-[12px] font-bold text-white drop-shadow-md">Share</span>
                 </button>
 
                 {/* 4. Save */}
                 <button className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform">
-                    <Bookmark className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
+                    <Bookmark className="w-6 h-6 text-white stroke-[2px] drop-shadow-lg" />
                     <span className="text-[12px] font-bold text-white drop-shadow-md">Save</span>
                 </button>
 
@@ -411,7 +417,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
             {/* --- BOTTOM RIGHT: Spinning Disc --- */}
             <div className="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-30">
                  <button
-                    onClick={() => handleNavigate('create')}
+                    onClick={handleDiscClick}
                     className="w-12 h-12 rounded-full overflow-hidden border-[3px] border-black/50 animate-[spin_5s_linear_infinite]"
                  >
                     <div className="w-full h-full bg-gradient-to-tr from-gray-800 to-black flex items-center justify-center">
@@ -425,6 +431,15 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
 
             {/* --- BOTTOM LEFT: Info Area --- */}
             <div className="absolute left-3 bottom-20 right-20 z-20 text-left pointer-events-none pb-safe">
+                {/* Shop Icon - Floating ABOVE Avatar */}
+                <button
+                   onClick={() => onNavigate?.('market')}
+                   className="mb-2 pointer-events-auto p-2 bg-yellow-500/20 rounded-full border border-yellow-500/50 active:scale-90 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.3)] animate-bounce"
+                   aria-label="Shop"
+                >
+                   <ShoppingCart className="w-5 h-5 text-yellow-400 drop-shadow-md" />
+                </button>
+
                 {/* Username & Follow */}
                 <div className="flex items-center gap-3 mb-2 pointer-events-auto">
                     {/* Avatar */}
@@ -441,13 +456,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
                             <h3 className="font-bold text-white text-base drop-shadow-md leading-tight">
                                 @{video.username || 'User'}
                             </h3>
-                             {/* Shop Icon */}
-                             <button
-                                onClick={() => onNavigate?.('market')}
-                                className="ml-1 p-1 bg-yellow-500/20 rounded-full border border-yellow-500/50 active:scale-90 transition-transform"
-                             >
-                                <ShoppingCart className="w-3 h-3 text-yellow-400 drop-shadow-md" />
-                             </button>
                         </div>
                     </div>
                      {/* Follow Button (Small Pill) */}
