@@ -145,7 +145,6 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
         }
 
         // REMOVED: Caption validation to make it optional
-        // if (!caption) { ... }
 
         setIsPosting(true);
         setCanClose(false);

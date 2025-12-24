@@ -2,24 +2,27 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Video from "@/models/Video";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request) {
   try {
-    await connectDB();
-    const { text, user_uid, username, avatar } = await request.json();
-    const { id } = params;
+    const { videoId, text, userId, username, avatar } = await request.json();
 
-    if (!id || !text || !user_uid || !username) {
+    if (!videoId || !text || !userId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    await connectDB();
+
     const newComment = {
       text,
-      user: { username, avatar: avatar || "" },
+      user: {
+        username: username || "Anonymous",
+        avatar: avatar || ""
+      },
       createdAt: new Date()
     };
 
     const updatedVideo = await Video.findByIdAndUpdate(
-      id,
+      videoId,
       { $push: { comments: newComment } },
       { new: true }
     );
@@ -28,13 +31,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      message: "Comment added",
-      comments: updatedVideo.comments
-    });
+    return NextResponse.json({ success: true, comment: newComment });
 
   } catch (error) {
     console.error("Comment Error:", error);
-    return NextResponse.json({ error: "Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

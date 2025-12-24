@@ -146,20 +146,20 @@ export const apiClient = {
         });
     },
 
-    like: async (videoId: string, user_uid: string) => {
-        const res = await fetch(`/api/video/${videoId}/like`, {
+    like: async (videoId: string, userId: string) => {
+        const res = await fetch('/api/video/like', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_uid })
+            body: JSON.stringify({ videoId, userId })
         });
         return res.json();
     },
 
-    comment: async (videoId: string, text: string, user_uid: string, username: string, avatar?: string) => {
-        const res = await fetch(`/api/video/${videoId}/comment`, {
+    comment: async (videoId: string, text: string, userId: string, username: string, avatar?: string) => {
+        const res = await fetch('/api/video/comment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, user_uid, username, avatar })
+            body: JSON.stringify({ videoId, text, userId, username, avatar })
         });
         return res.json();
     }
