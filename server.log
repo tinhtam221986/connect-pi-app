@@ -6,18 +6,20 @@
   - Local:        http://localhost:3000
 
  ✓ Starting...
- ✓ Ready in 3.2s
+ ✓ Ready in 3.3s
  ○ Compiling / ...
- ✓ Compiled / in 11.3s (1381 modules)
- GET / 200 in 12580ms
- ✓ Compiled in 1269ms (681 modules)
- GET / 200 in 85ms
- GET / 200 in 42ms
+ ✓ Compiled / in 10.3s (1387 modules)
+ GET / 200 in 11547ms
+ ✓ Compiled in 1180ms (684 modules)
  ○ Compiling /api/feed ...
- ✓ Compiled /api/feed in 575ms (722 modules)
+ ✓ Compiled /api/feed in 5.5s (725 modules)
 MongoDB not configured, returning mock feed.
- GET /api/feed 200 in 1619ms
- ✓ Compiled in 1457ms (1403 modules)
- GET / 200 in 240ms
+ GET /api/feed 200 in 6190ms
+ ✓ Compiled in 803ms (684 modules)
+ ✓ Compiled in 555ms (684 modules)
+ ✓ Compiled in 603ms (684 modules)
+ ✓ Compiled / in 460ms (694 modules)
+ GET / 200 in 754ms
+ ✓ Compiled /api/feed in 148ms (725 modules)
 MongoDB not configured, returning mock feed.
- GET /api/feed 200 in 26ms
+ GET /api/feed 200 in 239ms
