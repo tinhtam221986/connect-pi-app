@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Video from '@/models/Video';
 
+// Force dynamic rendering to prevent caching issues (Critical Fix)
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     try {

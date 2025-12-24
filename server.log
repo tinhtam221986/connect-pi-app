@@ -23,3 +23,9 @@ MongoDB not configured, returning mock feed.
  ✓ Compiled /api/feed in 148ms (725 modules)
 MongoDB not configured, returning mock feed.
  GET /api/feed 200 in 239ms
+ ✓ Compiled in 6.3s (684 modules)
+ ✓ Compiled in 2.3s (670 modules)
+ ✓ Compiled in 822ms (684 modules)
+ ✓ Compiled in 2.5s (684 modules)
+ ✓ Compiled in 767ms (670 modules)
+ ✓ Compiled in 1217ms (684 modules)
