@@ -15,9 +15,12 @@ export async function GET(request: Request) {
     try {
         await connectDB();
 
+    // Escape special regex characters to prevent injection
+    const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
         // 1. Fetch User Profile (Case-insensitive)
         let user = await User.findOne({
-            username: { $regex: new RegExp(`^${username}$`, 'i') }
+        username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') }
         }).lean();
 
         if (!user) {
@@ -37,7 +40,7 @@ export async function GET(request: Request) {
 
         // 2. Fetch User's Videos (Case-insensitive)
         const mongoVideos = await Video.find({
-            "author.username": { $regex: new RegExp(`^${username}$`, 'i') }
+        "author.username": { $regex: new RegExp(`^${escapedUsername}$`, 'i') }
         })
         .sort({ createdAt: -1 })
         .lean();

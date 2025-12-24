@@ -36,15 +36,10 @@ export default function MainAppView() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-black text-white relative overflow-hidden">
-      {/* Pi Status - Overlay (Top Left) - Only show on Home/Game to avoid cluttering Profile */}
-      {activeTab === 'home' && (
-        <div className="absolute top-safe left-0 right-0 z-40 p-2 flex justify-between items-start pointer-events-none">
-             <div className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/5 flex items-center gap-2">
-                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                 <span className="text-[10px] font-medium text-white/80 tracking-wide">@{user?.username || 'Guest'}</span>
-             </div>
-        </div>
-      )}
+      {/* Pi Status - REMOVED for Home tab to prevent overlapping Back button.
+          Only show on other tabs if needed, or remove completely for "Crystal Clear" look.
+          Decision: Remove completely for now.
+      */}
 
       {/* Main Content Area */}
       <main className="flex-1 w-full h-full relative">
