@@ -22,11 +22,11 @@ export async function GET() {
             id: v._id.toString(),
             url: v.videoUrl,
             thumbnail: v.thumbnailUrl || v.videoUrl,
-            description: v.caption || "No description",
+            description: v.caption || "",
             username: v.author?.username || "Anonymous",
             likes: v.likes || [],
             comments: v.comments || [],
-            resource_type: 'video',
+            resource_type: v.resourceType || 'video',
             created_at: v.createdAt
         }));
 

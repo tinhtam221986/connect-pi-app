@@ -223,6 +223,11 @@ export function PostSettings({ media, onPostComplete }: PostSettingsProps) {
                 onPostComplete(); // Closes the modal/overlay
                 router.push("/"); // CHANGED: Redirect to Home Feed ("/") instead of "/profile"
                 router.refresh(); // Priority 1: Revalidate Data for immediate update
+
+                // Fire a global event to ensure Feed re-fetches if router.refresh() is lazy
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('feed-refresh'));
+                }
             }, 1500);
 
         } catch (e: any) {

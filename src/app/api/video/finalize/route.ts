@@ -5,7 +5,7 @@ import { R2_PUBLIC_URL } from "@/lib/r2";
 
 export async function POST(request: Request) {
   try {
-    const { key, username, description, privacy, deviceSignature, hashtags, metadata: fileMeta } = await request.json();
+    const { key, username, description, privacy, deviceSignature, hashtags, resourceType, metadata: fileMeta } = await request.json();
 
     if (!key) {
       return NextResponse.json({ success: false, error: "Missing file key" }, { status: 400 });
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const newVideo = await Video.create({
         videoUrl: publicUrl,
         caption: description || "",
+        resourceType: resourceType || 'video',
         privacy: privacy || 'public',
         author: {
             username: username || "Anonymous",
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
         success: true,
         url: publicUrl,
         public_id: key,
-        resource_type: 'video' // Assuming video for now
+        resource_type: resourceType || 'video'
     });
 
   } catch (error: any) {
