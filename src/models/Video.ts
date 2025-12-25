@@ -3,6 +3,11 @@ import mongoose from "mongoose";
 const VideoSchema = new mongoose.Schema({
   videoUrl: { type: String, required: true },
   caption: { type: String, required: false },
+  resourceType: {
+    type: String,
+    enum: ['video', 'image'],
+    default: 'video'
+  },
   // PRD: Privacy setting (Public/Friends/Private)
   privacy: {
     type: String,
