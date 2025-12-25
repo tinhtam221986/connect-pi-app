@@ -19,8 +19,8 @@ export function BottomNav({ onTabChange }: BottomNavProps) {
   };
 
   const navItems = [
-    { id: 'home', icon: Home, label: 'Home', path: '/' },
     { id: 'market', icon: ShoppingBag, label: 'Supermarket', path: '/market' },
+    { id: 'home', icon: Home, label: 'Home', path: '/' },
     { id: 'inbox', icon: Mail, label: 'Inbox', path: '/inbox' },
   ];
 

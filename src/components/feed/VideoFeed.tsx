@@ -222,27 +222,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
 
       {/* --- RIGHT SIDEBAR --- */}
       <div className="absolute right-2 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
-
-        {/* Personal Store Icon (Position 8) */}
-        <button className="flex flex-col items-center active:scale-90 transition-transform mb-[-10px]">
-          <div className="bg-yellow-400/20 p-2 rounded-full border-2 border-yellow-500 backdrop-blur-sm">
-             <ShoppingCart className="w-6 h-6 text-yellow-400" />
-          </div>
-        </button>
-
-        {/* Author Avatar (Navigates to Author Profile) (Position 6) */}
-        <Link href={`/profile/${video.username || 'user'}`} className="relative group">
-            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer group-active:scale-90 transition-transform">
-               {video.avatar ? (
-                  <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
-               ) : video.username ? (
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
-               ) : (
-                  <User className="w-full h-full p-2 text-white/50" />
-               )}
-            </div>
-        </Link>
-
         {/* Like */}
         <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Heart className={cn("w-8 h-8 drop-shadow-lg transition-colors", hasLiked ? "fill-red-500 text-red-500" : "text-white")} />
@@ -279,13 +258,39 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         </button>
       </div>
 
-      {/* --- BOTTOM LEFT INFO --- */}
-      <div className="absolute left-3 bottom-24 right-20 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
-         {/* User Name Only (Avatar moved to sidebar) */}
-         <div className="flex items-center gap-2 mb-2 pointer-events-auto">
-             <span className="font-bold text-white text-lg drop-shadow-md">@{video.username}</span>
-         </div>
+      {/* --- LEFT SIDEBAR (New) --- */}
+      <div className="absolute left-3 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
+        {/* Personal Store Icon (Position 8) */}
+        <button className="flex flex-col items-center active:scale-90 transition-transform">
+          <div className="bg-yellow-400/20 p-2 rounded-full border-2 border-yellow-500 backdrop-blur-sm">
+             <ShoppingCart className="w-6 h-6 text-yellow-400" />
+          </div>
+        </button>
 
+        {/* Author Avatar & Name (Position 6) */}
+        <Link href={`/profile/${video.username || 'user'}`} className="relative group flex flex-col items-center gap-1">
+            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer group-active:scale-90 transition-transform">
+               {video.avatar ? (
+                  <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
+               ) : video.username ? (
+                  <img src={`httpshttps://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
+               ) : (
+                  <User className="w-full h-full p-2 text-white/50" />
+               )}
+            </div>
+            <span className="font-bold text-white text-sm drop-shadow-md">@{video.username}</span>
+        </Link>
+
+        {/* Spinning Music Disc (Position 5) */}
+        <div className="mt-4">
+            <div className="w-12 h-12 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin border-2 border-gray-600">
+                <Music2 className="text-white w-6 h-6"/>
+            </div>
+        </div>
+      </div>
+
+      {/* --- BOTTOM LEFT INFO (Modified for Caption Only) --- */}
+      <div className="absolute left-3 bottom-24 right-20 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
          {/* Caption (Position 7) */}
          <div className="text-white/95 text-sm mb-2 drop-shadow-md pointer-events-auto" onClick={() => setExpanded(prev => !prev)}>
             {isLongCaption && !expanded ? (
@@ -296,14 +301,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
             ) : (
                video.caption
             )}
-         </div>
-
-         {/* Music Scrolling (Position 5) */}
-         <div className="flex items-center gap-2 text-white/90 text-xs pointer-events-auto bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
-            <Music2 className="w-3 h-3" />
-            <div className="w-32 overflow-hidden whitespace-nowrap">
-               <span className="animate-marquee inline-block">Original Sound - {video.username} • Connect Pi Music</span>
-            </div>
          </div>
       </div>
 
