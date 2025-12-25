@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api-client';
-import { Heart, MessageCircle, Share2, Bookmark, Plus, ShoppingCart, Volume2, VolumeX, Play, Search, User, ChevronLeft, Music2, Disc } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Plus, Volume2, VolumeX, Play, Search, User, ChevronLeft, Music2, Disc, Globe, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
 import { cn } from '@/lib/utils';
@@ -116,9 +116,11 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
     // Safety check for array type
     const likesArray = Array.isArray(video.likes) ? video.likes : [];
 
-    // Audio State: Default Muted for autoplay compliance
-    const [isMuted, setIsMuted] = useState(true);
+    // Audio State: "Sound First" Strategy
+    // Start unmuted (false). If autoplay fails, we set to true.
+    const [isMuted, setIsMuted] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [showUnmuteOverlay, setShowUnmuteOverlay] = useState(false);
 
     // Interaction State
     const [likes, setLikes] = useState(likesArray.length);
@@ -144,26 +146,36 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         }
     }, [user, video.likes]);
 
-    // Auto Play/Pause based on active state
+    // Auto Play/Pause based on active state with Sound First logic
     useEffect(() => {
         if (!videoRef.current) return;
 
         if (isActive) {
-            // Force mute to ensure autoplay works on mobile
-            videoRef.current.muted = isMuted;
+            // Attempt to play with sound first
+            videoRef.current.muted = false;
+            setIsMuted(false);
+
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
                     setIsPlaying(true);
+                    setShowUnmuteOverlay(false);
                 }).catch((error) => {
-                    console.log("Autoplay blocked:", error);
-                    setIsPlaying(false);
+                    console.log("Autoplay with sound blocked, falling back to muted:", error);
+                    // Fallback: Mute and try again
+                    if (videoRef.current) {
+                        videoRef.current.muted = true;
+                        setIsMuted(true);
+                        setShowUnmuteOverlay(true);
+                        videoRef.current.play().then(() => setIsPlaying(true)).catch(e => console.error("Muted autoplay failed", e));
+                    }
                 });
             }
         } else {
             videoRef.current.pause();
             videoRef.current.currentTime = 0; // Reset
             setIsPlaying(false);
+            setShowUnmuteOverlay(false); // Reset overlay
         }
     }, [isActive]);
 
@@ -189,14 +201,19 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
     };
 
     const handleDiscClick = () => {
-        // Simple mock Action Sheet or Toast for now
-        toast("💿 Save Sound / Use this Sound - Coming Soon!", { position: 'bottom-center' });
+        // Tier 1 (Disc): spins, links to /create
+        router.push('/create');
     };
 
-    // Mute Toggle (New Button)
-    const toggleMute = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleCreateClick = () => {
+         router.push('/create');
+    };
+
+    // Mute Toggle (Overlay or Button)
+    const toggleMute = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
         setIsMuted(!isMuted);
+        if (isMuted) setShowUnmuteOverlay(false);
     };
 
     // Double Tap: Like
@@ -239,7 +256,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         } else {
             // Reaction picked
             setHasLiked(true); // Always set to liked if reaction picked
-            setLikes(prev => hasLiked ? prev : prev + 1); // Increment only if not already liked
+            setLikes((prev: number) => hasLiked ? prev : prev + 1); // Increment only if not already liked
             setShowReactions(false);
             try {
                  await apiClient.video.like(video.id || video._id, user.uid);
@@ -351,8 +368,21 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
                 />
             )}
 
+            {/* Tap to Unmute Overlay */}
+            {showUnmuteOverlay && isActive && !isImage && (
+                 <div
+                    onClick={toggleMute}
+                    className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-[1px] cursor-pointer"
+                 >
+                    <div className="bg-black/60 px-4 py-2 rounded-full flex items-center gap-2 animate-bounce">
+                        <VolumeX className="w-5 h-5 text-white" />
+                        <span className="text-white font-bold text-sm">TAP TO UNMUTE</span>
+                    </div>
+                 </div>
+            )}
+
             {/* Play/Pause Indicator (Overlay) */}
-            {!isPlaying && !isImage && (
+            {!isPlaying && !isImage && !showUnmuteOverlay && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                     <div className="w-16 h-16 bg-black/30 rounded-full flex items-center justify-center backdrop-blur-sm">
                         <Play className="w-8 h-8 text-white/90 ml-1 drop-shadow-lg" fill="currentColor" />
@@ -361,7 +391,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
             )}
 
             {/* --- RIGHT SIDEBAR STACK (Vertical) --- */}
-            <div className="absolute right-2 bottom-28 flex flex-col items-center gap-6 z-30 pb-safe">
+            <div className="absolute right-2 bottom-32 flex flex-col items-center gap-5 z-30 pb-safe">
                  {/* 1. Like */}
                  <div className="relative flex flex-col items-center gap-1">
                     <ReactionPicker
@@ -379,7 +409,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
                     >
                         <Heart
                             className={cn(
-                                "w-6 h-6 text-white stroke-[2px] drop-shadow-lg filter",
+                                "w-8 h-8 text-white stroke-[2px] drop-shadow-lg filter",
                                 hasLiked && "fill-red-500 text-red-500"
                             )}
                         />
@@ -389,25 +419,25 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
 
                 {/* 2. Comment */}
                 <button onClick={handleComment} className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform">
-                    <MessageCircle className="w-6 h-6 text-white stroke-[2px] drop-shadow-lg" />
+                    <MessageCircle className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
                     <span className="text-[12px] font-bold text-white drop-shadow-md">{commentCount}</span>
                 </button>
 
                 {/* 3. Share */}
                 <button className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform">
-                    <Share2 className="w-6 h-6 text-white stroke-[2px] drop-shadow-lg" />
+                    <Share2 className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
                     <span className="text-[12px] font-bold text-white drop-shadow-md">Share</span>
                 </button>
 
                 {/* 4. Save */}
                 <button className="flex flex-col items-center gap-0.5 active:scale-90 transition-transform">
-                    <Bookmark className="w-6 h-6 text-white stroke-[2px] drop-shadow-lg" />
+                    <Bookmark className="w-8 h-8 text-white stroke-[2px] drop-shadow-lg" />
                     <span className="text-[12px] font-bold text-white drop-shadow-md">Save</span>
                 </button>
 
                 {/* 5. Create Button (+) - Bottom of Right Stack */}
                 <button
-                    onClick={() => handleNavigate('create')}
+                    onClick={handleCreateClick}
                     className="mt-2 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/50 active:scale-90 transition-transform"
                 >
                     <Plus className="w-6 h-6 text-white drop-shadow-md" />
@@ -415,7 +445,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
             </div>
 
             {/* --- BOTTOM RIGHT: Spinning Disc --- */}
-            <div className="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-30">
+            <div className="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-30">
                  <button
                     onClick={handleDiscClick}
                     className="w-12 h-12 rounded-full overflow-hidden border-[3px] border-black/50 animate-[spin_5s_linear_infinite]"
@@ -429,96 +459,57 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
                  </div>
             </div>
 
-            {/* --- BOTTOM LEFT: Info Area --- */}
-            <div className="absolute left-3 bottom-20 right-20 z-20 text-left pointer-events-none pb-safe">
-                {/* Shop Icon - Floating ABOVE Avatar */}
-                <button
-                   onClick={() => onNavigate?.('market')}
-                   className="mb-2 pointer-events-auto p-2 bg-yellow-500/20 rounded-full border border-yellow-500/50 active:scale-90 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.3)] animate-bounce"
-                   aria-label="Shop"
-                >
-                   <ShoppingCart className="w-5 h-5 text-yellow-400 drop-shadow-md" />
-                </button>
+            {/* --- BOTTOM LEFT: 3-Tier Cluster --- */}
+            <div className="absolute left-3 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-20 text-left pointer-events-none pb-safe max-w-[70%]">
 
-                {/* Username & Follow */}
-                <div className="flex items-center gap-3 mb-2 pointer-events-auto">
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full border border-white p-[1px] overflow-hidden">
-                        <img
-                            src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`}
-                            className="w-full h-full rounded-full bg-black object-cover"
-                            alt="avatar"
-                        />
-                    </div>
-
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-white text-base drop-shadow-md leading-tight">
-                                @{video.username || 'User'}
-                            </h3>
-                        </div>
-                    </div>
+                {/* Tier 1: Username */}
+                 <div className="flex items-center gap-2 mb-1 pointer-events-auto">
+                     <h3 className="font-bold text-white text-lg drop-shadow-md leading-tight">
+                         @{video.username || 'User'}
+                     </h3>
                      {/* Follow Button (Small Pill) */}
                      <button
                         onClick={handleFollow}
                         className={cn(
-                            "px-3 py-1 rounded-full text-xs font-bold transition-all border",
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border",
                             isFollowing
                                 ? "bg-transparent text-white border-white/50"
                                 : "bg-transparent text-red-500 border-red-500 hover:bg-red-500/10"
                         )}
                     >
-                        {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
+                        {isFollowing ? 'Following' : 'Follow'}
                     </button>
-                </div>
+                 </div>
 
-                {/* Description */}
-                <p className="text-sm text-white/95 line-clamp-2 drop-shadow-md mb-2 leading-relaxed">
+                {/* Tier 2: Description/Caption */}
+                <p className="text-sm text-white/95 line-clamp-2 drop-shadow-md mb-3 leading-relaxed pointer-events-auto">
                     {video.description || video.caption}
-                    <span className="font-bold text-white/80 ml-2">#connectpi #trend</span>
+                    <span className="font-bold text-white/80 ml-2">#connectpi</span>
                 </p>
 
-                {/* Audio Info & Mute Toggle */}
-                <div className="flex items-center gap-4 pointer-events-auto">
-                     <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">
-                        <Music2 className="w-3 h-3 text-white" />
-                        <span className="text-xs text-white scrolling-text">Original Sound - {video.username}</span>
-                     </div>
-
-                     {/* Mute Control */}
+                {/* Tier 3: Action Buttons (Private Shop & Global Market) */}
+                <div className="flex items-center gap-3 pointer-events-auto">
+                     {/* Private Shop */}
                      <button
-                        onClick={toggleMute}
-                        className="p-1.5 bg-white/10 rounded-full backdrop-blur-md active:scale-90 transition-transform"
+                        onClick={() => onNavigate?.('market') || toast.success(`Visiting @${video.username}'s shop...`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/50 rounded-lg backdrop-blur-sm transition-colors"
                      >
-                        {isMuted ? (
-                            <VolumeX className="w-4 h-4 text-white drop-shadow-md" />
-                        ) : (
-                            <Volume2 className="w-4 h-4 text-white drop-shadow-md" />
-                        )}
+                        <ShoppingBag className="w-4 h-4 text-yellow-400" />
+                        <span className="text-xs font-bold text-yellow-100">Shop</span>
+                     </button>
+
+                     {/* Global Market */}
+                     <button
+                        onClick={() => onNavigate?.('market')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 rounded-lg backdrop-blur-sm transition-colors"
+                     >
+                        <Globe className="w-4 h-4 text-purple-400" />
+                        <span className="text-xs font-bold text-purple-100">Market</span>
                      </button>
                 </div>
             </div>
 
-            {/* --- BOTTOM INPUT BAR --- */}
-            <div
-                className="absolute bottom-0 left-0 right-0 z-40 px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] bg-transparent" // Transparent
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex items-center gap-3 w-full">
-                    <button
-                        onClick={handleComment}
-                        className="flex-1 text-left bg-black/20 hover:bg-black/40 backdrop-blur-sm rounded-full h-10 px-4 flex items-center text-white/70 text-sm transition-colors border border-white/20 shadow-lg"
-                    >
-                        Bình luận...
-                    </button>
-                    <button className="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-sm border border-white/20 text-white shadow-lg active:scale-90 transition-transform">
-                        @
-                    </button>
-                    <button className="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-sm border border-white/20 text-white shadow-lg active:scale-90 transition-transform">
-                        🙂
-                    </button>
-                </div>
-            </div>
+            {/* Note: Bottom Input Bar REMOVED per directive */}
 
             <CommentsDrawer
                 isOpen={commentsOpen}

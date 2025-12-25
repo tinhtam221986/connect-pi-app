@@ -6,7 +6,6 @@ import { VideoFeed } from '@/components/feed/VideoFeed';
 import { MarketplaceView } from '@/components/market/MarketplaceView';
 import { GameCenter } from '@/components/game/GameCenter';
 import { UserProfile } from '@/components/profile/UserProfile';
-// BottomNav removed for Immersive Mode
 import { useRouter } from 'next/navigation';
 
 export default function MainAppView() {
@@ -26,7 +25,7 @@ export default function MainAppView() {
     switch (activeTab) {
       // Pass onNavigate to VideoFeed so it can handle internal navigation (Profile, Shop, Create)
       case 'home': return <VideoFeed onNavigate={handleTabChange} />;
-      case 'market': return <MarketplaceView />;
+      case 'market': return <MarketplaceView onBack={() => setActiveTab('home')} />;
       case 'game': return <GameCenter />;
       // Pass onBack to UserProfile so user can return to Home
       case 'profile': return <UserProfile onBack={() => setActiveTab('home')} />;
@@ -36,17 +35,10 @@ export default function MainAppView() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-black text-white relative overflow-hidden">
-      {/* Pi Status - REMOVED for Home tab to prevent overlapping Back button.
-          Only show on other tabs if needed, or remove completely for "Crystal Clear" look.
-          Decision: Remove completely for now.
-      */}
-
       {/* Main Content Area */}
       <main className="flex-1 w-full h-full relative">
         {renderContent()}
       </main>
-
-      {/* BottomNav removed per "Urgent Revision" for Pure Immersive Feed */}
     </div>
   );
 }

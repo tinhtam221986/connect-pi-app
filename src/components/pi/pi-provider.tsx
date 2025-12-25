@@ -7,6 +7,7 @@ interface PiUser {
   username: string;
   uid: string;
   accessToken?: string;
+  avatar?: string;
 }
 
 // Định nghĩa Context Type
