@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Heart, MessageCircle, Share2, Bookmark, Music2, VolumeX, ShoppingCart, Store, User, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
@@ -129,7 +130,10 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
   const [likes, setLikes] = useState(video.likes?.length || 0);
   const [hasLiked, setHasLiked] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const { user } = usePi();
+
+  const isLongCaption = video.caption && video.caption.length > 30;
 
   // Ensure we handle both resource_type (API) and resourceType (DB) if mixed
   const isImage = (video.resource_type === 'image' || video.resourceType === 'image');
@@ -219,20 +223,25 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
       {/* --- RIGHT SIDEBAR --- */}
       <div className="absolute right-2 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
 
-        {/* Author Avatar (Navigates to Author Profile) */}
-        <div className="relative mb-2">
-            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer active:scale-90 transition-transform">
-               {video.username ? (
+        {/* Personal Store Icon (Position 8) */}
+        <button className="flex flex-col items-center active:scale-90 transition-transform mb-[-10px]">
+          <div className="bg-yellow-400/20 p-2 rounded-full border-2 border-yellow-500 backdrop-blur-sm">
+             <ShoppingCart className="w-6 h-6 text-yellow-400" />
+          </div>
+        </button>
+
+        {/* Author Avatar (Navigates to Author Profile) (Position 6) */}
+        <Link href={`/profile/${video.username || 'user'}`} className="relative group">
+            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer group-active:scale-90 transition-transform">
+               {video.avatar ? (
+                  <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
+               ) : video.username ? (
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
                ) : (
-                  <User className="w-6 h-6 m-2 text-white" />
+                  <User className="w-full h-full p-2 text-white/50" />
                )}
             </div>
-             {/* Follow Plus Icon */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5 shadow-md">
-                <Plus className="w-3 h-3 text-white" />
-            </div>
-        </div>
+        </Link>
 
         {/* Like */}
         <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
@@ -257,58 +266,39 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
           <Bookmark className="w-8 h-8 text-white drop-shadow-lg" />
           <span className="text-white text-xs font-bold drop-shadow-md">Save</span>
         </button>
-      </div>
 
-      {/* --- BOTTOM RIGHT: Disc (Functions as Create Button) --- */}
-      <div className="absolute right-3 bottom-8 z-20 pb-safe">
-         <div
-            onClick={() => onNavigate?.('create')}
-            className="w-12 h-12 rounded-full border-[3px] border-gray-800 bg-black animate-[spin_4s_linear_infinite] overflow-hidden cursor-pointer active:scale-90 transition-transform shadow-xl"
-         >
-             <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-gray-900 to-gray-700">
-                <Music2 className="w-6 h-6 text-white" />
-             </div>
-         </div>
-         {/* Floating "+" badge to indicate action */}
-         <div className="absolute -top-2 -left-2 bg-pink-500 rounded-full p-1 shadow-md pointer-events-none">
-            <Plus className="w-3 h-3 text-white" />
-         </div>
-      </div>
-
-      {/* --- SUPERMARKET ICON (Next to Disc) --- */}
-      {/* Moved slightly left to accommodate the Disc */}
-      <div className="absolute right-16 bottom-8 z-20 pb-safe">
-         <button className="flex flex-col items-center active:scale-90 transition-transform" onClick={() => onNavigate?.('market')}>
-            <Store className="w-10 h-10 text-blue-400 drop-shadow-lg" />
-            <span className="text-[10px] font-bold text-white bg-blue-600/80 px-1 rounded backdrop-blur-sm">Shop</span>
-         </button>
-      </div>
-
-      {/* --- FLOATING CART (Left Side) --- */}
-      {/* This is redundant with Shop button but requested in design */}
-      <div className="absolute left-3 bottom-48 z-20">
-         <button
-            onClick={() => onNavigate?.('market')}
-            className="bg-yellow-500/20 p-2 rounded-full border border-yellow-400 backdrop-blur-sm animate-bounce active:scale-90 transition-transform"
-         >
-            <ShoppingCart className="w-6 h-6 text-yellow-400" />
-         </button>
+        {/* Upload */}
+        <button
+          onClick={() => onNavigate?.('create')}
+          className="flex flex-col items-center gap-1 active:scale-90 transition-transform mt-2"
+        >
+          <div className="w-8 h-8 flex items-center justify-center">
+            <Plus className="w-8 h-8 text-white bg-red-500 rounded-full p-1 border-2 border-white" />
+          </div>
+          <span className="text-white text-xs font-bold drop-shadow-md">Post</span>
+        </button>
       </div>
 
       {/* --- BOTTOM LEFT INFO --- */}
-      <div className="absolute left-3 bottom-8 right-16 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
+      <div className="absolute left-3 bottom-24 right-20 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
          {/* User Name Only (Avatar moved to sidebar) */}
          <div className="flex items-center gap-2 mb-2 pointer-events-auto">
              <span className="font-bold text-white text-lg drop-shadow-md">@{video.username}</span>
          </div>
 
-         {/* Caption */}
-         <div className="text-white/95 text-sm mb-2 drop-shadow-md line-clamp-2 pointer-events-auto">
-            {video.description}
-            <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
+         {/* Caption (Position 7) */}
+         <div className="text-white/95 text-sm mb-2 drop-shadow-md pointer-events-auto" onClick={() => setExpanded(prev => !prev)}>
+            {isLongCaption && !expanded ? (
+               <>
+                  {video.caption.substring(0, 30)}...
+                  <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
+               </>
+            ) : (
+               video.caption
+            )}
          </div>
 
-         {/* Music Scrolling */}
+         {/* Music Scrolling (Position 5) */}
          <div className="flex items-center gap-2 text-white/90 text-xs pointer-events-auto bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
             <Music2 className="w-3 h-3" />
             <div className="w-32 overflow-hidden whitespace-nowrap">

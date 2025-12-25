@@ -73,11 +73,13 @@ export function CommentsDrawer({ isOpen, onClose, videoId, comments, currentUser
             {/* Click outside to close */}
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative w-full max-w-md bg-zinc-900 border-t border-white/10 sm:rounded-xl sm:border flex flex-col h-[70vh] sm:h-[600px] shadow-2xl animate-in slide-in-from-bottom duration-300">
-
+            <div
+              className="relative w-full max-w-md flex flex-col h-[70vh] sm:h-[600px] shadow-2xl animate-in slide-in-from-bottom duration-300
+                         bg-amber-50/10 backdrop-blur-xl border-t border-amber-50/20 sm:rounded-t-2xl sm:border"
+            >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-white/10">
-                    <h3 className="font-bold text-white text-lg">Comments ({localComments.length})</h3>
+                <div className="flex items-center justify-between p-4 border-b border-amber-50/10">
+                    <h3 className="font-bold text-white text-lg drop-shadow-sm">Comments ({localComments.length})</h3>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
@@ -104,12 +106,12 @@ export function CommentsDrawer({ isOpen, onClose, videoId, comments, currentUser
                                 </div>
                                 <div className="flex-1 space-y-1">
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-sm font-semibold text-gray-200">@{comment.user.username}</span>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-sm font-semibold text-white drop-shadow-sm">@{comment.user.username}</span>
+                                        <span className="text-xs text-white/60">
                                             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-gray-300 break-words leading-relaxed">{comment.text}</p>
+                                    <p className="text-sm text-white/90 break-words leading-relaxed">{comment.text}</p>
                                 </div>
                             </div>
                         ))
@@ -117,14 +119,14 @@ export function CommentsDrawer({ isOpen, onClose, videoId, comments, currentUser
                 </div>
 
                 {/* Input Area */}
-                <form onSubmit={handleSubmit} className="p-3 border-t border-white/10 bg-zinc-900 pb-safe">
-                    <div className="flex gap-2 items-center bg-zinc-800/50 rounded-full px-4 py-2 border border-white/5 focus-within:border-purple-500/50 transition-colors">
+                <form onSubmit={handleSubmit} className="p-3 border-t border-amber-50/10 bg-black/10 pb-safe">
+                    <div className="flex gap-2 items-center bg-black/20 rounded-full px-4 py-2 border border-amber-50/10 focus-within:border-amber-500/50 transition-colors">
                         <input
                             type="text"
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                             placeholder="Add a comment..."
-                            className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-gray-500"
+                            className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/50"
                             disabled={!currentUser}
                         />
                         <button
