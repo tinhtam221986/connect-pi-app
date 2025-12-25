@@ -3,12 +3,16 @@
 import { apiClient } from "@/lib/api-client";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { useEffect, useState } from "react";
-import { ShoppingBag, Loader2, DollarSign, Wallet } from "lucide-react";
+import { ShoppingBag, Loader2, DollarSign, Wallet, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useEconomy } from "@/components/economy/EconomyContext";
 import { usePiPayment } from "@/hooks/use-pi-payment";
 
-export function MarketplaceView() {
+interface MarketplaceViewProps {
+    onBack?: () => void;
+}
+
+export function MarketplaceView({ onBack }: MarketplaceViewProps) {
     const { t } = useLanguage();
     const { balance, refresh } = useEconomy();
     const { createPayment, loading: paymentLoading } = usePiPayment();
@@ -55,9 +59,15 @@ export function MarketplaceView() {
     if (loading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-purple-500" /></div>;
 
     return (
-        <div className="h-full bg-black p-4 overflow-y-auto pb-24">
-            <div className="flex items-center justify-between mb-6">
+        <div className="h-full bg-black p-4 overflow-y-auto pb-safe">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 sticky top-0 bg-black z-10 py-2">
                 <div className="flex items-center gap-2">
+                    {onBack && (
+                        <button onClick={onBack} className="p-1 -ml-2 mr-1 hover:bg-white/10 rounded-full">
+                            <ChevronLeft className="text-white" size={28} />
+                        </button>
+                    )}
                     <ShoppingBag className="text-purple-400" size={28} />
                     <h1 className="text-2xl font-bold text-white">Marketplace</h1>
                 </div>
