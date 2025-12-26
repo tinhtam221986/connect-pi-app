@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import BottomNav from "@/components/BottomNav";
 import { usePi } from "@/components/pi/pi-provider";
 
 export default function ProfilePage() {
@@ -83,7 +82,6 @@ export default function ProfilePage() {
         </div>
       </div>
       
-      <BottomNav />
       <style jsx>{`@keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }`}</style>
     </div>
   );

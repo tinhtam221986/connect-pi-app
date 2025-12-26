@@ -32,6 +32,8 @@ export function usePi() {
   return context;
 }
 
+const MOCK_USER_KEY = 'connect-pi-app-mock-user';
+
 export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [user, setUser] = useState<PiUser | null>(null);
@@ -39,12 +41,23 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
   const [incompletePayment, setIncompletePayment] = useState<any | null>(null);
   const initializationAttempted = useRef(false);
 
-  // Hàm Force Mock cho Testing
+  // Final, most robust forceMock function
   const forceMock = useCallback(() => {
-    console.log("Forcing Mock Mode");
+    console.log("FORCE MOCK MODE ACTIVATED: Setting user state and dispatching event.");
+    const mockUser = { username: "DevUser", uid: "mock_uid_12345", avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=DevUser` };
+
+    // 1. Set user state directly for immediate reactivity
+    setUser(mockUser);
+
+    // 2. Persist the mock user in localStorage to survive refreshes/redirects
+    localStorage.setItem(MOCK_USER_KEY, JSON.stringify(mockUser));
+
+    // 3. Ensure the app is marked as initialized
     setIsInitialized(true);
-    setUser({ username: "MockUser", uid: "mock_uid_123" });
-    setError(null);
+
+    // 4. Manually dispatch a storage event. This is a robust way to ensure
+    //    other components (like the root page) react to the change.
+    window.dispatchEvent(new Event('storage'));
   }, []);
 
   const onIncompletePaymentFound = useCallback((payment: any) => {
@@ -63,20 +76,21 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && (window as any).Pi) {
         const scopes = ['username', 'payments'];
         const authResult = await (window as any).Pi.authenticate(scopes, onIncompletePaymentFound);
-        setUser({
+        const authenticatedUser = {
             username: authResult.user.username,
             uid: authResult.user.uid,
             accessToken: authResult.accessToken
-        });
+        };
+        setUser(authenticatedUser);
+        // Clear any mock user data on successful real authentication
+        localStorage.removeItem(MOCK_USER_KEY);
       } else {
-        // Fallback nếu không có Pi SDK (trên trình duyệt thường)
         console.log("Không tìm thấy Pi SDK, chuyển sang Mock Mode");
         forceMock();
       }
     } catch (err: any) {
       console.error("Lỗi xác thực:", err);
       setError(err.message || "Xác thực thất bại");
-      // Fallback tự động trong môi trường dev
       if (process.env.NODE_ENV === 'development') {
           forceMock();
       }
@@ -87,14 +101,20 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
     if (initializationAttempted.current) return;
     initializationAttempted.current = true;
 
+    const storedMockUser = localStorage.getItem(MOCK_USER_KEY);
+    if (storedMockUser) {
+        console.log("Found persisted mock user in localStorage.");
+        setUser(JSON.parse(storedMockUser));
+        setIsInitialized(true);
+        return;
+    }
+
     let retryCount = 0;
-    const maxRetries = 20; // 10 seconds
+    const maxRetries = 20;
 
     const initPi = async () => {
       try {
         if (typeof window !== 'undefined' && (window as any).Pi) {
-          // Check for Sandbox Mode via Env Var (Default to false for Production/Real Pi)
-          // Set NEXT_PUBLIC_PI_SANDBOX="true" in .env to enable Sandbox
           const isSandbox = process.env.NEXT_PUBLIC_PI_SANDBOX === 'true';
           console.log(`Initializing Pi SDK (Sandbox: ${isSandbox})`);
 
@@ -106,10 +126,7 @@ export function PiSDKProvider({ children }: { children: React.ReactNode }) {
                  retryCount++;
                  setTimeout(initPi, 500);
              } else {
-                 console.log("Pi SDK not found, keeping uninitialized (or mock)");
-                 if (process.env.NODE_ENV === 'development') {
-                    // forceMock();
-                 }
+                 console.log("Pi SDK not found.");
              }
         }
       } catch (err: any) {
