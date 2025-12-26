@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, MessageCircle, Share2, Bookmark, Music2, VolumeX, ShoppingCart, Store, User, Plus } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Music2, VolumeX, ShoppingCart, User, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
 import { apiClient } from '@/lib/api-client';
@@ -21,7 +21,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
   useEffect(() => {
     loadFeed();
 
-    // Listen for global refresh event (from PostSettings)
     const handleRefresh = () => {
         console.log("Feed refresh triggered");
         loadFeed();
@@ -32,7 +31,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
 
   const loadFeed = async () => {
     try {
-      // Don't set loading to true if we are just refreshing to avoid flash
       if (videos.length === 0) setLoading(true);
       const data = await apiClient.feed.get();
       if (Array.isArray(data)) setVideos(data);
@@ -72,32 +70,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
     <div className="relative w-full h-[100dvh] bg-black overflow-hidden">
       <DraggableAI />
 
-      {/* --- GLOBAL OVERLAY (Top) --- */}
-      <div className="absolute top-0 left-0 right-0 z-30 pt-safe p-4 flex justify-between items-start pointer-events-none">
-          {/* Left: Brand/Logo (Optional) */}
-          <div className="pointer-events-auto">
-             {/* Can place live/search here */}
-          </div>
-
-          {/* Right: Profile Toggle (Watcher vs Author is handled in VideoItem, this is just Main App Nav) */}
-          <button
-             onClick={() => onNavigate?.('profile')}
-             className="pointer-events-auto bg-black/20 backdrop-blur-md p-2 rounded-full border border-white/10"
-          >
-             {user?.avatar ? (
-                 <img src={user.avatar} className="w-8 h-8 rounded-full" alt="Me" />
-             ) : (
-                 <User className="w-6 h-6 text-white" />
-             )}
-          </button>
-      </div>
-
-      {/* --- GLOBAL OVERLAY (Bottom Nav Replacement) --- */}
-      {/* We place Home/Market/Create access here directly on the feed if we want "Overlay" style
-          But since MainAppView handles tabs, we just ensure these buttons call onNavigate correctly
-          and sit on top of the video.
-      */}
-
       <div
         ref={feedRef}
         className="w-full h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
@@ -126,17 +98,16 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
 
 function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActive: boolean, index: number, onNavigate?: (tab: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true); // Default muted for autoplay policy
+  const [muted, setMuted] = useState(true);
   const [likes, setLikes] = useState(video.likes?.length || 0);
   const [hasLiked, setHasLiked] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
   const { user } = usePi();
 
-  const isLongCaption = video.caption && video.caption.length > 30;
-
-  // Ensure we handle both resource_type (API) and resourceType (DB) if mixed
+  const isLongCaption = video.description && video.description.length > 30;
   const isImage = (video.resource_type === 'image' || video.resourceType === 'image');
+  const authorUsername = video.username || 'unknown';
 
   useEffect(() => {
     if (user && video.likes?.includes(user.uid)) {
@@ -155,7 +126,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
-          // Auto-play policy failure is common. Mute and try again is the standard fix.
           if (!videoRef.current!.muted) {
                videoRef.current!.muted = true;
                setMuted(true);
@@ -178,20 +148,30 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
 
   const handleLike = async () => {
     if (!user) return toast.error("Please login to like");
-
-    // Optimistic Update
     const newHasLiked = !hasLiked;
     setHasLiked(newHasLiked);
     setLikes(prev => newHasLiked ? prev + 1 : prev - 1);
-
     try {
       await apiClient.video.like(video.id || video._id, user.uid);
     } catch (error) {
-      // Revert if failed
       setHasLiked(!newHasLiked);
       setLikes(prev => !newHasLiked ? prev + 1 : prev - 1);
       toast.error("Like failed");
     }
+  };
+
+  const renderCaption = () => {
+    if (!video.description) return null;
+
+    if (isLongCaption && !captionExpanded) {
+      return (
+        <p onClick={() => setCaptionExpanded(true)} className="text-white/95 text-sm drop-shadow-md">
+          {video.description.substring(0, 30)}...
+          <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
+        </p>
+      );
+    }
+    return <p className="text-white/95 text-sm drop-shadow-md">{video.description}</p>;
   };
 
   return (
@@ -208,8 +188,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
           playsInline
           muted={muted}
           onClick={toggleMute}
-          // Ensure autoPlay is NOT set here to avoid conflict with IntersectionObserver,
-          // but 'playsInline' is critical for iOS/Android WebViews
         />
       )}
 
@@ -221,8 +199,8 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
       )}
 
       {/* --- RIGHT SIDEBAR --- */}
-      <div className="absolute right-2 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
-        {/* Like */}
+      <div className="absolute right-2 bottom-[120px] flex flex-col items-center gap-6 z-20 pb-safe">
+         {/* Like */}
         <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Heart className={cn("w-8 h-8 drop-shadow-lg transition-colors", hasLiked ? "fill-red-500 text-red-500" : "text-white")} />
           <span className="text-white text-xs font-bold drop-shadow-md">{likes}</span>
@@ -237,72 +215,72 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         {/* Share */}
         <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Share2 className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">Share</span>
         </button>
 
         {/* Save */}
         <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Bookmark className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">Save</span>
         </button>
 
-        {/* Upload */}
+        {/* Upload Button - Floating */}
         <button
           onClick={() => onNavigate?.('create')}
-          className="flex flex-col items-center gap-1 active:scale-90 transition-transform mt-2"
+          className="w-14 h-14 mt-2 flex items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm shadow-lg active:bg-white/20 transition-all transform active:scale-90"
+          aria-label="Upload Video"
         >
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Plus className="w-8 h-8 text-white bg-red-500 rounded-full p-1 border-2 border-white" />
-          </div>
-          <span className="text-white text-xs font-bold drop-shadow-md">Post</span>
+          <Plus className="w-10 h-10 text-white" />
         </button>
       </div>
 
-      {/* --- LEFT SIDEBAR (New) --- */}
-      <div className="absolute left-3 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
-        {/* Personal Store Icon (Position 8) */}
-        <button className="flex flex-col items-center active:scale-90 transition-transform">
+      {/* --- LEFT SIDEBAR (Info) --- */}
+      <div className="absolute left-3 bottom-[120px] flex flex-col items-start gap-3 z-20 pb-safe max-w-[75%]">
+        {/* Personal Store Icon */}
+        <Link href={`/profile/${authorUsername}/shop`} className="flex flex-col items-center active:scale-90 transition-transform mb-2">
           <div className="bg-yellow-400/20 p-2 rounded-full border-2 border-yellow-500 backdrop-blur-sm">
-             <ShoppingCart className="w-6 h-6 text-yellow-400" />
+             <ShoppingCart className="w-7 h-7 text-yellow-400" />
           </div>
-        </button>
-
-        {/* Author Avatar & Name (Position 6) */}
-        <Link href={`/profile/${video.username || 'user'}`} className="relative group flex flex-col items-center gap-1">
-            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer group-active:scale-90 transition-transform">
-               {video.avatar ? (
-                  <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
-               ) : video.username ? (
-                  <img src={`httpshttps://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
-               ) : (
-                  <User className="w-full h-full p-2 text-white/50" />
-               )}
-            </div>
-            <span className="font-bold text-white text-sm drop-shadow-md">@{video.username}</span>
         </Link>
 
-        {/* Spinning Music Disc (Position 5) */}
-        <div className="mt-4">
-            <div className="w-12 h-12 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin border-2 border-gray-600">
-                <Music2 className="text-white w-6 h-6"/>
+        {/* Author Avatar & Name */}
+        <Link href={`/profile/${authorUsername}`} className="flex items-center gap-2">
+            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer group-active:scale-90 transition-transform">
+                {video.avatar ? (
+                    <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
+                ) : (
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${authorUsername}`} className="w-full h-full" alt="avatar" />
+                )}
             </div>
+            <span className="font-bold text-white text-md drop-shadow-md">@{authorUsername}</span>
+        </Link>
+
+        {/* Caption */}
+        <div className="pointer-events-auto">
+          {renderCaption()}
+        </div>
+
+        {/* Spinning Music Disc */}
+        <div className="flex items-center gap-2 mt-2">
+            <div className="w-6 h-6 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin-slow border-2 border-gray-600">
+                <Music2 className="text-white w-3 h-3"/>
+            </div>
+            <span className="text-white text-sm font-light drop-shadow-md truncate">Original Sound - @{authorUsername}</span>
         </div>
       </div>
 
-      {/* --- BOTTOM LEFT INFO (Modified for Caption Only) --- */}
-      <div className="absolute left-3 bottom-24 right-20 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
-         {/* Caption (Position 7) */}
-         <div className="text-white/95 text-sm mb-2 drop-shadow-md pointer-events-auto" onClick={() => setExpanded(prev => !prev)}>
-            {isLongCaption && !expanded ? (
-               <>
-                  {video.caption.substring(0, 30)}...
-                  <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
-               </>
-            ) : (
-               video.caption
-            )}
-         </div>
-      </div>
+      {/* Expanded Caption Overlay */}
+      {captionExpanded && (
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-[rgba(245,210,147,0.7)] to-[rgba(255,255,255,0.4)] backdrop-blur-md z-30 p-4 pt-8 flex flex-col pb-safe"
+          onClick={() => setCaptionExpanded(false)}
+        >
+          <div className="flex-grow overflow-y-auto text-black no-scrollbar p-2 rounded-lg bg-white/20">
+            <p className="text-sm">{video.description}</p>
+          </div>
+          <button onClick={() => setCaptionExpanded(false)} className="mt-4 text-center text-sm font-bold text-black/70">
+            Close
+          </button>
+        </div>
+      )}
 
       <CommentsDrawer
         isOpen={commentsOpen}
@@ -310,10 +288,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         videoId={video.id || video._id}
         comments={video.comments || []}
         currentUser={user}
-        onCommentAdded={(c) => {
-             // Local update for comments can be added here if we want immediate feedback
-             // Currently relying on re-fetch or just visual append if we had the state lifted
-        }}
+        onCommentAdded={(c) => {}}
       />
     </div>
   );
