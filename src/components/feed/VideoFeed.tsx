@@ -225,10 +225,10 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         {/* Upload Button - Floating */}
         <button
           onClick={() => onNavigate?.('create')}
-          className="w-12 h-12 mt-2 flex items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm shadow-lg active:bg-white/20 transition-all transform active:scale-90"
+          className="w-14 h-14 mt-2 flex items-center justify-center rounded-full border-2 border-white bg-black/20 backdrop-blur-sm shadow-lg active:bg-white/20 transition-all transform active:scale-90"
           aria-label="Upload Video"
         >
-          <Plus className="w-8 h-8 text-white" />
+          <Plus className="w-10 h-10 text-white" />
         </button>
       </div>
 
