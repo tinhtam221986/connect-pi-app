@@ -133,7 +133,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
   const [expanded, setExpanded] = useState(false);
   const { user } = usePi();
 
-  const isLongCaption = video.caption && video.caption.length > 30;
+  const isLongCaption = video.description && video.description.length > 30;
 
   // Ensure we handle both resource_type (API) and resourceType (DB) if mixed
   const isImage = (video.resource_type === 'image' || video.resourceType === 'image');
@@ -221,7 +221,7 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
       )}
 
       {/* --- RIGHT SIDEBAR --- */}
-      <div className="absolute right-2 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
+      <div className="absolute right-2 bottom-40 flex flex-col items-center gap-6 z-20 pb-safe">
         {/* Like */}
         <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Heart className={cn("w-8 h-8 drop-shadow-lg transition-colors", hasLiked ? "fill-red-500 text-red-500" : "text-white")} />
@@ -237,71 +237,70 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         {/* Share */}
         <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Share2 className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">Share</span>
         </button>
 
         {/* Save */}
         <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
           <Bookmark className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">Save</span>
         </button>
+      </div>
 
-        {/* Upload */}
+      {/* Upload Button (Position 1) - Separate for distinct styling */}
+      <div className="absolute right-3 bottom-24 z-20 pb-safe">
         <button
           onClick={() => onNavigate?.('create')}
-          className="flex flex-col items-center gap-1 active:scale-90 transition-transform mt-2"
+          className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-white bg-transparent active:bg-white/20 transition-all transform active:scale-90"
+          aria-label="Upload Video"
         >
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Plus className="w-8 h-8 text-white bg-red-500 rounded-full p-1 border-2 border-white" />
-          </div>
-          <span className="text-white text-xs font-bold drop-shadow-md">Post</span>
+          <Plus className="w-8 h-8 text-white" />
         </button>
       </div>
 
-      {/* --- LEFT SIDEBAR (New) --- */}
-      <div className="absolute left-3 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
+      {/* --- LEFT SIDEBAR (Info) --- */}
+      <div className="absolute left-3 bottom-28 flex flex-col items-start gap-3 z-20 pb-safe max-w-[75%]">
         {/* Personal Store Icon (Position 8) */}
-        <button className="flex flex-col items-center active:scale-90 transition-transform">
+        <button className="flex flex-col items-center active:scale-90 transition-transform mb-2">
           <div className="bg-yellow-400/20 p-2 rounded-full border-2 border-yellow-500 backdrop-blur-sm">
-             <ShoppingCart className="w-6 h-6 text-yellow-400" />
+             <ShoppingCart className="w-7 h-7 text-yellow-400" />
           </div>
         </button>
 
-        {/* Author Avatar & Name (Position 6) */}
-        <Link href={`/profile/${video.username || 'user'}`} className="relative group flex flex-col items-center gap-1">
+        {/* Author Avatar & Name */}
+        <Link href={`/profile/${video.username || 'user'}`} className="relative group flex items-center gap-2">
             <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer group-active:scale-90 transition-transform">
-               {video.avatar ? (
-                  <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
-               ) : video.username ? (
-                  <img src={`httpshttps://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
-               ) : (
-                  <User className="w-full h-full p-2 text-white/50" />
-               )}
+                {video.avatar ? (
+                    <img src={video.avatar} className="w-full h-full object-cover" alt="avatar" />
+                ) : video.username ? (
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
+                ) : (
+                    <User className="w-full h-full p-2 text-white/50" />
+                )}
             </div>
-            <span className="font-bold text-white text-sm drop-shadow-md">@{video.username}</span>
+            <span className="font-bold text-white text-md drop-shadow-md">@{video.username}</span>
         </Link>
 
-        {/* Spinning Music Disc (Position 5) */}
-        <div className="mt-4">
-            <div className="w-12 h-12 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin border-2 border-gray-600">
-                <Music2 className="text-white w-6 h-6"/>
-            </div>
-        </div>
-      </div>
-
-      {/* --- BOTTOM LEFT INFO (Modified for Caption Only) --- */}
-      <div className="absolute left-3 bottom-24 right-20 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
-         {/* Caption (Position 7) */}
-         <div className="text-white/95 text-sm mb-2 drop-shadow-md pointer-events-auto" onClick={() => setExpanded(prev => !prev)}>
+        {/* Caption (Position 7) */}
+        <div
+          className="text-white/95 text-sm drop-shadow-md pointer-events-auto p-2 rounded-lg bg-black/20 backdrop-blur-sm border border-white/10"
+          onClick={() => setExpanded(prev => !prev)}
+        >
             {isLongCaption && !expanded ? (
                <>
-                  {video.caption.substring(0, 30)}...
+                  {video.description.substring(0, 30)}...
                   <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
                </>
             ) : (
-               video.caption
+               video.description
             )}
          </div>
+
+        {/* Spinning Music Disc & Info (Position 5) */}
+        <div className="flex items-center gap-2 mt-2">
+            <div className="w-6 h-6 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin-slow border-2 border-gray-600">
+                <Music2 className="text-white w-3 h-3"/>
+            </div>
+            <span className="text-white text-sm font-light drop-shadow-md truncate">Original Sound - @{video.username}</span>
+        </div>
       </div>
 
       <CommentsDrawer

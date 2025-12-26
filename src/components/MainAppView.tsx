@@ -6,6 +6,7 @@ import { VideoFeed } from '@/components/feed/VideoFeed';
 import { MarketplaceView } from '@/components/market/MarketplaceView';
 import { GameCenter } from '@/components/game/GameCenter';
 import { UserProfile } from '@/components/profile/UserProfile';
+import { BottomNav } from '@/components/BottomNav';
 import { useRouter } from 'next/navigation';
 
 export default function MainAppView() {
@@ -39,6 +40,7 @@ export default function MainAppView() {
       <main className="flex-1 w-full h-full relative">
         {renderContent()}
       </main>
+      <BottomNav onTabChange={handleTabChange} />
     </div>
   );
 }
