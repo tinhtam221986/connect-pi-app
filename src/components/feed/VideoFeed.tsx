@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, Bookmark, Music2, VolumeX, ShoppingCart, Store, User, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { Heart, MessageCircle, Share2, Bookmark, Music2, VolumeX, ShoppingCart, User, Plus, Save, Home, Mail, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePi } from '@/components/pi/pi-provider';
 import { apiClient } from '@/lib/api-client';
@@ -10,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { CommentsDrawer } from './CommentsDrawer';
 import { DraggableAI } from './DraggableAI';
 
-export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+export function VideoFeed() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -20,7 +21,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
   useEffect(() => {
     loadFeed();
 
-    // Listen for global refresh event (from PostSettings)
     const handleRefresh = () => {
         console.log("Feed refresh triggered");
         loadFeed();
@@ -31,7 +31,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
 
   const loadFeed = async () => {
     try {
-      // Don't set loading to true if we are just refreshing to avoid flash
       if (videos.length === 0) setLoading(true);
       const data = await apiClient.feed.get();
       if (Array.isArray(data)) setVideos(data);
@@ -71,32 +70,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
     <div className="relative w-full h-[100dvh] bg-black overflow-hidden">
       <DraggableAI />
 
-      {/* --- GLOBAL OVERLAY (Top) --- */}
-      <div className="absolute top-0 left-0 right-0 z-30 pt-safe p-4 flex justify-between items-start pointer-events-none">
-          {/* Left: Brand/Logo (Optional) */}
-          <div className="pointer-events-auto">
-             {/* Can place live/search here */}
-          </div>
-
-          {/* Right: Profile Toggle (Watcher vs Author is handled in VideoItem, this is just Main App Nav) */}
-          <button
-             onClick={() => onNavigate?.('profile')}
-             className="pointer-events-auto bg-black/20 backdrop-blur-md p-2 rounded-full border border-white/10"
-          >
-             {user?.avatar ? (
-                 <img src={user.avatar} className="w-8 h-8 rounded-full" alt="Me" />
-             ) : (
-                 <User className="w-6 h-6 text-white" />
-             )}
-          </button>
-      </div>
-
-      {/* --- GLOBAL OVERLAY (Bottom Nav Replacement) --- */}
-      {/* We place Home/Market/Create access here directly on the feed if we want "Overlay" style
-          But since MainAppView handles tabs, we just ensure these buttons call onNavigate correctly
-          and sit on top of the video.
-      */}
-
       <div
         ref={feedRef}
         className="w-full h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar"
@@ -107,7 +80,6 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
             video={video}
             isActive={index === activeIndex}
             index={index}
-            onNavigate={onNavigate}
           />
         ))}
         {videos.length === 0 && (
@@ -123,16 +95,21 @@ export function VideoFeed({ onNavigate }: { onNavigate?: (tab: string) => void }
   );
 }
 
-function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActive: boolean, index: number, onNavigate?: (tab: string) => void }) {
+function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, index: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true); // Default muted for autoplay policy
+  const [muted, setMuted] = useState(true);
   const [likes, setLikes] = useState(video.likes?.length || 0);
   const [hasLiked, setHasLiked] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const { user } = usePi();
 
-  // Ensure we handle both resource_type (API) and resourceType (DB) if mixed
+  // State for new UI elements
+  const [navVisible, setNavVisible] = useState(true);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+
+  const isLongCaption = video.description && video.description.length > 30;
   const isImage = (video.resource_type === 'image' || video.resourceType === 'image');
+  const authorUsername = video.username || 'unknown';
 
   useEffect(() => {
     if (user && video.likes?.includes(user.uid)) {
@@ -151,7 +128,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
-          // Auto-play policy failure is common. Mute and try again is the standard fix.
           if (!videoRef.current!.muted) {
                videoRef.current!.muted = true;
                setMuted(true);
@@ -174,21 +150,35 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
 
   const handleLike = async () => {
     if (!user) return toast.error("Please login to like");
-
-    // Optimistic Update
     const newHasLiked = !hasLiked;
     setHasLiked(newHasLiked);
     setLikes(prev => newHasLiked ? prev + 1 : prev - 1);
-
     try {
       await apiClient.video.like(video.id || video._id, user.uid);
     } catch (error) {
-      // Revert if failed
       setHasLiked(!newHasLiked);
       setLikes(prev => !newHasLiked ? prev + 1 : prev - 1);
       toast.error("Like failed");
     }
   };
+
+  const renderCaption = () => {
+    if (!video.description) return null;
+
+    if (isLongCaption && !captionExpanded) {
+      return (
+        <p onClick={() => setCaptionExpanded(true)} className="text-white/95 text-sm drop-shadow-md">
+          {video.description.substring(0, 30)}...
+          <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
+        </p>
+      );
+    }
+    return <p className="text-white/95 text-sm drop-shadow-md">{video.description}</p>;
+  };
+
+  const router = useRouter();
+
+  const handleNavigate = (path: string) => router.push(path);
 
   return (
     <div className="video-snap-item w-full h-[100dvh] snap-start relative bg-black shrink-0" data-index={index}>
@@ -204,8 +194,6 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
           playsInline
           muted={muted}
           onClick={toggleMute}
-          // Ensure autoPlay is NOT set here to avoid conflict with IntersectionObserver,
-          // but 'playsInline' is critical for iOS/Android WebViews
         />
       )}
 
@@ -216,117 +204,94 @@ function VideoItem({ video, isActive, index, onNavigate }: { video: any, isActiv
         </div>
       )}
 
-      {/* --- RIGHT SIDEBAR --- */}
-      <div className="absolute right-2 bottom-32 flex flex-col items-center gap-6 z-20 pb-safe">
+      {/* --- UI Overlay --- */}
+      <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 pt-safe pb-safe">
+        {/* Top Section is empty for immersive view */}
+        <div></div>
 
-        {/* Author Avatar (Navigates to Author Profile) */}
-        <div className="relative mb-2">
-            <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg cursor-pointer active:scale-90 transition-transform">
-               {video.username ? (
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${video.username}`} className="w-full h-full" alt="avatar" />
-               ) : (
-                  <User className="w-6 h-6 m-2 text-white" />
-               )}
+        {/* Bottom Section */}
+        <div className="flex justify-between items-end">
+          {/* Left Info Cluster */}
+          <div className="flex flex-col gap-3 text-white max-w-[75%]">
+            <Link href={`/profile/${authorUsername}`} className="flex items-center gap-3 active:scale-95 transition-transform">
+                <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg">
+                    <img src={video.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorUsername}`} className="w-full h-full object-cover" alt="avatar" />
+                </div>
+                <span className="font-bold text-lg drop-shadow-md">@{authorUsername}</span>
+            </Link>
+
+            {/* CORRECTED CAPTION LOGIC */}
+            <div className="pointer-events-auto">
+              <p className="text-white/95 text-sm drop-shadow-md">
+                {isLongCaption && !captionExpanded
+                  ? <>{video.description.substring(0, 30)}... <span onClick={() => setCaptionExpanded(true)} className="font-bold text-white/80 cursor-pointer hover:underline">xem thêm</span></>
+                  : video.description
+                }
+              </p>
             </div>
-             {/* Follow Plus Icon */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5 shadow-md">
-                <Plus className="w-3 h-3 text-white" />
+
+            {/* Horizontal Nav buttons & Music */}
+            <div className={cn("flex items-center gap-4 transition-all duration-300", navVisible ? "opacity-100" : "opacity-0 -translate-x-4 pointer-events-none")}>
+                <Link href="/" className="flex items-center gap-2 p-2 rounded-lg bg-black/20 backdrop-blur-sm">
+                    <Home className="w-5 h-5" />
+                </Link>
+                 <Link href="/market" className="flex items-center gap-2 p-2 rounded-lg bg-black/20 backdrop-blur-sm">
+                    <ShoppingCart className="w-5 h-5" />
+                </Link>
+                 <Link href="/inbox" className="flex items-center gap-2 p-2 rounded-lg bg-black/20 backdrop-blur-sm relative">
+                    <Mail className="w-5 h-5" />
+                    {/* Notification Dot */}
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></div>
+                </Link>
             </div>
+
+             {/* Spinning Music Disc */}
+            <div className="flex items-center gap-2 mt-1">
+                <div className="w-8 h-8 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin-slow border-2 border-gray-600">
+                    <Music2 className="text-white w-4 h-4"/>
+                </div>
+                <span className="text-white text-sm font-light drop-shadow-md truncate">Original Sound - @{authorUsername}</span>
+            </div>
+          </div>
+
+          {/* Right Action Cluster */}
+          <div className="flex flex-col items-center gap-5">
+            <Link href={`/profile/${authorUsername}/shop`} className="bg-yellow-400/20 p-3 rounded-full border-2 border-yellow-500 backdrop-blur-sm active:scale-90 transition-transform">
+                <ShoppingCart className="w-8 h-8 text-yellow-400" />
+            </Link>
+            <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <Heart className={cn("w-9 h-9 drop-shadow-lg", hasLiked ? "fill-red-500 text-red-500" : "text-white")} />
+              <span className="text-xs font-bold">{likes}</span>
+            </button>
+            <button onClick={() => setCommentsOpen(true)} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <MessageCircle className="w-9 h-9 text-white drop-shadow-lg" />
+              <span className="text-xs font-bold">{video.comments?.length || 0}</span>
+            </button>
+            <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <Share2 className="w-9 h-9 text-white drop-shadow-lg" />
+            </button>
+
+            {/* New Bottom Nav - Combined */}
+            <div className="flex items-end gap-2">
+                <Link href="/upload" aria-label="Upload Video" className="w-[4.5rem] h-[4.5rem] flex items-center justify-center rounded-full bg-white active:bg-gray-200 transition-all transform active:scale-90 shadow-lg">
+                  <Plus className="w-12 h-12 text-black" />
+                </Link>
+                <button onClick={() => setNavVisible(!navVisible)} className="p-2">
+                    <ChevronUp className={cn("w-6 h-6 text-white transition-transform duration-300", navVisible && "rotate-180")} />
+                </button>
+            </div>
+          </div>
         </div>
-
-        {/* Like */}
-        <button onClick={handleLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <Heart className={cn("w-8 h-8 drop-shadow-lg transition-colors", hasLiked ? "fill-red-500 text-red-500" : "text-white")} />
-          <span className="text-white text-xs font-bold drop-shadow-md">{likes}</span>
-        </button>
-
-        {/* Comment */}
-        <button onClick={() => setCommentsOpen(true)} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <MessageCircle className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">{video.comments?.length || 0}</span>
-        </button>
-
-        {/* Share */}
-        <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <Share2 className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">Share</span>
-        </button>
-
-        {/* Save */}
-        <button className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-          <Bookmark className="w-8 h-8 text-white drop-shadow-lg" />
-          <span className="text-white text-xs font-bold drop-shadow-md">Save</span>
-        </button>
       </div>
 
-      {/* --- BOTTOM RIGHT: Disc (Functions as Create Button) --- */}
-      <div className="absolute right-3 bottom-8 z-20 pb-safe">
-         <div
-            onClick={() => onNavigate?.('create')}
-            className="w-12 h-12 rounded-full border-[3px] border-gray-800 bg-black animate-[spin_4s_linear_infinite] overflow-hidden cursor-pointer active:scale-90 transition-transform shadow-xl"
-         >
-             <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-gray-900 to-gray-700">
-                <Music2 className="w-6 h-6 text-white" />
-             </div>
-         </div>
-         {/* Floating "+" badge to indicate action */}
-         <div className="absolute -top-2 -left-2 bg-pink-500 rounded-full p-1 shadow-md pointer-events-none">
-            <Plus className="w-3 h-3 text-white" />
-         </div>
-      </div>
-
-      {/* --- SUPERMARKET ICON (Next to Disc) --- */}
-      {/* Moved slightly left to accommodate the Disc */}
-      <div className="absolute right-16 bottom-8 z-20 pb-safe">
-         <button className="flex flex-col items-center active:scale-90 transition-transform" onClick={() => onNavigate?.('market')}>
-            <Store className="w-10 h-10 text-blue-400 drop-shadow-lg" />
-            <span className="text-[10px] font-bold text-white bg-blue-600/80 px-1 rounded backdrop-blur-sm">Shop</span>
-         </button>
-      </div>
-
-      {/* --- FLOATING CART (Left Side) --- */}
-      {/* This is redundant with Shop button but requested in design */}
-      <div className="absolute left-3 bottom-48 z-20">
-         <button
-            onClick={() => onNavigate?.('market')}
-            className="bg-yellow-500/20 p-2 rounded-full border border-yellow-400 backdrop-blur-sm animate-bounce active:scale-90 transition-transform"
-         >
-            <ShoppingCart className="w-6 h-6 text-yellow-400" />
-         </button>
-      </div>
-
-      {/* --- BOTTOM LEFT INFO --- */}
-      <div className="absolute left-3 bottom-8 right-16 z-10 pb-safe flex flex-col items-start text-left max-w-[75%] pointer-events-none">
-         {/* User Name Only (Avatar moved to sidebar) */}
-         <div className="flex items-center gap-2 mb-2 pointer-events-auto">
-             <span className="font-bold text-white text-lg drop-shadow-md">@{video.username}</span>
-         </div>
-
-         {/* Caption */}
-         <div className="text-white/95 text-sm mb-2 drop-shadow-md line-clamp-2 pointer-events-auto">
-            {video.description}
-            <span className="font-bold text-white/80 ml-2 cursor-pointer hover:underline">xem thêm</span>
-         </div>
-
-         {/* Music Scrolling */}
-         <div className="flex items-center gap-2 text-white/90 text-xs pointer-events-auto bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
-            <Music2 className="w-3 h-3" />
-            <div className="w-32 overflow-hidden whitespace-nowrap">
-               <span className="animate-marquee inline-block">Original Sound - {video.username} • Connect Pi Music</span>
-            </div>
-         </div>
-      </div>
-
+      {/* Comments Drawer */}
       <CommentsDrawer
         isOpen={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         videoId={video.id || video._id}
         comments={video.comments || []}
         currentUser={user}
-        onCommentAdded={(c) => {
-             // Local update for comments can be added here if we want immediate feedback
-             // Currently relying on re-fetch or just visual append if we had the state lifted
-        }}
+        onCommentAdded={(c) => {}}
       />
     </div>
   );
