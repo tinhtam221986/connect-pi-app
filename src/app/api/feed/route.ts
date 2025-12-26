@@ -58,8 +58,8 @@ export async function GET() {
                      thumbnail: '',
                      description: 'Dev Mode: DB not connected. This is a mock video.',
                      username: 'DevUser',
-                     likes: 123,
-                     comments: 10,
+                     likes: [],
+                     comments: [],
                      resource_type: 'video',
                      created_at: new Date()
                  }
