@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, MessageCircle, Share2, Music2, VolumeX, ShoppingCart, User, Plus, Home, Mail, ChevronUp, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, VolumeX, Home as CrownIcon, Bookmark } from 'lucide-react';
 import { toast } from 'sonner';
+import * as Popover from '@radix-ui/react-popover';
 import { usePi } from '@/components/pi/pi-provider';
 import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -84,6 +85,7 @@ export function VideoFeed() {
 // Child Component: Renders a single video item with all its UI overlays
 function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, index: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
   const [muted, setMuted] = useState(true);
   const [hasLiked, setHasLiked] = useState(false);
   const [likes, setLikes] = useState(video.likes?.length || 0);
@@ -94,6 +96,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
   const isLongCaption = video.description && video.description.length > 30;
   const isImage = video.resourceType === 'image';
   const authorUsername = video.username || 'unknown';
+  const audioId = video.audio_id || 'original'; // Assume some audio ID exists
 
   useEffect(() => {
     setHasLiked(user && video.likes?.includes(user.uid));
@@ -126,6 +129,7 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
     setHasLiked(newHasLiked);
     setLikes(prev => newHasLiked ? prev + 1 : prev - 1);
     try {
+      // Corrected API endpoint call
       await apiClient.video.like(video._id, user.uid);
     } catch (error) {
       setHasLiked(!newHasLiked);
@@ -134,8 +138,21 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
     }
   };
 
-  // This is now handled by the global layout, so we don't need a specific handler here.
-  // const handleNavigate = (path: string) => router.push(path);
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Check out this video by @${authorUsername}`,
+          text: video.description,
+          url: window.location.href, // Or a specific video URL if available
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      toast.info('Share feature is not supported on your device.');
+    }
+  };
 
   return (
     <div className="video-snap-item w-full h-[100dvh] snap-start relative bg-black shrink-0" data-index={index}>
@@ -143,8 +160,8 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
       <MediaPlayer isImage={isImage} src={video.url} videoRef={videoRef} muted={muted} onToggleMute={() => setMuted(!muted)} />
       {muted && isActive && !isImage && <MuteIndicator />}
 
-      {/* UI Overlay - Stretches to fill, uses justify-between to push content to edges */}
-      <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 pt-safe pb-[110px] sm:pb-[120px] pointer-events-none">
+      {/* UI Overlay */}
+      <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 pt-safe pb-safe pointer-events-none">
         <div></div> {/* Top Spacer */}
         <div className="flex justify-between items-end w-full">
           {/* Left Cluster */}
@@ -155,15 +172,18 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
             isLongCaption={isLongCaption}
             captionExpanded={captionExpanded}
             setCaptionExpanded={setCaptionExpanded}
+            audioId={audioId}
+            router={router}
           />
           {/* Right Cluster */}
           <RightCluster
-            authorUsername={authorUsername}
             hasLiked={hasLiked}
             likes={likes}
             commentsCount={video.comments?.length || 0}
             onLike={handleLike}
             onComment={() => setCommentsOpen(true)}
+            onShare={handleShare}
+            onSave={() => router.push('/profile/saved')}
           />
         </div>
       </div>
@@ -174,65 +194,75 @@ function VideoItem({ video, isActive, index }: { video: any, isActive: boolean, 
         videoId={video._id}
         comments={video.comments || []}
         currentUser={user}
-        onCommentAdded={() => { /* Can add optimistic update logic here */ }}
+        onCommentAdded={() => { /* Optimistic update logic */ }}
       />
     </div>
   );
 }
 
-// --- UI Subcomponents for Readability ---
+// --- UI Subcomponents ---
 
-const LeftCluster = ({ authorUsername, avatarUrl, description, isLongCaption, captionExpanded, setCaptionExpanded }) => (
+const LeftCluster = ({ authorUsername, avatarUrl, description, isLongCaption, captionExpanded, setCaptionExpanded, audioId, router }) => (
   <div className="flex flex-col gap-3 text-white max-w-[70%] pointer-events-auto">
-    {/* Author Avatar and Name */}
-    <Link href={`/app/profile/${authorUsername}`} className="flex items-center gap-3 active:scale-95 transition-transform">
-      <div className="w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg">
-        <img src={avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorUsername}`} className="w-full h-full object-cover" alt="avatar" />
-      </div>
-      <span className="font-bold text-lg drop-shadow-md">@{authorUsername}</span>
+    {/* Avatar with Personal Shop Icon */}
+    <div className="relative w-12 h-12">
+      <Link href={`/profile/${authorUsername}`} className="block w-full h-full">
+        <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-700 shadow-lg">
+          <img src={avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorUsername}`} className="w-full h-full object-cover" alt="avatar" />
+        </div>
+      </Link>
+      <Link href={`/shop/${authorUsername}`} className="absolute -top-2 -right-2 bg-yellow-400 p-1 rounded-full border-2 border-white">
+        <CrownIcon className="w-4 h-4 text-black" />
+      </Link>
+    </div>
+
+    {/* Author Name */}
+    <Link href={`/profile/${authorUsername}`} className="font-bold text-lg drop-shadow-md">
+      @{authorUsername}
     </Link>
 
-    {/* Video Caption with "xem thêm" */}
+    {/* Video Caption */}
     <div className="text-white/95 text-sm drop-shadow-md">
       {isLongCaption && !captionExpanded
-        ? <>{description.substring(0, 30)}... <span onClick={() => setCaptionExpanded(true)} className="font-bold text-white/80 cursor-pointer hover:underline">xem thêm</span></>
+        ? <>{description.substring(0, 30)}... <button onClick={() => setCaptionExpanded(true)} className="font-bold text-white/80 cursor-pointer hover:underline pointer-events-auto">xem thêm</button></>
         : description
       }
     </div>
 
-    {/* Spinning Music Disc and Sound Info */}
-    <div className="flex items-center gap-2 mt-1">
-      <div className="w-8 h-8 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin-slow border-2 border-gray-600"><Music2 className="text-white w-4 h-4"/></div>
-      <span className="text-white text-sm font-light drop-shadow-md truncate">Original Sound - @{authorUsername}</span>
-    </div>
+    {/* Spinning Music Disc with Pop-up Menu */}
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button className="flex items-center gap-2 mt-1 pointer-events-auto w-fit">
+          <div className="w-8 h-8 bg-gray-900/70 rounded-full flex items-center justify-center animate-spin-slow border-2 border-gray-600"><Music2 className="text-white w-4 h-4"/></div>
+          <span className="text-white text-sm font-light drop-shadow-md truncate">Original Sound - @{authorUsername}</span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content side="top" align="start" sideOffset={10} className="z-50 w-48 rounded-lg bg-black/70 backdrop-blur-md border border-white/20 p-2 shadow-lg pointer-events-auto">
+          <button onClick={() => router.push(`/upload?audio_id=${audioId}`)} className="w-full text-left p-2 text-sm text-white rounded-md hover:bg-white/10 transition-colors">Sử dụng âm thanh này</button>
+          <button onClick={() => router.push('/profile/saved')} className="w-full text-left p-2 text-sm text-white rounded-md hover:bg-white/10 transition-colors">Lưu âm thanh</button>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   </div>
 );
 
-const RightCluster = ({ authorUsername, hasLiked, likes, commentsCount, onLike, onComment }) => (
-  <div className="flex flex-col items-center gap-5 pointer-events-auto">
-    {/* NEW ORDER: Heart is at the top */}
+const RightCluster = ({ hasLiked, likes, commentsCount, onLike, onComment, onShare, onSave }) => (
+  <div className="flex flex-col items-center gap-5 text-white pointer-events-auto">
     <button onClick={onLike} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
       <Heart className={cn("w-9 h-9 drop-shadow-lg", hasLiked ? "fill-red-500 text-red-500" : "text-white")} />
       <span className="text-xs font-bold">{likes}</span>
     </button>
-
     <button onClick={onComment} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-      <MessageCircle className="w-9 h-9 text-white drop-shadow-lg" />
+      <MessageCircle className="w-9 h-9 drop-shadow-lg" />
       <span className="text-xs font-bold">{commentsCount}</span>
     </button>
-
-    <button onClick={() => toast.info("Share feature coming soon!")} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-      <Share2 className="w-9 h-9 text-white drop-shadow-lg" />
+    <button onClick={onShare} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+      <Share2 className="w-9 h-9 drop-shadow-lg" />
     </button>
-
-    <button onClick={() => toast.info("Save feature coming soon!")} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-      <Bookmark className="w-9 h-9 text-white drop-shadow-lg" />
+    <button onClick={onSave} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+      <Bookmark className="w-9 h-9 drop-shadow-lg" />
     </button>
-
-    {/* NEW ORDER: Yellow cart is at the bottom */}
-    <Link href={`/app/profile/${authorUsername}/shop`} className="bg-yellow-400/20 p-3 rounded-full border-2 border-yellow-500 backdrop-blur-sm active:scale-90 transition-transform">
-      <ShoppingCart className="w-8 h-8 text-yellow-400" />
-    </Link>
   </div>
 );
 

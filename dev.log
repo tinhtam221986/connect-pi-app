@@ -1,8 +1,9 @@
 
 > connect-pi-app@1.0.0 dev
-> next dev
+> npx kill-port 3000 && next dev
 
-  ▲ Next.js 14.2.16
+Could not kill process on port 3000. No process running on port.
+  ▲ Next.js 14.2.35
   - Local:        http://localhost:3000
 
  ✓ Starting...
@@ -11,52 +12,9 @@ This information is used to shape Next.js' roadmap and prioritize features.
 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
 https://nextjs.org/telemetry
 
- ✓ Ready in 1908ms
+ ✓ Ready in 1881ms
  ○ Compiling / ...
- ✓ Compiled / in 12.6s (1270 modules)
- GET / 200 in 13901ms
- ✓ Compiled in 1301ms (626 modules)
- ○ Compiling /api/feed ...
- ✓ Compiled /api/feed in 5.2s (666 modules)
-Feed API Error: Error: Please define the MONGODB_URI environment variable inside .env
-    at connectDB (webpack-internal:///(rsc)/./src/lib/mongodb.ts:18:15)
-    at GET (webpack-internal:///(rsc)/./src/app/api/feed/route.ts:14:70)
-    at /app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:55837
-    at /app/node_modules/next/dist/server/lib/trace/tracer.js:140:36
-    at NoopContextManager.with (/app/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
-    at ContextAPI.with (/app/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
-    at NoopTracer.startActiveSpan (/app/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18093)
-    at ProxyTracer.startActiveSpan (/app/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18854)
-    at /app/node_modules/next/dist/server/lib/trace/tracer.js:122:103
-    at NoopContextManager.with (/app/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
-    at ContextAPI.with (/app/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
-    at NextTracerImpl.trace (/app/node_modules/next/dist/server/lib/trace/tracer.js:122:28)
-    at /app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:48572
-    at AsyncLocalStorage.run (node:internal/async_local_storage/async_hooks:91:14)
-    at Object.wrap (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:40957)
-    at /app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:47148
-    at AsyncLocalStorage.run (node:internal/async_local_storage/async_hooks:91:14)
-    at Object.wrap (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:38292)
-    at /app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:47110
-    at AsyncLocalStorage.run (node:internal/async_local_storage/async_hooks:91:14)
-    at eO.execute (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:46557)
-    at eO.handle (/app/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:57176)
-    at doRender (/app/node_modules/next/dist/server/base-server.js:1352:60)
-    at cacheEntry.responseCache.get.routeKind (/app/node_modules/next/dist/server/base-server.js:1574:34)
-    at ResponseCache.get (/app/node_modules/next/dist/server/response-cache/index.js:49:26)
-    at DevServer.renderToResponseWithComponentsImpl (/app/node_modules/next/dist/server/base-server.js:1482:53)
-    at /app/node_modules/next/dist/server/base-server.js:1003:121
-    at NextTracerImpl.trace (/app/node_modules/next/dist/server/lib/trace/tracer.js:105:20)
-    at DevServer.renderToResponseWithComponents (/app/node_modules/next/dist/server/base-server.js:1003:41)
-    at DevServer.renderPageComponent (/app/node_modules/next/dist/server/base-server.js:1908:35)
-    at async DevServer.renderToResponseImpl (/app/node_modules/next/dist/server/base-server.js:1946:32)
-    at async DevServer.pipeImpl (/app/node_modules/next/dist/server/base-server.js:921:25)
-    at async NextNodeServer.handleCatchallRenderRequest (/app/node_modules/next/dist/server/next-server.js:272:17)
-    at async DevServer.handleRequestImpl (/app/node_modules/next/dist/server/base-server.js:817:17)
-    at async /app/node_modules/next/dist/server/dev/next-dev-server.js:339:20
-    at async Span.traceAsyncFn (/app/node_modules/next/dist/trace/trace.js:154:20)
-    at async DevServer.handleRequest (/app/node_modules/next/dist/server/dev/next-dev-server.js:336:24)
-    at async invokeRender (/app/node_modules/next/dist/server/lib/router-server.js:173:21)
-    at async handleRequest (/app/node_modules/next/dist/server/lib/router-server.js:350:24)
-    at async requestHandlerImpl (/app/node_modules/next/dist/server/lib/router-server.js:374:13)
-    at async Server.requestListener (/app/node_modules/next/dist/server/lib/start-server.js:141:13)
+ ✓ Compiled / in 8.1s (589 modules)
+ ✓ Compiled in 1119ms (284 modules)
+ GET / 200 in 9270ms
+ GET / 200 in 49ms
