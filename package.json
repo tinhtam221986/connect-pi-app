@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:alt": "next dev -p 4000",
+    "dev:alt2": "next dev -p 5000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
